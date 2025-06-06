@@ -1,10 +1,10 @@
 module.exports = {
     name: "avatar",
     code: `
-  $author[$username's Avatar!]
+  $author[аватар $username's!]
   $color[Random]
   $image[$authorAvatar]
-  $footer[Requested by $username]
+  $footer[Запрошено $username]
   $addTimestamp
   `
 };

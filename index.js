@@ -12,6 +12,7 @@ const client = new AoiClient({
 client.status({
   name: "на кикстарте",
   type: "STREAMING",
+  url: "https://www.twitch.tv/deadp47_",
   status: "idle",
   time: 12
 });
@@ -19,7 +20,7 @@ client.status({
 // Logger
 client.readyCommand({
   channel: "1380518098053894146",
-  code: `console.log("Бот запущен как $userTag[$clientID]")`
+  code: `"Бот запущен как **$userTag[$clientID]**`
 });
 
 // Import commands from /commands
