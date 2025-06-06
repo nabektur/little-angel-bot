@@ -18,4 +18,4 @@ async def on_ready():
         await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
 
 if __name__ == '__main__':
-    bot.run(settings.DISCORD_TOKEN.get_secret_value())
+    bot.run(settings.DISCORD_TOKEN.get_secret_value(), log_level=settings.LOGGING_LEVEL)
