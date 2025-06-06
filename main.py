@@ -17,6 +17,7 @@ async def on_connect():
 @bot.event
 async def on_ready():
 
+    logging.info(f"Бот запущен как {bot.user}")
     print(f"Бот запущен как {bot.user}")
 
     log_channel = bot.get_channel(int(settings.CHANNEL_ID.get_secret_value()))
