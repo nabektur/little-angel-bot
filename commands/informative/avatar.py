@@ -33,7 +33,7 @@ class Avatar(commands.Cog):
 
         if guild_member:
             if guild_member.guild_avatar:
-                guild_avatar = await member.display_avatar.to_file()
+                guild_avatar = await guild_member.display_avatar.to_file()
                 embeds.append(discord.Embed(title=f"Аватар {user} на сервере", color=(guild_member or user).accent_color or member.color, url=f"https://discord.com/users/{member.id}").set_image(url=f"attachment://{guild_avatar.filename}"))
                 avatars.append(guild_avatar)
         
