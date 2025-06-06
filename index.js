@@ -7,10 +7,17 @@ const bot = new AoiClient({
   prefix: "!",
   intents: ["Guilds", "GuildMessages"],
   events: ["onMessage", "onInteractionCreate"],
-  mobilePlatform: true
+  // mobilePlatform: true
   // database: {
   //   type: "json"
   // }
+});
+
+bot.status({
+  name: "на кикстарте",
+  type: "STREAMING",
+  status: "idle",
+  time: 12
 });
 
 // Logger
@@ -20,9 +27,4 @@ bot.readyCommand({
 });
 
 // Import commands from /commands
-new LoadCommands(bot).load(bot.cmd, "./commands", {
-  filter: (cmd) =>
-    cmd &&
-    typeof cmd.name === "string" &&
-    typeof cmd.code === "string"
-});
+bot.loadCommands("./commands");
