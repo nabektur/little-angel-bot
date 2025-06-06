@@ -10,7 +10,7 @@ class Avatar(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
-    @app_commands.command(name="avatar", description="Показывает аватар участника")
+    @app_commands.command(name="аватар", description="Показывает аватар участника")
     @app_commands.describe(member='Выберите участника')
     async def avatar(self, interaction: discord.Interaction, member: typing.Union[discord.Member, discord.User]=None):
         await interaction.response.defer()
