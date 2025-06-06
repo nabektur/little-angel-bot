@@ -10,9 +10,9 @@ const client = new AoiClient({
 });
 
 client.status({
-  name: "Я Оставил ДРУЗЕЙ в Заброшенном Городе!",
+  name: "ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
   type: "STREAMING",
-  url: "https://www.youtube.com/channel/UC35npp14vTgJ5qE6vsHlvCQ",
+  url: "https://www.twitch.tv/jasteeq",
   status: "idle",
   time: 12
 });
