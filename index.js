@@ -19,4 +19,9 @@ bot.readyCommand({
 });
 
 // Import commands from /commands
-new LoadCommands(bot).load(bot.cmd, "./commands");
+new LoadCommands(bot).load(bot.cmd, "./commands", {
+  filter: (cmd) =>
+    cmd &&
+    typeof cmd.name === "string" &&
+    typeof cmd.code === "string"
+});

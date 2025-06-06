@@ -3,4 +3,4 @@ export default {
   description: "Pong!",
   type: "interaction",
   code: `$interactionReply[Pong! 🏓]`
-}
+};
