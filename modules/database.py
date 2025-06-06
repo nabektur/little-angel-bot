@@ -8,14 +8,14 @@ from typing import Literal, Union
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 async def execute(query: str, result_format: Literal['fetchall', 'fetchone'] = None, args: tuple = tuple()) -> Union[list, tuple]:
-    con = await asyncpg.connect(DATABASE_URL, ssl=True)
+    con = await asyncpg.connect(DATABASE_URL)
     result = await con.execute(query, args)
     await con.commit()
     await con.close()
     return result
 
 async def executemany(query: str, result_format: Literal['fetchall', 'fetchone'] = None, args: tuple = tuple()) -> None:
-    con = await asyncpg.connect(DATABASE_URL, ssl=True)
+    con = await asyncpg.connect(DATABASE_URL)
     result = await con.executemany(query, args)
     await con.commit()
     await con.close()
