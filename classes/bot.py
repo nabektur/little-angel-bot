@@ -1,3 +1,5 @@
+import discord
+
 from discord.ext import commands
 
 class LittleAngelBot(commands.AutoShardedBot):
@@ -5,3 +7,15 @@ class LittleAngelBot(commands.AutoShardedBot):
         from modules.extension_loader import load_all_extensions
 
         await load_all_extensions(self)
+
+bot_intents = discord.Intents.default()
+bot_intents.message_content = True
+
+bot = LittleAngelBot(
+    command_prefix="$",
+    intents=bot_intents,
+    activity=discord.Streaming(
+        name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
+        url="https://www.twitch.tv/jasteeq"
+    )
+)

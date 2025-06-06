@@ -1,24 +1,11 @@
 import os
-import discord
 import dotenv
 
 # Loading .env
 dotenv.load_dotenv()
 
 # Discord Bot
-intents = discord.Intents.default()
-intents.message_content = True
-
-from classes.bot import LittleAngelBot
-
-bot = LittleAngelBot(
-    command_prefix="$",
-    intents=intents,
-    activity=discord.Streaming(
-        name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
-        url="https://www.twitch.tv/jasteeq"
-    )
-)
+from classes.bot import bot
 
 @bot.event
 async def on_ready():
