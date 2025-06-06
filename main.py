@@ -1,3 +1,5 @@
+import asyncio
+
 # Discord Bot
 from classes.bot import bot
 
@@ -6,10 +8,13 @@ from classes.scheduler import scheduler
 from modules.configuration import settings
 
 @bot.event
-async def on_ready():
-    
+async def on_connect():
+    asyncio.set_event_loop(asyncio.get_event_loop())
     scheduler.start()
     await db.start()
+
+@bot.event
+async def on_ready():
 
     print(f"Бот запущен как {bot.user}")
 
