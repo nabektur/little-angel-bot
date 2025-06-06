@@ -1,5 +1,7 @@
+import sys
 import typing
 import dotenv
+import logging
 
 from pydantic          import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,4 +18,8 @@ class Settings(BaseSettings):
         env_file=ENV_PATH, enable_decoding="utf-8"
     )
 
-settings = Settings()
+config = Settings()
+
+# Логирование
+stdout_handler = logging.StreamHandler(stream=sys.stdout)
+stdout_handler.setFormatter(logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'))

@@ -10,7 +10,7 @@ class Database:
         self.pool: Optional[asyncpg.Pool] = None
     
     async def connect(self):
-        self.pool = await asyncpg.create_pool(settings.DATABASE_URL.get_secret_value())
+        self.pool = await asyncpg.create_pool(config.DATABASE_URL.get_secret_value())
 
     async def start(self):
         await self.connect()
