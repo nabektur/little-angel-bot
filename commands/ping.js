@@ -1,6 +1,6 @@
 export default {
   name: "ping",
   description: "Pong!",
-  type: "interaction", 
+  type: "interaction",
   code: `$interactionReply[Pong! 🏓]`
 }
