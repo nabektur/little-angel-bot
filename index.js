@@ -1,5 +1,5 @@
-import { AoiClient, LoadCommands } from "aoi.js";
-import "dotenv/config"; // .env loading
+const { AoiClient, LoadCommands } = require("aoi.js");
+require("dotenv").config(); // .env loading
 
 // Discord Client
 const bot = new AoiClient({
