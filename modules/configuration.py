@@ -33,8 +33,12 @@ def setup_logging():
     root_logger.setLevel(config.LOGGING_LEVEL)
     root_logger.addHandler(stdout_handler)
     
-    discord_logger = logging.getLogger('discord')
-    discord_logger.setLevel(logging.WARNING)
+    logging.getLogger('discord').setLevel(logging.CRITICAL)
+    logging.getLogger('discord.client').setLevel(logging.CRITICAL)
+    logging.getLogger('discord.gateway').setLevel(logging.CRITICAL)
+    logging.getLogger('discord.http').setLevel(logging.CRITICAL)
+    
+    # logging.getLogger('apscheduler').setLevel(logging.WARNING)
     
     return stdout_handler
 
