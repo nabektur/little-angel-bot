@@ -6,14 +6,7 @@ const client = new AoiClient({
   token: process.env.DISCORD_TOKEN, 
   prefix: "$",
   intents: ["MessageContent", "Guilds", "GuildMessages"],
-  events: ["onMessage", "onInteractionCreate"],
-  database: {
-      type: "aoi.db",
-      db: require("@aoijs/aoi.db"),
-      dbType: "KeyValue",
-      tables: ["main"],
-      securityKey: process.env.SECURITY_KEY
-  }
+  events: ["onMessage", "onInteractionCreate"]
 });
 
 client.status({
