@@ -1,17 +1,21 @@
 import sys
 import logging
 
+from modules.configuration import settings
+
 # Логирование
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
 stdout_handler.setFormatter(logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'))
+
 _log = logging.getLogger(__name__)
+_log.setLevel(settings.LOGGING_LEVEL)
+_log.addHandler(stdout_handler)
 
 # Discord Bot
 from classes.bot import bot
 
-from modules.configuration import settings
-from classes.database      import db
-from classes.scheduler     import scheduler
+from classes.database  import db
+from classes.scheduler import scheduler
 
 @bot.event
 async def on_connect():
