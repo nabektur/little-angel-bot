@@ -1,5 +1,17 @@
 import os
+import sys
+import logging
 import traceback
+
+from modules.configuration import settings
+
+# Логирование
+stdout_handler = logging.StreamHandler(stream=sys.stdout)
+stdout_handler.setFormatter(logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'))
+
+_log = logging.getLogger(__name__)
+_log.setLevel(settings.LOGGING_LEVEL)
+_log.addHandler(stdout_handler)
 
 from classes.bot import LittleAngelBot
 
@@ -12,7 +24,7 @@ async def load_all_extensions(bot: LittleAngelBot, base_folder="commands"):
 
                 try:
                     await bot.load_extension(module)
-                    print(f"✅ Загружено расширение: {module}")
+                    logging.info(f"✅ Загружено расширение: {module}")
                 except Exception as e:
-                    print(f"❌ Ошибка при загрузке {module}: {type(e).__name__}: {e}")
-                    traceback.print_exc()
+                    logging.error(f"❌ Ошибка при загрузке {module}: {type(e).__name__}: {e}")
+                    logging.error(traceback.format_exc())
