@@ -1,23 +1,19 @@
-import os
-import dotenv
-
-# Loading .env
-dotenv.load_dotenv()
-
 # Discord Bot
 from classes.bot import bot
+
+from classes.database import db
+from modules.configuration import settings
 
 @bot.event
 async def on_ready():
     
-    from modules.database import start_db
-    await start_db()
+    await db.start()
 
     print(f"Бот запущен как {bot.user}")
 
-    log_channel = bot.get_channel(int(os.getenv("CHANNEL_ID")))
+    log_channel = bot.get_channel(int(settings.CHANNEL_ID.get_secret_value()))
     if log_channel:
         await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
 
-
-bot.run(os.getenv("DISCORD_TOKEN"))
+if __name__ == '__main__':
+    bot.run(settings.DISCORD_TOKEN.get_secret_value())
