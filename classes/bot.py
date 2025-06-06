@@ -8,13 +8,14 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         await load_all_extensions(self)
 
-bot_intents = discord.Intents.default()
-bot_intents.message_content = True
+discord_intents = discord.Intents.default()
+discord_intents.message_content = True
 
 bot = LittleAngelBot(
-    command_prefix="$",
-    intents=bot_intents,
+    command_prefix=commands.when_mentioned_or("$"),
+    case_insensitive=True,
     help_command=None,
+    intents=discord_intents,
     activity=discord.Streaming(
         name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
         url="https://www.twitch.tv/jasteeq"
