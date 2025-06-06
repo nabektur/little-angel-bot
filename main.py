@@ -2,11 +2,13 @@
 from classes.bot import bot
 
 from classes.database import db
+from classes.scheduler import scheduler
 from modules.configuration import settings
 
 @bot.event
 async def on_ready():
     
+    await scheduler.start()
     await db.start()
 
     print(f"Бот запущен как {bot.user}")

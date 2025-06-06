@@ -4,3 +4,4 @@ APScheduler
 asyncpg
 pydantic
 pydantic-settings
+SQLAlchemy
