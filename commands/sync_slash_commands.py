@@ -16,9 +16,5 @@ class SyncSlashCommands(commands.Cog):
             await self.bot.tree.sync(guild=None)
         await ctx.send("☑️ Синхронизировано!")
 
-    @app_commands.command(name="ping", description="Pong!")
-    async def ping(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Pong! 🏓")
-
 async def setup(bot):
     await bot.add_cog(SyncSlashCommands(bot))
