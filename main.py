@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 # Discord Bot
 from classes.bot import bot
@@ -9,9 +10,9 @@ from modules.configuration import settings
 
 @bot.event
 async def on_connect():
-    asyncio.set_event_loop(asyncio.get_event_loop())
-    scheduler.start()
     await db.start()
+    scheduler.start()
+    logging.info("База данных и планировщик запущены")
 
 @bot.event
 async def on_ready():
