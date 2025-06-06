@@ -1,9 +1,10 @@
+import time
 import discord
+
 from discord import app_commands
 from discord.ext import commands
-import time
 
-from modules.bot_class import LittleAngelBot
+from classes.bot import LittleAngelBot
 
 class Ping(commands.Cog):
     def __init__(self, bot: LittleAngelBot):

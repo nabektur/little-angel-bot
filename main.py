@@ -9,7 +9,7 @@ dotenv.load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
-from modules.bot_class import LittleAngelBot
+from classes.bot import LittleAngelBot
 
 bot = LittleAngelBot(
     command_prefix="$",
