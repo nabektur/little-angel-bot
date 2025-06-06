@@ -1,19 +1,22 @@
-const { AoiClient, LoadCommands } = require("aoi.js");
+const { AoiClient } = require("aoi.js");
 require("dotenv").config(); // .env loading
 
 // Discord Client
-const bot = new AoiClient({
-  token: process.env.DISCORD_TOKEN,
-  prefix: "!",
-  intents: ["Guilds", "GuildMessages"],
+const client = new AoiClient({
+  token: process.env.DISCORD_TOKEN, 
+  prefix: "$",
+  intents: ["MessageContent", "Guilds", "GuildMessages"],
   events: ["onMessage", "onInteractionCreate"],
-  // mobilePlatform: true
-  // database: {
-  //   type: "json"
-  // }
+  database: {
+      type: "aoi.db",
+      db: require("@aoijs/aoi.db"),
+      dbType: "KeyValue",
+      tables: ["main"],
+      securityKey: process.env.SECURITY_KEY
+  }
 });
 
-bot.status({
+client.status({
   name: "на кикстарте",
   type: "STREAMING",
   status: "idle",
@@ -21,10 +24,10 @@ bot.status({
 });
 
 // Logger
-bot.readyCommand({
+client.readyCommand({
   channel: false,
   code: `console.log("Бот запущен как $userTag[$clientID]")`
 });
 
 // Import commands from /commands
-bot.loadCommands("./commands");
+client.loadCommands("./commands");
