@@ -5,3 +5,4 @@ asyncpg
 pydantic
 pydantic-settings
 SQLAlchemy
+psycopg2
