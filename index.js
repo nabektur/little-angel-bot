@@ -7,9 +7,10 @@ const bot = new AoiClient({
   prefix: "!",
   intents: ["Guilds", "GuildMessages"],
   events: ["onMessage", "onInteractionCreate"],
-  database: {
-    type: "json"
-  }
+  mobilePlatform: true
+  // database: {
+  //   type: "json"
+  // }
 });
 
 // Logger
