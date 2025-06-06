@@ -12,7 +12,7 @@ discord_intents = discord.Intents.default()
 discord_intents.message_content = True
 
 bot = LittleAngelBot(
-    command_prefix=commands.when_mentioned_or("$"),
+    command_prefix=commands.when_mentioned_or("."),
     case_insensitive=True,
     help_command=None,
     intents=discord_intents,
