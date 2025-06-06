@@ -14,6 +14,7 @@ bot_intents.message_content = True
 bot = LittleAngelBot(
     command_prefix="$",
     intents=bot_intents,
+    help_command=None,
     activity=discord.Streaming(
         name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
         url="https://www.twitch.tv/jasteeq"
