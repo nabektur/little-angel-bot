@@ -14,5 +14,9 @@ async def on_ready():
     if log_channel:
         await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
 
+    from modules.database import start_db
+
+    await start_db()
+
 
 bot.run(os.getenv("DISCORD_TOKEN"))
