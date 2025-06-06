@@ -21,5 +21,21 @@ class Settings(BaseSettings):
 config = Settings()
 
 # Логирование
-stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setFormatter(logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'))
+def setup_logging():
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_handler.setFormatter(
+        logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s')
+    )
+    
+    root_logger.setLevel(config.LOGGING_LEVEL)
+    root_logger.addHandler(stdout_handler)
+    
+    discord_logger = logging.getLogger('discord')
+    discord_logger.setLevel(logging.WARNING)
+    
+    return stdout_handler
+
+stdout_handler = setup_logging()
