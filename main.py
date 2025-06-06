@@ -37,8 +37,5 @@ async def on_ready():
 
 if __name__ == '__main__':
     bot.run(
-        settings.DISCORD_TOKEN.get_secret_value(), 
-        log_handler=stdout_handler,
-        log_formatter=logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'),
-        log_level=settings.LOGGING_LEVEL
+        settings.DISCORD_TOKEN.get_secret_value(),
     )
