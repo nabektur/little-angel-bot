@@ -3,8 +3,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from modules.bot_class import LittleAngelBot
+
 class Ping(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
     @app_commands.command(name="ping", description="Pong!")

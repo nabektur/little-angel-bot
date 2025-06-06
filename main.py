@@ -2,9 +2,6 @@ import os
 import discord
 import dotenv
 
-from discord.ext import commands
-from discord import app_commands
-
 # Loading .env
 dotenv.load_dotenv()
 
@@ -12,11 +9,7 @@ dotenv.load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
-class LittleAngelBot(commands.AutoShardedBot):
-    async def setup_hook(self):
-        from modules.extension_loader import load_all_extensions
-
-        await load_all_extensions(self)
+from modules.bot_class import LittleAngelBot
 
 bot = LittleAngelBot(
     command_prefix="$",
