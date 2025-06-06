@@ -8,7 +8,7 @@ from modules.configuration import settings
 @bot.event
 async def on_ready():
     
-    await scheduler.start()
+    scheduler.start()
     await db.start()
 
     print(f"Бот запущен как {bot.user}")
