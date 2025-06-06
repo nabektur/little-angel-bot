@@ -14,9 +14,7 @@ class Database:
 
     async def start(self):
         await self.connect()
-        # await execute("CREATE TABLE IF NOT EXISTS last_responses (dialog_id varchar PRIMARY KEY, last_response_id varchar);")
-        # await execute("CREATE TABLE IF NOT EXISTS users_carts (dialog_id varchar PRIMARY KEY, cart varchar);")
-        # await execute("CREATE TABLE IF NOT EXISTS users_orders (number integer PRIMARY KEY, dialog_id varchar, address varchar, delivery_time_start varchar, delivery_time_end varchar, additional_comments varchar, cart varchar);")
+        await self.execute("CREATE TABLE IF NOT EXISTS test_table (test_id bigint PRIMARY KEY, last_response_id varchar);")
         
     async def execute(self, query: str, *args) -> str:
         async with self.pool.acquire() as conn:
