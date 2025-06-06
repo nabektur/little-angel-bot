@@ -33,11 +33,6 @@ async def on_ready():
     log_channel = bot.get_channel(int(os.getenv("CHANNEL_ID")))
     if log_channel:
         await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Синхронизировано {len(synced)} slash-команд.")
-    except Exception as e:
-        print(f"Ошибка синхронизации: {e}")
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
