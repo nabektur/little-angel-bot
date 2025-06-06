@@ -14,9 +14,9 @@ intents.message_content = True
 
 class LittleAngelBot(commands.AutoShardedBot):
     async def setup_hook(self):
-        await self.load_extension("commands.ping")
-        await self.load_extension("commands.avatar")
-        await self.load_extension("commands.sync_slash_commands")
+        from modules.extension_loader import load_all_extensions
+
+        await load_all_extensions(self)
 
 bot = LittleAngelBot(
     command_prefix="$",
