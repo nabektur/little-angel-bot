@@ -1,0 +1,24 @@
+import discord
+
+from discord import app_commands
+from discord.ext import commands
+
+class SyncSlashCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context, guild_id: int=None):
+        if guild_id:
+            await self.bot.tree.sync(guild=discord.Object(id=guild_id))
+        else:
+            await self.bot.tree.sync(guild=None)
+        await ctx.send("☑️ Синхронизировано!")
+
+    @app_commands.command(name="ping", description="Pong!")
+    async def ping(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Pong! 🏓")
+
+async def setup(bot):
+    await bot.add_cog(SyncSlashCommands(bot))

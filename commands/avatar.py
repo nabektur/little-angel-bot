@@ -8,7 +8,7 @@ class Avatar(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="avatar", description="Показать аватар")
-    async def avatar(self, interaction):
+    async def avatar(self, interaction: discord.Interaction):
         user = interaction.user
         embed = Embed(
             title=f"Аватар {user.name}!",
