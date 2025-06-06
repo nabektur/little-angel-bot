@@ -1,4 +1,4 @@
-from modules.configuration import settings
+from modules.configuration import config
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 

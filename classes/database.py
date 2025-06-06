@@ -3,7 +3,7 @@ import asyncpg
 
 from typing import Any, List, Optional
 
-from modules.configuration import settings
+from modules.configuration import config
 
 class Database:
     def __init__(self):
