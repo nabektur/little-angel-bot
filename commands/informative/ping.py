@@ -13,5 +13,5 @@ class Ping(commands.Cog):
     async def ping(self, interaction: discord.Interaction):
         await interaction.response.send_message("Pong! 🏓")
 
-async def setup(bot):
+async def setup(bot: LittleAngelBot):
     await bot.add_cog(Ping(bot))

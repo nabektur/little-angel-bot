@@ -18,5 +18,5 @@ class SyncSlashCommands(commands.Cog):
             await self.bot.tree.sync(guild=None)
         await ctx.send("☑️ Синхронизировано!")
 
-async def setup(bot):
+async def setup(bot: LittleAngelBot):
     await bot.add_cog(SyncSlashCommands(bot))
