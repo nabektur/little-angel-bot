@@ -18,7 +18,7 @@ client.status({
 
 // Logger
 client.readyCommand({
-  channel: false,
+  channel: "1380518098053894146",
   code: `console.log("Бот запущен как $userTag[$clientID]")`
 });
 
