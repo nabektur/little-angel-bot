@@ -1,4 +1,4 @@
 # бот ["Ангелочек"](https://discord.com/oauth2/authorize?client_id=1380519970424881152)
 
 ## Аватарка бота
-![Аватарка бота](https://github.com/Toster404/little-angel-bot/blob/main/little-angel.jpg.jpg)
+![Аватарка бота](https://github.com/Toster404/little-angel-bot/blob/main/little-angel.jpg)
