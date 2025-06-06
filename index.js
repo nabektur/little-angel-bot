@@ -10,9 +10,9 @@ const client = new AoiClient({
 });
 
 client.status({
-  name: "на кикстарте",
+  name: "на твиче",
   type: "STREAMING",
-  url: "https://www.twitch.tv/deadp47_",
+  url: "https://www.twitch.tv/",
   status: "idle",
   time: 12
 });

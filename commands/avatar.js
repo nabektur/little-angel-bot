@@ -1,7 +1,7 @@
 module.exports = {
     name: "avatar",
     code: `
-  $author[аватар $username's!]
+  $author[Аватар $username!]
   $color[Random]
   $image[$authorAvatar]
   $footer[Запрошено $username]
