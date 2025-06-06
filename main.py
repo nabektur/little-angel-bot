@@ -16,6 +16,7 @@ class LittleAngelBot(commands.AutoShardedBot):
     async def setup_hook(self):
         await self.load_extension("commands.ping")
         await self.load_extension("commands.avatar")
+        await self.load_extension("commands.sync_slash_commands")
 
 bot = LittleAngelBot(
     command_prefix="$",
