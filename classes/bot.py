@@ -7,6 +7,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         from modules.extension_loader import load_all_extensions
 
         await load_all_extensions(self)
+        await load_all_extensions(self, "listeners")
 
 discord_intents = discord.Intents.default()
 discord_intents.message_content = True
