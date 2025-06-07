@@ -19,7 +19,7 @@ class TokenCommand(commands.Cog):
         if not member:
             member = interaction.user
 
-        await interaction.response.send_message(content=member.mention, embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, description=f"Начало токена {member.mention}: `{base64.b64encode(str(member.id).encode('ascii')).decode('ascii').replace('=', '')}.`"))
+        await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, description=f"Начало токена {member.mention}: `{base64.b64encode(str(member.id).encode('ascii')).decode('ascii').replace('=', '')}.`"))
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(TokenCommand(bot))
