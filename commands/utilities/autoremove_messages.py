@@ -26,7 +26,8 @@ class AutoRemove(commands.Cog):
 
     @autoremove_group.command(name="сообщений", description="Автоматически удаляет сообщение через заданное время")
     @app_commands.describe(message_id="Введите ID сообщения для удаления (вы можете удалять только свои без права управления сообщениями)", duration='Укажите время через которое надо удалить сообщение', channel='Выберите канал где размещено сообщение')
-    async def autoremove_messages_command(self, interaction: discord.Interaction, message_id: int, duration: app_commands.Transform[str, Duration], channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None):
+    async def autoremove_messages_command(self, interaction: discord.Interaction, message_id: str, duration: app_commands.Transform[str, Duration], channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None):
+        message_id = int(message_id)
         if not channel:
             channel = interaction.channel
         bot_member = interaction.guild.me
