@@ -1,12 +1,9 @@
-import typing
 import discord
 
 from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-
-from modules.configuration import config
 
 class Boost(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -17,7 +14,7 @@ class Boost(commands.Cog):
     async def boosts_info_command(self, interaction: discord.Interaction):
         guild = interaction.guild
         if guild.premium_subscription_count == 0:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="На сервере нет бустов!", color=0xff0000), ephemeral=True)
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="На сервере нет бустов!", color=0xff0000), ephemeral=True)
         boosters = guild.premium_subscribers
         boosters_str = ""
         for booster in boosters:
