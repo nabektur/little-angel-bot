@@ -1,11 +1,48 @@
-import asyncio
 import random
+import typing
+import asyncio
 import discord
 import aiohttp
+
 from datetime import datetime, timezone
 
 from classes.database import db
+from classes.bot      import LittleAngelBot
+
 from modules.configuration import config
+
+async def sync_spam_from_database(bot: LittleAngelBot):
+    results = await db.fetch("SELECT * FROM spams")
+    [await start_spam_from_database(bot, key) for key in results]
+
+async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
+    try:
+        channel = await bot.fetch_channel(key[2])
+        if isinstance(channel, discord.Thread):
+            wchannel = channel.parent
+        else:
+            wchannel = channel
+        webhooks = await wchannel.webhooks()
+        webhook = [webhook for webhook in webhooks if(webhook.name == "Крутяк")]
+        if webhook:
+            webhook = webhook[0]
+        else:
+            webhook = await wchannel.create_webhook(name="Крутяк", avatar=await bot.user.avatar.read())
+    except:
+        return
+
+    if key[4]:
+        duration = datetime.fromtimestamp(int(key[4]), timezone.utc)
+        if datetime.now(timezone.utc) >= duration:
+            await db.execute("DELETE FROM spams WHERE channel_id = %s;", channel.id)
+            await channel.send("Спам остановлен по причине длительности! ☑️")
+            return
+        task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
+    else:
+        task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], key[4]))
+
+    task.name = "Автоспам"
+    task.channel_id = channel.id
 
 async def check_sp(channel_id):
     return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel_id) != None

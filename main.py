@@ -9,9 +9,12 @@ from classes.bot import bot
 from classes.database  import db
 from classes.scheduler import scheduler
 
+from modules.spam_runner import sync_spam_from_database
+
 @bot.event
 async def on_connect():
     await db.start()
+    await sync_spam_from_database(bot)
     scheduler.start()
     _log.info("База данных и планировщик запущены")
 
