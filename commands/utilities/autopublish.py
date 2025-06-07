@@ -21,6 +21,15 @@ class AutoPublish(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
+    @commands.Cog.listener
+    async def on_message(self, message: discord.Message):
+        if message.author == self.bot.user:
+            return
+        if isinstance(message.channel, discord.TextChannel):
+            if message.channel.is_news():
+                if await is_autopub(message.channel.id):
+                    await message.publish()
+
     autopublish_group = app_commands.Group(
         name="автопубликация",
         description="Автоматическая публикация новостей",
@@ -32,18 +41,18 @@ class AutoPublish(commands.Cog):
     @app_commands.describe(channel="Выберите новостной канал для автоматической публикации")
     async def autopub_turn_on_cmd(self, interaction: discord.Interaction, channel: discord.TextChannel):
         if not channel.is_news():
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна вне каналов с объявлениями!"), ephemeral=True)
         channel_permissions = channel.permissions_for(interaction.guild.me)
         if not (channel_permissions.read_messages and channel_permissions.send_messages and channel_permissions.manage_messages and channel_permissions.read_message_history):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Бот не может публиковать сообщения в указанном канале! Убедитесь, что в новостном канале бот может просматривать сам канал, отправлять сообщения, управлять ими и читать историю сообщений"), ephemeral=True)
         await db.execute("INSERT INTO autopublish (channel_id) VALUES($1);", channel.id)
-        await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="✅ Успешно!", description=f"Автопубликация включена!"))
+        await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description=f"Автопубликация включена!"))
         
     @autopublish_group.command(name="выключить", description="Выключает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал автоматической публикации")
     async def autopub_turn_off_cmd(self, interaction: discord.Interaction, channel: discord.TextChannel):
         if not channel.is_news():
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна вне каналов с объявлениями!"), ephemeral=True)
         if await is_autopub(channel.id):
             await db.execute("DELETE FROM autopublish WHERE channel_id = $1;", channel.id)
             return await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description="Автопубликация была выключена!"))
