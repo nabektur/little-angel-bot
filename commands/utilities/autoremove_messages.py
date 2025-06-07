@@ -48,7 +48,7 @@ class AutoRemove(commands.Cog):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
         duration_datetime = datetime.now(timezone.utc) + duration
         await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=0x54ef35, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:D>)"), ephemeral=True)
-        scheduler.add_job(message.delete(), trigger=DateTrigger(run_date=duration_datetime))
+        scheduler.add_job(message.delete, trigger=DateTrigger(run_date=duration_datetime))
 
 
 async def setup(bot: LittleAngelBot):
