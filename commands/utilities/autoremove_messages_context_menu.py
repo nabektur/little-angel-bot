@@ -57,4 +57,4 @@ async def delayed_delete_context(interaction: discord.Interaction, message: disc
     await interaction.response.send_modal(DurationModal(message))
 
 async def setup(bot: LittleAngelBot):
-    await bot.tree.add_command(delayed_delete_context)
+    bot.tree.add_command(delayed_delete_context)
