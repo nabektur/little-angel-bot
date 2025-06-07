@@ -22,16 +22,16 @@ class Banner(commands.Cog):
         embeds = []
         banners = []
 
+        try:
+            guild_member = await interaction.guild.fetch_member(member.id)
+        except:
+            guild_member = None
+
         user = await self.bot.fetch_user(member.id)
         if user.banner:
             user_banner = await user.banner.to_file()
             embeds.append(discord.Embed(title=f"Баннер {user}", color=(guild_member or user).accent_color or member.color, url=f"https://discord.com/users/{member.id}").set_image(url=f"attachment://{user_banner.filename}"))
             banners.append(user_banner)
-
-        try:
-            guild_member = await interaction.guild.fetch_member(member.id)
-        except:
-            guild_member = None
 
         if guild_member:
             if guild_member.guild_banner:
