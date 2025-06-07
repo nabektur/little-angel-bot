@@ -30,7 +30,7 @@ class AutoPublish(commands.Cog):
 
     @autopublish_group.command(name="включить", description="Включает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал для автоматической публикации")
-    async def autopub_turn_on_cmd(interaction: discord.Interaction, channel: discord.TextChannel):
+    async def autopub_turn_on_cmd(self, interaction: discord.Interaction, channel: discord.ChannelType.news):
         if not channel.is_news():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
         channel_permissions = channel.permissions_for(interaction.guild.me)
@@ -41,7 +41,7 @@ class AutoPublish(commands.Cog):
         
     @autopublish_group.command(name="выключить", description="Выключает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал автоматической публикации")
-    async def autopub_turn_off_cmd(interaction: discord.Interaction, channel: discord.TextChannel):
+    async def autopub_turn_off_cmd(self, interaction: discord.Interaction, channel: discord.ChannelType.news):
         if not channel.is_news():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
         if await is_autopub(channel.id):
