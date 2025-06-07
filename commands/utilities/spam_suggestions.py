@@ -21,7 +21,7 @@ class SuggestSpamView(discord.ui.View):
         table = "spamtexts_nsfw" if self.spam_type == "nsfw" else "spamtexts_ordinary"
         await db.execute(f"INSERT INTO {table} (text) VALUES ($1) ON CONFLICT DO NOTHING;", self.suggestion)
         await interaction.message.delete()
-        await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу ({self.spam_type}).", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу (`{self.spam_type}`).", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
 
     @discord.ui.button(label="❌", style=discord.ButtonStyle.danger, custom_id="spam_suggestion_reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
