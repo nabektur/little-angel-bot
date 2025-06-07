@@ -47,6 +47,15 @@ class Spam(commands.Cog):
             except:
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
         else:
+            channel_permissions = channel.permissions_for(channel.guild.get_member(self.bot.user.id))
+            if isinstance(channel, discord.Thread):
+                if not channel_permissions.send_messages_in_threads:
+                    return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в эту ветку для использования этой команды!"), ephemeral=True)
+            else:
+                if not channel_permissions.send_messages:
+                    return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
+            if channel.slowmode_delay and not channel_permissions.manage_messages:
+                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями! Это право нужно боту для того чтобы избегать медленного режима"), ephemeral=True)
             webhook = None
         if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён в данном канале!", color=0xff0000), ephemeral=True)
