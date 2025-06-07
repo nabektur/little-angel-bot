@@ -28,7 +28,7 @@ class DurationModal(discord.ui.Modal, title="Удаление сообщения
         self.message = message
 
         self.add_item(discord.ui.TextInput(
-            label="Через сколько удалить? (например: 10c, 5мин, 2ч, 1д)",
+            label="Удалить через? (например: 10c, 5мин, 2ч, 1д)",
             placeholder="1 ч 30 мин",
             custom_id="duration_input"
         ))
