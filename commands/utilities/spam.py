@@ -13,10 +13,10 @@ from classes.database import db
 from modules.time_converter import time_regex, time_dict, verbose_timedelta
 from modules.spam_runner    import run_spam
                             
-class InvalidDuration(discord.AppCommandError):
+class InvalidDuration(app_commands.AppCommandError):
     pass
 
-class Duration(discord.Transformer):
+class Duration(app_commands.Transformer):
     async def transform(self, interaction: discord.Interaction, value: str, /) -> timedelta:
         value = value.replace(" ", "")
         time = 0
