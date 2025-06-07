@@ -21,7 +21,7 @@ class AutoPublish(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
-    @commands.Cog.listener
+    @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author == self.bot.user:
             return
