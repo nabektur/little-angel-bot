@@ -33,10 +33,7 @@ class ServersUpdate(commands.Cog):
                 pass
             if user:
                 embed.description = f"Добавил: {user.mention} ({user}) с ID: {user.id}\n" + embed.description
-            if guild.icon:
-                embed.set_footer(icon_url=guild.icon.url, text=guild.name)
-            else:
-                embed.set_footer(text=guild.name)
+            embed.set_footer(icon_url=guild.icon.url if guild.icon else None, text=guild.name)
             await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -44,10 +41,7 @@ class ServersUpdate(commands.Cog):
         log_channel = self.bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
         if log_channel:
             embed = discord.Embed(title="Бот был кикнут/забанен с сервера", description=f"Участников: {guild.member_count}\nID сервера: {guild.id}", color=config.LITTLE_ANGEL_COLOR)
-            if guild.icon:
-                embed.set_footer(icon_url=guild.icon.url, text=guild.name)
-            else:
-                embed.set_footer(text=guild.name)
+            embed.set_footer(icon_url=guild.icon.url if guild.icon else None, text=guild.name)
             await log_channel.send(embed=embed)
 
 
