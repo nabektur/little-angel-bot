@@ -39,6 +39,10 @@ class DurationModal(discord.ui.Modal, title="Удаление сообщения
             duration = await Duration().transform(interaction, self.children[0].value)
         except:
             return
+        
+        member_perms = self.message.channel.permissions_for(interaction.user)
+        if self.message.author.id != interaction.user.id and not member_perms.manage_messages:
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
 
         if duration > timedelta(days=30) or duration < timedelta(seconds=3):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
@@ -46,7 +50,7 @@ class DurationModal(discord.ui.Modal, title="Удаление сообщения
         duration_datetime = datetime.now(timezone.utc) + duration
         scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[self.message.id, self.message.channel.id])
 
-        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)"), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{duration_datetime.timestamp()}:R>)"), ephemeral=True)
 
 @app_commands.context_menu(name="Удалить сообщение позже")
 async def delayed_delete_context(interaction: discord.Interaction, message: discord.Message):
