@@ -10,22 +10,8 @@ from discord.ext import commands
 from classes.bot      import LittleAngelBot
 from classes.database import db
 
-from modules.time_converter import time_regex, time_dict, verbose_timedelta
+from modules.time_converter import Duration, verbose_timedelta
 from modules.spam_runner    import run_spam
-                            
-class InvalidDuration(app_commands.AppCommandError):
-    pass
-
-class Duration(app_commands.Transformer):
-    async def transform(self, interaction: discord.Interaction, value: str, /) -> timedelta:
-        value = value.replace(" ", "")
-        time = 0
-        for v, k in time_regex.findall(value.lower()):
-            time += time_dict[k]*float(v)
-        if time == 0:
-            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали невалидную длительность!"), ephemeral=True)
-            raise InvalidDuration()
-        return timedelta(seconds=time)
 
 class Spam(commands.Cog):
     def __init__(self, bot: LittleAngelBot):

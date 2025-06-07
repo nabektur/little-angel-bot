@@ -1,4 +1,7 @@
 import re
+import discord
+
+from discord import app_commands
 
 from datetime import timedelta
 
@@ -64,3 +67,17 @@ def verbose_timedelta(t: timedelta) -> str:
     if cif_str and cif_str[-1] == " ":
         cif_str = cif_str[:-1]
     return cif_str
+
+class InvalidDuration(app_commands.AppCommandError):
+    pass
+
+class Duration(app_commands.Transformer):
+    async def transform(self, interaction: discord.Interaction, value: str, /) -> timedelta:
+        value = value.replace(" ", "")
+        time = 0
+        for v, k in time_regex.findall(value.lower()):
+            time += time_dict[k]*float(v)
+        if time == 0:
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали невалидную длительность!"), ephemeral=True)
+            raise InvalidDuration()
+        return timedelta(seconds=time)
