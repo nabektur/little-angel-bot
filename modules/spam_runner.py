@@ -8,7 +8,7 @@ from classes.database import db
 from modules.configuration import config
 
 async def check_sp(channel_id):
-    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", (channel_id,)) != None
+    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel_id) != None
 
 
 async def run_spam(type: str, method: str, channel, webhook, ments=None, duration=None):
@@ -26,7 +26,7 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
     try:
         while await check_sp(channel.id):
             if duration and datetime.now(timezone.utc) >= duration:
-                await db.execute("DELETE FROM spams WHERE channel_id = $1;", (channel.id,))
+                await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
                 await channel.send("Спам остановлен по причине длительности! ☑️")
                 break
 
@@ -40,11 +40,11 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
                 await channel.send(content=text)
 
     except discord.errors.NotFound:
-        await db.execute("DELETE FROM spams WHERE channel_id = $1;", (channel.id,))
+        await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
     except discord.errors.HTTPException:
         await asyncio.sleep(3)
     except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
-        await db.execute("DELETE FROM spams WHERE channel_id = $1;", (channel.id,))
+        await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
         await channel.send(embed=discord.Embed(
             title='⚠️ Спам остановлен!',
             color=0xfcb603,

@@ -48,7 +48,7 @@ class Spam(commands.Cog):
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
         else:
             webhook = None
-        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", (channel.id,)) :
+        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id) :
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён в данном канале!", color=0xff0000), ephemeral=True)
         else:
             await interaction.response.defer()
@@ -64,7 +64,7 @@ class Spam(commands.Cog):
                 else:
                     await channel.send(f'Спам активирован по команде {interaction.user.mention}! ☑️')
             if duration:
-                await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5);", (type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else duration))
+                await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5);", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else duration)
             task = asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
             task.name = "Спам"
             task.channel_id = channel.id
@@ -81,9 +81,9 @@ class Spam(commands.Cog):
     async def spam_stop_command(self, interaction: discord.Interaction, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None):
         if not channel:
             channel = interaction.channel
-        if db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", (channel.id,)):
+        if db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
             await interaction.response.defer()
-            await db.execute("DELETE FROM spams WHERE channel_id = $1;", (channel.id,))
+            await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
             await interaction.followup.send('Спам остановлен! ☑️')
             if not channel == interaction.channel:
                 await channel.send(f'Спам остановлен по команде {interaction.user.mention}! ☑️')
