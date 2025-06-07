@@ -26,6 +26,39 @@ class AutoRemove(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
+    class DurationModal(discord.ui.Modal, title="Удаление сообщения позже"):
+        def __init__(self, message: discord.Message):
+            super().__init__()
+            self.message = message
+
+            self.add_item(discord.ui.TextInput(
+                label="Через сколько удалить? (например: 10c, 5мин, 2ч, 1д)",
+                placeholder="1 ч 30 мин",
+                custom_id="duration_input"
+            ))
+
+        async def on_submit(self, interaction: discord.Interaction):
+            try:
+                duration = await Duration().transform(interaction, self.children[0].value)
+            except:
+                return
+
+            if duration > timedelta(days=30) or duration < timedelta(seconds=3):
+                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
+
+            duration_datetime = datetime.now(timezone.utc) + duration
+            scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration), args=[self.message.id, self.message.channel.id])
+
+            await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)"), ephemeral=True)
+
+    @app_commands.context_menu(name="Удалить сообщение позже")
+    async def delayed_delete_context(self, interaction: discord.Interaction, message: discord.Message):
+        member_perms = message.channel.permissions_for(interaction.user)
+        if message.author.id != interaction.user.id and not member_perms.manage_messages:
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
+        
+        await interaction.response.send_modal(self.DurationModal(message))
+
     autoremove_group = app_commands.Group(
         name="автоудаление",
         description="Автоматическое удаление чего-либо",
