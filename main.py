@@ -22,7 +22,7 @@ async def on_connect():
 async def on_ready():
     _log.info(f"Бот запущен как {bot.user}")
 
-    log_channel = bot.get_channel(int(config.CHANNEL_ID.get_secret_value()))
+    log_channel = bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
     if log_channel:
         await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
 
