@@ -15,8 +15,8 @@ class Database:
     async def start(self):
         await self.connect()
         await self.execute("CREATE TABLE IF NOT EXISTS spams (type varchar, method varchar, channel_id bigint PRIMARY KEY, ments varchar, timestamp varchar);")
-        await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_ordinary (text varchar);")
-        await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar);")
+        await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_ordinary (text varchar PRIMARY KEY);")
+        await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar PRIMARY KEY);")
         # await self.execute("CREATE TABLE IF NOT EXISTS test_table (test_id bigint PRIMARY KEY, last_response_id varchar);")
         
     async def execute(self, query: str, *args) -> str:
