@@ -6,6 +6,8 @@ from discord.ext import commands
 
 from classes.bot import LittleAngelBot
 
+from modules.configuration import config
+
 class Banner(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
@@ -40,7 +42,7 @@ class Banner(commands.Cog):
         if banners:
             await interaction.followup.send(embeds=embeds, files=banners)
         else:
-            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У участника нет баннера!"), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(description="У данного участника нет баннера", color=config.LITTLE_ANGEL_COLOR))
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(Banner(bot))
