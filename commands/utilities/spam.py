@@ -140,6 +140,8 @@ class Spam(commands.Cog):
             mention.append(mention_5)
         mention = [u.mention if u != interaction.guild.default_role else "@everyone" for u in mention]
         if mention:
+            if not interaction.guild.me.guild_permissions.mention_everyone:
+                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
             if self.bot.user.mention in mention:
                 mention.remove(self.bot.user.mention)
             mention = " ".join(list(set(mention)))
