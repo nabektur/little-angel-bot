@@ -39,11 +39,11 @@ class Spam(commands.Cog):
                 else:
                     wchannel = channel
                 webhooks = await wchannel.webhooks()
-                webhook = [webhook for webhook in webhooks if(webhook.name == "Крутяк")]
+                webhook = [webhook for webhook in webhooks if(webhook.name == "Ангелочек")]
                 if webhook:
                     webhook = webhook[0]
                 else:
-                    webhook = await wchannel.create_webhook(name="Крутяк", avatar=await self.bot.user.avatar.read())
+                    webhook = await wchannel.create_webhook(name="Ангелочек", avatar=await self.bot.user.avatar.read())
             except:
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
         else:

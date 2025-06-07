@@ -23,11 +23,11 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
         else:
             wchannel = channel
         webhooks = await wchannel.webhooks()
-        webhook = [webhook for webhook in webhooks if(webhook.name == "Крутяк")]
+        webhook = [webhook for webhook in webhooks if(webhook.name == "Ангелочек")]
         if webhook:
             webhook = webhook[0]
         else:
-            webhook = await wchannel.create_webhook(name="Крутяк", avatar=await bot.user.avatar.read())
+            webhook = await wchannel.create_webhook(name="Ангелочек", avatar=await bot.user.avatar.read())
     except:
         return
 

@@ -39,6 +39,7 @@ def setup_logging():
     logging.getLogger('discord.client').setLevel(logging.CRITICAL)
     logging.getLogger('discord.gateway').setLevel(logging.CRITICAL)
     logging.getLogger('discord.http').setLevel(logging.CRITICAL)
+    logging.getLogger('discord.webhook.async_').setLevel(logging.ERROR)
     
     # logging.getLogger('apscheduler').setLevel(logging.WARNING)
     
