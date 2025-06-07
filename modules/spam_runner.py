@@ -11,6 +11,9 @@ from classes.bot      import LittleAngelBot
 
 from modules.configuration import config
 
+async def get_spamtexts(texts_type: typing.Literal["ordinary", "nsfw"] = "ordinary"):
+    return [row[0] for row in await db.fetch(f"SELECT * FROM spamtexts_{texts_type}")]
+
 async def sync_spam_from_database(bot: LittleAngelBot):
     results = await db.fetch("SELECT * FROM spams")
     [await start_spam_from_database(bot, key) for key in results]
@@ -52,9 +55,9 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
 
     if type == "default":
         if isinstance(channel, discord.TextChannel) or isinstance(channel, discord.VoiceChannel):
-            stexts = config.SPAMTEXTS_NSFW if channel.is_nsfw() else config.SPAMTEXTS_ORDINARY
+            stexts = await get_spamtexts("nsfw") if channel.is_nsfw() else await get_spamtexts("ordinary")
         else:
-            stexts = config.SPAMTEXTS_ORDINARY
+            stexts = await get_spamtexts("ordinary")
     else:
         stexts = [stext.strip() for stext in type.split("|")]
 
