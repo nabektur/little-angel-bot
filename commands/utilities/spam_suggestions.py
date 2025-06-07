@@ -45,23 +45,50 @@ class SpamSuggestion(commands.Cog):
         description="Предложите что-либо"
     )
 
-    @suggestion_group.command(name="спам", description="Предложите текст для спама")
-    @app_commands.describe(text="Введите текст, который хотите предложить", type="Выберите категорию спама")
-    async def suggest_spam(self, interaction: discord.Interaction, text: str, type: typing.Literal["ordinary", "nsfw"]):
-        user_id = interaction.user.id
+    class SpamSuggestionModal(discord.ui.Modal, title='Кастомный текст'):
+        def __init__(self, bot: LittleAngelBot, type: typing.Literal["ordinary", "nsfw"]):
+            super().__init__()
+            self.bot = bot
+            self.type = type
 
-        blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = $1", user_id)
+        text = discord.ui.TextInput(
+            label='Текст:',
+            placeholder='Введите сюда текст, который вы хотите предложить для спама',
+            required=True,
+            style=discord.TextStyle.long
+        )
+
+        async def on_submit(self, interaction: discord.Interaction):
+            user_id = interaction.user.id
+
+            blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = $1", user_id)
+            if blocked:
+                return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
+
+            embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=self.text.value, color=config.LITTLE_ANGEL_COLOR)
+            embed.set_footer(text=f"От: {interaction.user} ({user_id}) | Тип: {self.type}")
+
+            channel = self.bot.get_channel(int(config.SPAM_SUGGESTIONS_CHANNEL_ID.get_secret_value()))
+            if channel:
+                await channel.send(embed=embed, view=SuggestSpamView(user_id, self.text.value, self.type))
+
+            await interaction.response.send_message(embed=discord.Embed(description="✉️ Предложенный текст отправлен на модерацию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+
+
+    @suggestion_group.command(name="спам", description="Предложите текст для спама")
+    @app_commands.choices(type=[app_commands.Choice(name="Спам для обычных каналов", value="ordinary"), app_commands.Choice(name="Спам для nsfw каналов", value="nsfw")])
+    @app_commands.describe(type="Выберите категорию спама")
+    async def suggest_spam(self, interaction: discord.Interaction, type: typing.Literal["ordinary", "nsfw"]):
+
+        blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = $1", interaction.user.id)
         if blocked:
             return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 
-        embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=text, color=config.LITTLE_ANGEL_COLOR)
-        embed.set_footer(text=f"От: {interaction.user} ({user_id}) | Тип: {type}")
-
-        channel = self.bot.get_channel(int(config.SPAM_SUGGESTIONS_CHANNEL_ID.get_secret_value()))
-        if channel:
-            await channel.send(embed=embed, view=SuggestSpamView(user_id, text, type))
-
-        await interaction.response.send_message(embed=discord.Embed(description="✉️ Предложенный текст отправлен на модерацию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+        modal = self.SpamSuggestionModal(
+            bot=self.bot,
+            type=type
+        )
+        return await interaction.response.send_modal(modal)
 
 
 async def setup(bot: LittleAngelBot):
