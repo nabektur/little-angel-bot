@@ -18,6 +18,7 @@ class Spam(commands.Cog):
         self.bot = bot
         
     async def spam_activate(self, interaction: discord.Interaction, type: str, method: str, channel: discord.abc.GuildChannel, duration: typing.Optional[datetime], mention: str):
+        channel_permissions = channel.permissions_for(interaction.guild.me)
         if method == "webhook":
             try:
                 if isinstance(channel, discord.Thread):
@@ -33,16 +34,15 @@ class Spam(commands.Cog):
             except:
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
         else:
-            channel_permissions = channel.permissions_for(channel.guild.get_member(self.bot.user.id))
-            if isinstance(channel, discord.Thread):
-                if not channel_permissions.send_messages_in_threads:
-                    return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в эту ветку для использования этой команды!"), ephemeral=True)
-            else:
-                if not channel_permissions.send_messages:
-                    return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
             if channel.slowmode_delay and not channel_permissions.manage_messages:
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями! Это право нужно боту для того чтобы избегать медленного режима"), ephemeral=True)
             webhook = None
+        if isinstance(channel, discord.Thread):
+            if not channel_permissions.send_messages_in_threads:
+                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в эту ветку для использования этой команды!"), ephemeral=True)
+        else:
+            if not channel_permissions.send_messages:
+                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
         if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён в данном канале!", color=0xff0000), ephemeral=True)
         else:
@@ -50,12 +50,12 @@ class Spam(commands.Cog):
             if duration:
                 duration_timedelta = duration
                 duration = datetime.now(timezone.utc) + duration
-                await interaction.followup.send(f'Спам активирован на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:D>)! ☑️')
+                await interaction.followup.send(f'Спам активирован на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️')
             else:
                 await interaction.followup.send('Спам активирован! ☑️')
-            if not channel == interaction.channel:
+            if channel != interaction.channel:
                 if duration:
-                    await channel.send(f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:D>)! ☑️')
+                    await channel.send(f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️')
                 else:
                     await channel.send(f'Спам активирован по команде {interaction.user.mention}! ☑️')
             await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5) ON CONFLICT (channel_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
