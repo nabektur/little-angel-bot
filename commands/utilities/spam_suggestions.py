@@ -16,19 +16,19 @@ class SuggestSpamView(discord.ui.View):
         self.suggestion = suggestion
         self.spam_type = spam_type
 
-    @discord.ui.button(label="☑️", style=discord.ButtonStyle.blurple, custom_id="spam_suggestion_accept")
+    @discord.ui.button(style=discord.ButtonStyle.blurple, custom_id="spam_suggestion_accept", emoji="☑️")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         table = "spamtexts_nsfw" if self.spam_type == "nsfw" else "spamtexts_ordinary"
         await db.execute(f"INSERT INTO {table} (text) VALUES ($1) ON CONFLICT DO NOTHING;", self.suggestion)
         await interaction.message.delete()
         await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу (`{self.spam_type}`).", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
 
-    @discord.ui.button(label="❌", style=discord.ButtonStyle.danger, custom_id="spam_suggestion_reject")
+    @discord.ui.button(style=discord.ButtonStyle.danger, custom_id="spam_suggestion_reject", emoji="✖️")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
         await interaction.response.send_message(embed=discord.Embed(description="❌ Текст отклонён.", color=0xff0000), ephemeral=True)
 
-    @discord.ui.button(label="🚫", style=discord.ButtonStyle.secondary, custom_id="spam_suggestion_block")
+    @discord.ui.button(style=discord.ButtonStyle.secondary, custom_id="spam_suggestion_block", emoji="🚫")
     async def block(self, interaction: discord.Interaction, button: discord.ui.Button):
         await db.execute("INSERT INTO blocked_users (user_id, reason) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING;", self.user_id, "Злоупотребление предложкой")
         await interaction.message.delete()
