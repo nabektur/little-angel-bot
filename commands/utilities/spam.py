@@ -63,8 +63,7 @@ class Spam(commands.Cog):
                     await channel.send(f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:D>)! ☑️')
                 else:
                     await channel.send(f'Спам активирован по команде {interaction.user.mention}! ☑️')
-            if duration:
-                await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5);", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
+            await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5);", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
             task = asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
             task.name = "Спам"
             task.channel_id = channel.id
@@ -120,7 +119,7 @@ class Spam(commands.Cog):
     @spam_group.command(name="активировать", description="Начинает спам в канале")
     @app_commands.choices(type=[app_commands.Choice(name="Спам текстом по умолчанию", value="default"), app_commands.Choice(name="Спам кастомным текстом", value="custom")], method=[app_commands.Choice(name="Спам через бота", value="bot"), app_commands.Choice(name="Спам через вебхук", value="webhook")])
     @app_commands.describe(type="Выберите тип спама", method="Выберите метод спама", channel='Выберите канал для спама', duration='Укажите длительность спама', mention_1='Упомяните роль/участника, которые будут пинговаться', mention_2='Упомяните роль/участника, которые будут пинговаться', mention_3='Упомяните роль/участника, которые будут пинговаться', mention_4='Упомяните роль/участника, которые будут пинговаться', mention_5='Упомяните роль/участника, которые будут пинговаться')
-    async def spam_activate_command(self, interaction: discord.Interaction, type: str, method: str, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None, duration: app_commands.Transform[str, Duration]="", mention_1: typing.Union[discord.Role, discord.User]=None, mention_2: typing.Union[discord.Role, discord.User]=None, mention_3: typing.Union[discord.Role, discord.User]=None, mention_4: typing.Union[discord.Role, discord.User]=None, mention_5: typing.Union[discord.Role, discord.User]=None):
+    async def spam_activate_command(self, interaction: discord.Interaction, type: str, method: str, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None, duration: app_commands.Transform[timedelta, Duration]=None, mention_1: typing.Union[discord.Role, discord.User]=None, mention_2: typing.Union[discord.Role, discord.User]=None, mention_3: typing.Union[discord.Role, discord.User]=None, mention_4: typing.Union[discord.Role, discord.User]=None, mention_5: typing.Union[discord.Role, discord.User]=None):
         if not channel:
             channel = interaction.channel
         if duration:
