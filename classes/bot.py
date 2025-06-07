@@ -16,6 +16,7 @@ bot = LittleAngelBot(
     case_insensitive=True,
     help_command=None,
     intents=discord_intents,
+    status=discord.Status.idle,
     activity=discord.Streaming(
         name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
         url="https://www.twitch.tv/jasteeq"
