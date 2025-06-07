@@ -40,7 +40,8 @@ class ExecuteCode(commands.Cog):
             'commands': commands,
             'ctx': ctx,
             '__import__': __import__,
-            'db': db
+            'db': db,
+            'config': config
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
         await eval(f"{fn_name}()", env)
