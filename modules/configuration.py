@@ -10,8 +10,8 @@ ENV_PATH = dotenv.find_dotenv()
 
 class Settings(BaseSettings):
     LOGGING_LEVEL: typing.Literal["DEBUG", "INFO", "ERROR", "WARNING", "CRITICAL"] = "INFO"
-    SPAMTEXTS_ORDINARY = []
-    SPAMTEXTS_NSFW = []
+    SPAMTEXTS_ORDINARY: typing.List = []
+    SPAMTEXTS_NSFW: typing.List = []
     DATABASE_URL: SecretStr
     DISCORD_TOKEN: SecretStr
     CHANNEL_ID: SecretStr

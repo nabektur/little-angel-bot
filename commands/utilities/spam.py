@@ -10,7 +10,6 @@ from discord.ext import commands
 from classes.bot      import LittleAngelBot
 from classes.database import db
 
-from modules.configuration  import config
 from modules.time_converter import time_regex, time_dict, verbose_timedelta
 from modules.spam_runner    import run_spam
                             
