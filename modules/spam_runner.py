@@ -1,4 +1,4 @@
-import random
+import secrets
 import typing
 import asyncio
 import discord
@@ -70,7 +70,7 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
                 await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
                 break
 
-            text = random.choice(stexts)
+            text = secrets.choice(stexts)
             if ments:
                 text = f"{ments}\n{text}"
 
