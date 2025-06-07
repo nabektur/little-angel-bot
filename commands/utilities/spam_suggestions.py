@@ -26,13 +26,13 @@ class SuggestSpamView(discord.ui.View):
     @discord.ui.button(label="❌", style=discord.ButtonStyle.danger, custom_id="spam_suggestion_reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
-        await interaction.response.send_message("❌ Текст отклонён.", ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description="❌ Текст отклонён.", color=0xff0000), ephemeral=True)
 
     @discord.ui.button(label="🚫", style=discord.ButtonStyle.secondary, custom_id="spam_suggestion_block")
     async def block(self, interaction: discord.Interaction, button: discord.ui.Button):
         await db.execute("INSERT INTO blocked_users (user_id, reason) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING;", self.user_id, "Злоупотребление предложкой")
         await interaction.message.delete()
-        await interaction.response.send_message("🚫 Пользователь заблокирован.", ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description="🚫 Пользователь заблокирован.", color=0xff0000), ephemeral=True)
 
 
 class SpamSuggestion(commands.Cog):
