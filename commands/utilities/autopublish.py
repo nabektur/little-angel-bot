@@ -30,7 +30,9 @@ class AutoPublish(commands.Cog):
 
     @autopublish_group.command(name="включить", description="Включает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал для автоматической публикации")
-    async def autopub_turn_on_cmd(interaction: discord.Interaction, channel: discord.ChannelType.news):
+    async def autopub_turn_on_cmd(interaction: discord.Interaction, channel: discord.TextChannel):
+        if not channel.is_news():
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
         channel_permissions = channel.permissions_for(interaction.guild.me)
         if not (channel_permissions.read_messages and channel_permissions.send_messages and channel_permissions.manage_messages and channel_permissions.read_message_history):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Бот не может публиковать сообщения в указанном канале! Убедитесь, что в новостном канале бот может просматривать сам канал, отправлять сообщения, управлять ими и читать историю сообщений"), ephemeral=True)
@@ -39,7 +41,9 @@ class AutoPublish(commands.Cog):
         
     @autopublish_group.command(name="выключить", description="Выключает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал автоматической публикации")
-    async def autopub_turn_off_cmd(interaction: discord.Interaction, channel: discord.ChannelType.news):
+    async def autopub_turn_off_cmd(interaction: discord.Interaction, channel: discord.TextChannel):
+        if not channel.is_news():
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна в НЕ новостных каналах!"), ephemeral=True)
         if await is_autopub(channel.id):
             await db.execute("DELETE FROM autopublish WHERE channel_id = $1;", channel.id)
             return await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description="Автопубликация была выключена!"))
