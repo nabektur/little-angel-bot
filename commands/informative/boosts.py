@@ -14,7 +14,7 @@ class Boost(commands.Cog):
 
     @app_commands.command(name='бусты', description='Показывает информацию про бусты')
     @app_commands.guild_only
-    async def boosts_info_command(interaction: discord.Interaction):
+    async def boosts_info_command(self, interaction: discord.Interaction):
         guild = interaction.guild
         if guild.premium_subscription_count == 0:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="На сервере нет бустов!", color=0xff0000), ephemeral=True)
