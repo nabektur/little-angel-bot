@@ -12,15 +12,15 @@ from classes.scheduler import scheduler
 
 from modules.spam_runner import sync_spam_from_database
 
+
 @bot.event
-async def on_connect():
+async def on_ready():
+
     await db.start()
     await sync_spam_from_database(bot)
     scheduler.start()
     _log.info("База данных и планировщик запущены")
 
-@bot.event
-async def on_ready():
     _log.info(f"Бот запущен как {bot.user}")
 
     log_channel = bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
