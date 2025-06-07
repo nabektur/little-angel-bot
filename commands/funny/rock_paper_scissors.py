@@ -46,19 +46,19 @@ class RPSWithBot(discord.ui.Select):
             if victory == True:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
-                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nЯ победил! Хихихиха <:hihihiha:1006949852845965435>",
+                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nЯ победил! 😊",
                     color=config.LITTLE_ANGEL_COLOR
                 ), view=None)
             elif victory == False:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
-                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nВы победили! Я плакаю 😭",
+                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nПобеда за вами... 🥺",
                     color=config.LITTLE_ANGEL_COLOR
                 ), view=None)
             else:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
-                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nНичья!",
+                    description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nНичья! 🤝",
                     color=config.LITTLE_ANGEL_COLOR
                 ), view=None)
         else:
