@@ -34,7 +34,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
     if key[4]:
         duration = datetime.fromtimestamp(int(key[4]), timezone.utc)
         if datetime.now(timezone.utc) >= duration:
-            await db.execute("DELETE FROM spams WHERE channel_id = %s;", channel.id)
+            await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
             await channel.send("Спам остановлен по причине длительности! ☑️")
             return
         task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
