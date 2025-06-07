@@ -72,7 +72,7 @@ class Spam(commands.Cog):
                     await channel.send(f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:D>)! ☑️')
                 else:
                     await channel.send(f'Спам активирован по команде {interaction.user.mention}! ☑️')
-            await db.execute("INSERT OR REPLACE INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5);", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
+            await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5) ON CONFLICT (channel_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
             task = asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
             task.name = "Спам"
             task.channel_id = channel.id
