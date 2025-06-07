@@ -1,4 +1,5 @@
 import logging
+import discord
 
 from modules.configuration import config
 
@@ -24,7 +25,7 @@ async def on_ready():
 
     log_channel = bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
     if log_channel:
-        await log_channel.send(f"✅ Бот запущен как **{bot.user}**")
+        await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=config.LITTLE_ANGEL_COLOR))
 
 if __name__ == '__main__':
     # Запуск

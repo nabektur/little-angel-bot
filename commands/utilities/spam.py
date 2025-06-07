@@ -12,6 +12,7 @@ from classes.database import db
 
 from modules.time_converter import Duration, verbose_timedelta
 from modules.spam_runner    import run_spam
+from modules.configuration  import config
 
 class Spam(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -50,14 +51,14 @@ class Spam(commands.Cog):
             if duration:
                 duration_timedelta = duration
                 duration = datetime.now(timezone.utc) + duration
-                await interaction.followup.send(f'Спам активирован на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️')
+                await interaction.followup.send(embed=discord.Embed(description=f'Спам активирован на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️', color=config.LITTLE_ANGEL_COLOR))
             else:
-                await interaction.followup.send('Спам активирован! ☑️')
+                await interaction.followup.send(embed=discord.Embed(description='Спам активирован! ☑️', color=config.LITTLE_ANGEL_COLOR))
             if channel != interaction.channel:
                 if duration:
-                    await channel.send(f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️')
+                    await channel.send(embed=discord.Embed(description=f'Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)! ☑️', color=config.LITTLE_ANGEL_COLOR))
                 else:
-                    await channel.send(f'Спам активирован по команде {interaction.user.mention}! ☑️')
+                    await channel.send(embed=discord.Embed(description=f'Спам активирован по команде {interaction.user.mention}! ☑️', color=config.LITTLE_ANGEL_COLOR))
             await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5) ON CONFLICT (channel_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
             task = asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
             task.name = "Спам"
@@ -78,9 +79,9 @@ class Spam(commands.Cog):
         if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
             await interaction.response.defer()
             await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
-            await interaction.followup.send('Спам остановлен! ☑️')
+            await interaction.followup.send(embed=discord.Embed(description='Спам остановлен! ☑️', color=config.LITTLE_ANGEL_COLOR))
             if not channel == interaction.channel:
-                await channel.send(f'Спам остановлен по команде {interaction.user.mention}! ☑️')
+                await channel.send(embed=discord.Embed(description=f'Спам остановлен по команде {interaction.user.mention}! ☑️', color=config.LITTLE_ANGEL_COLOR))
         else:
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам не включён в данном канале!", color=0xff0000), ephemeral=True)
         

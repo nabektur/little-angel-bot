@@ -38,7 +38,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
         duration = datetime.fromtimestamp(int(key[4]), timezone.utc)
         if datetime.now(timezone.utc) >= duration:
             await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
-            await channel.send("Спам остановлен по причине длительности! ☑️")
+            await channel.send(embed=discord.Embed(description="Спам остановлен по причине длительности! ☑️", color=config.LITTLE_ANGEL_COLOR))
             return
         task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
     else:
@@ -67,7 +67,7 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
         while await check_sp(channel.id):
             if duration and datetime.now(timezone.utc) >= duration:
                 await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
-                await channel.send("Спам остановлен по причине длительности! ☑️")
+                await channel.send(embed=discord.Embed(description="Спам остановлен по причине длительности! ☑️", color=config.LITTLE_ANGEL_COLOR))
                 break
 
             text = random.choice(stexts)

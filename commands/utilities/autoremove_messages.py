@@ -13,6 +13,7 @@ from classes.database  import db
 from classes.scheduler import scheduler
 
 from modules.time_converter import Duration, verbose_timedelta
+from modules.configuration  import config
 
 async def delayed_delete_message(message_id: int, channel_id: int):
     from classes.bot import bot
@@ -55,7 +56,7 @@ class AutoRemove(commands.Cog):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
         duration_datetime = datetime.now(timezone.utc) + duration
         scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[message_id, channel.id])
-        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=0x54ef35, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)"), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)"), ephemeral=True)
 
 
 async def setup(bot: LittleAngelBot):

@@ -45,7 +45,7 @@ class ExecuteCode(commands.Cog):
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
         await eval(f"{fn_name}()", env)
-        await ctx.reply(content="✅ Команда выполнена!")
+        await ctx.reply(embed=discord.Embed(description="☑️ Команда выполнена!", color=config.LITTLE_ANGEL_COLOR))
 
     @run.error
     async def run_error(self, ctx: commands.Context, error):
