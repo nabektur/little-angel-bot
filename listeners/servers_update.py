@@ -16,7 +16,7 @@ class ServersUpdate(commands.Cog):
         success = False
         for channel in guild.text_channels:
             try:
-                await channel.send(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="Привет! 👋", description=f"Спасибо, что добавили меня на ваш сервер! 🙏")) # Подробнее о командах — </хелп:0>
+                await channel.send(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="Привет! 👋", description=f"🙏 Спасибо, что добавили меня на ваш сервер!\n\nКоманды можете посмотреть, введя </хелп:1381175398473273354>\n\n🍀 Удачи!"))
                 success = True
             finally:
                 if success:
