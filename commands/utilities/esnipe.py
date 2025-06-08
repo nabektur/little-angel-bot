@@ -106,8 +106,8 @@ class esnipe_archive(discord.ui.View):
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
             esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
-            snipess = esnipe_existing_data[position]
-            if int(interaction.message.embeds[epos].author.url.replace("https://discord.com/users/", "")) == snipess['msg'].author.id:
+            snipess: typing.Dict = esnipe_existing_data[position]
+            if int(interaction.message.embeds[epos].author.url.replace("https://discord.com/users/", "")) == snipess['before'].author.id:
                 esnipe_existing_data.pop(position)
                 await esnipe_cache.set(self.channel_id, esnipe_existing_data, ttl=3600)
             else:
