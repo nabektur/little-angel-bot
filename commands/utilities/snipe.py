@@ -25,7 +25,7 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
     await ci.response.defer()
     s: discord.Message = snipess['msg']
     prava = snipess['perms']
-    sniped_embed = discord.Embed(timestamp=s.created_at, color=s.author.color, description=s.content)
+    sniped_embed = discord.Embed(timestamp=s.created_at, color=config.LITTLE_ANGEL_COLOR, description=s.content)
     sniped_embed.set_author(name=s.author.display_name, icon_url=s.author.display_avatar.url, url=f"https://discord.com/users/{s.author.id}")
     if s.type == discord.MessageType.reply:
         try:
@@ -80,7 +80,7 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
             await ci.edit_original_response(embeds=embeds, view=view, content="\n".join([a.proxy_url for a in s.attachments]))
 
 class snipe_archive(discord.ui.View):
-    def __init__(self, bot: LittleAngelBot = None, message: discord.Message = None, author_id: int = None, channel_id: int = None):
+    def __init__(self, bot: LittleAngelBot = None, timeout: int = 300, message: discord.Message = None, author_id: int = None, channel_id: int = None):
         super().__init__()
         self.bot = bot
         self.message = message
@@ -183,7 +183,7 @@ class Snipe(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
-    @commands.Cog.listener
+    @commands.Cog.listener()
     async def on_bulk_message_delete(self, messages: typing.List[discord.Message]):
         now = int(datetime.now(timezone.utc).timestamp())
 
@@ -211,9 +211,9 @@ class Snipe(commands.Cog):
         await snipe_cache.set(channel_id, existing, ttl=3600)
 
 
-    @commands.Cog.listener
+    @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.is_system() or message.author == self.user:
+        if message.is_system() or message.author == self.bot.user:
             return
         if not message.guild:
             return
@@ -254,8 +254,12 @@ class Snipe(commands.Cog):
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
         
+        snipe_existing_data: typing.List = await snipe_cache.get(channel.id)
+        if not snipe_existing_data:
+            raise KeyError()
+
         if not position:
-            position = len(await snipe_cache.get(channel.id) - 1)
+            position = len(snipe_existing_data) - 1
         else:
             position = position - 1
         await snippet(self.bot, interaction, channel, position, None, "send")
