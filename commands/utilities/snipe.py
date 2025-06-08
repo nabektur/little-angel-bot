@@ -55,11 +55,9 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
         sniped_embed.add_field(name="Компоненты:", value=cr)
     sniped_embed.add_field(name="Позиция:", value=f"{index + 1} / {rpos}")
     if not view:
-        view = snipe_archive(bot, timeout=300)
+        view = snipe_archive(bot, timeout=300, channel_id=channel.id, author_id=ci.user.id)
     else:
         view.timeout = 300
-    view.channel_id = channel.id
-    view.author_id = ci.user.id
     embeds = [sniped_embed]
     if s.embeds and s.author.bot:
         if embeds[0].type == 'rich':

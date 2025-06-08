@@ -154,7 +154,7 @@ class ESnipe(commands.Cog):
     @app_commands.command(name="еснайп", description = "Показывает изменённые сообщения")
     @app_commands.guild_only
     @app_commands.describe(channel='Выберите канал для отображения', position='Введите позицию')
-    async def esnipe(interaction: discord.Interaction, channel: typing.Union[discord.StageChannel, discord.TextChannel, discord.VoiceChannel, discord.Thread]=None, position: int=None):
+    async def esnipe(self, interaction: discord.Interaction, channel: typing.Union[discord.StageChannel, discord.TextChannel, discord.VoiceChannel, discord.Thread]=None, position: int=None):
         if not channel:
             channel = interaction.channel
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
@@ -175,14 +175,12 @@ class ESnipe(commands.Cog):
             before.content = "**Нет содержания**"
         if not after.content:
             after.content = "**Нет содержания**"
-        view = esnipe_archive(timeout=300)
-        view.channel_id = channel.id
-        view.author_id = interaction.user.id
+        view = esnipe_archive(self.bot, timeout=300, channel_id=channel.id, author_id=interaction.user.id)
         await interaction.response.send_message(view=view, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{position + 1} / {rpos}").add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})"))
         view.message = await interaction.original_response()
 
     @esnipe.error
-    async def esnipe_error(interaction: discord.Interaction, error):
+    async def esnipe_error(self, interaction: discord.Interaction, error):
         if isinstance(getattr(error, "original", error), KeyError):
             await interaction.response.send_message(embed=discord.Embed(description="Нет изменённых сообщений в канале, либо вы ввели неверную позицию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
 
