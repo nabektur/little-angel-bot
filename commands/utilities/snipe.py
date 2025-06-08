@@ -16,10 +16,10 @@ from modules.configuration import config
 snipe_cache = SimpleMemoryCache()
 
 async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.Union[discord.StageChannel, discord.TextChannel, discord.VoiceChannel, discord.Thread], index: int, view: discord.ui.View = None, method: str = None):
-    snipess = await snipe_cache.get(channel.id)
-    rpos = len(snipess)
+    snipe_existing_data: typing.List = await snipe_cache.get(channel.id)
+    rpos = len(snipe_existing_data)
     try:
-        snipess = snipess[int(index)]
+        snipess = snipe_existing_data[int(index)]
     except:
         return await ci.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Произошло неожиданное изменение записей, вызовите команду, или нажмите кнопку ещё раз"), ephemeral=True)
     await ci.response.defer()
@@ -101,6 +101,7 @@ class snipe_archive(discord.ui.View):
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         ipos = None
         epos = 0
+        snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
         if len(interaction.message.embeds) > 1:
             epos = 1
         for field in interaction.message.embeds[epos].fields:
@@ -109,9 +110,9 @@ class snipe_archive(discord.ui.View):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
         if ipos < 0:
-            ipos = len(await snipe_cache.get(self.channel_id)) - 1
+            ipos = len(snipe_existing_data) - 1
         try:
-            (await snipe_cache.get(self.channel_id))[ipos]
+            snipe_existing_data[ipos]
         except:
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
         channel = await self.bot.fetch_channel(self.channel_id)
@@ -121,6 +122,7 @@ class snipe_archive(discord.ui.View):
     async def soon(self, interaction: discord.Interaction, button: discord.ui.Button):
         ipos = None
         epos = 0
+        snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
         if len(interaction.message.embeds) > 1:
             epos = 1
         for field in interaction.message.embeds[epos].fields:
@@ -128,10 +130,10 @@ class snipe_archive(discord.ui.View):
                 ipos = int(field.value.split()[0])
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
-        if ipos >= len(await snipe_cache.get(self.channel_id)):
+        if ipos >= len(snipe_existing_data):
             ipos = 0
         try:
-            (await snipe_cache.get(self.channel_id))[ipos]
+            snipe_existing_data[ipos]
         except:
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
         channel = await self.bot.fetch_channel(self.channel_id)
@@ -150,9 +152,11 @@ class snipe_archive(discord.ui.View):
         if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
-            snipess = (await snipe_cache.get(self.channel_id))[position]
+            snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
+            snipess: typing.Dict = snipe_existing_data[position]
             if int(interaction.message.embeds[epos].author.url.replace("https://discord.com/users/", "")) == snipess['msg'].author.id:
-                (await snipe_cache.get(self.channel_id)).pop(position)
+                snipe_existing_data.pop(position)
+                await snipe_cache.set(self.channel_id, snipe_existing_data, ttl=3600)
             else:
                 await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
                 return await interaction.followup.delete_message(interaction.message.id)
@@ -179,53 +183,56 @@ class Snipe(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
-    @commands.Cog.listener()
+    @commands.Cog.listener
     async def on_bulk_message_delete(self, messages: typing.List[discord.Message]):
         now = int(datetime.now(timezone.utc).timestamp())
-        if not await snipe_cache.get(messages[0].channel.id):
-            await snipe_cache.set(messages[0].channel.id, [], ttl=3600)
+
+        channel_id = messages[0].channel.id
+        existing = await snipe_cache.get(channel_id) or []
+
         deleted_user = False
         perms = False
         try:
             async for entry in messages[0].guild.audit_logs(limit=1, action=discord.AuditLogAction.message_bulk_delete):
                 perms = True
-                if entry.target.id == messages[0].channel.id and int(entry.created_at.timestamp()) == now:
+                if entry.target.id == channel_id and int(entry.created_at.timestamp()) == now:
                     deleted_user = entry.user
         except:
             pass
+
         for message in messages:
             if not message.is_system():
                 try:
-                    try:
-                        [await snipe_cache.get(message.channel.id)].append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]})
-                    except:
-                        await snipe_cache.set(messages[0].channel.id, [], ttl=3600)
-                        [await snipe_cache.get(message.channel.id)].append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]})
+                    files = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
                 except:
-                    try:
-                        [await snipe_cache.get(message.channel.id)].append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]})
-                    except:
-                        await snipe_cache.set(messages[0].channel.id, [], ttl=3600)
-                        [await snipe_cache.get(message.channel.id)].append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]})
+                    files = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+                existing.append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': files})
+
+        await snipe_cache.set(channel_id, existing, ttl=3600)
 
 
-    @commands.Cog.listener()
+    @commands.Cog.listener
     async def on_message_delete(self, message: discord.Message):
-        if message.is_system() or message.author == self.bot.user:
+        if message.is_system() or message.author == self.user:
             return
         if not message.guild:
             return
+
         now = int(datetime.now(timezone.utc).timestamp())
-        if not await snipe_cache.get(message.channel.id):
-            await snipe_cache.set(message.channel.id, [], ttl=3600)
-        sdict = {}
-        sdict['msg'] = message
-        sdict['deleted_user'] = False
-        sdict['perms'] = False
+
+        channel_id = message.channel.id
+        existing = await snipe_cache.get(channel_id) or []
+
+        sdict = {
+            'msg': message,
+            'deleted_user': False,
+            'perms': False
+        }
         try:
             sdict['files'] = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
         except:
             sdict['files'] = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+
         try:
             async for entry in message.guild.audit_logs(limit=1, action=discord.AuditLogAction.message_delete):
                 sdict['perms'] = True
@@ -233,7 +240,10 @@ class Snipe(commands.Cog):
                     sdict['deleted_user'] = entry.user
         except:
             pass
-        (await snipe_cache.get(message.channel.id)).append(sdict)
+
+        existing.append(sdict)
+        await snipe_cache.set(channel_id, existing, ttl=3600)
+
 
     @app_commands.command(name="снайп", description="Показывает удалённые сообщения в канале")
     @app_commands.guild_only
@@ -243,6 +253,7 @@ class Snipe(commands.Cog):
             channel = interaction.channel
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
+        
         if not position:
             position = len(await snipe_cache.get(channel.id) - 1)
         else:
