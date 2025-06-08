@@ -35,7 +35,7 @@ class Help(commands.Cog):
 
     @app_commands.command(name='хелп', description='Справка о командах')
     @app_commands.guild_only
-    async def help(interaction: discord.Interaction):
+    async def help(self, interaction: discord.Interaction):
         description = f'''
         </хелп:{await get_command_id_or_load("хелп")}> — Показывает это сообщение.
 
