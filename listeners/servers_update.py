@@ -40,7 +40,7 @@ class ServersUpdate(commands.Cog):
     async def on_guild_remove(self, guild: discord.Guild):
         log_channel = self.bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
         if log_channel:
-            embed = discord.Embed(title="Бот был кикнут/забанен с сервера", description=f"Участников: {guild.member_count}\nID сервера: {guild.id}", color=config.LITTLE_ANGEL_COLOR)
+            embed = discord.Embed(title="Бот был удалён с сервера", description=f"Участников: {guild.member_count}\nID сервера: {guild.id}", color=config.LITTLE_ANGEL_COLOR)
             embed.set_footer(icon_url=guild.icon.url if guild.icon else None, text=guild.name)
             await log_channel.send(embed=embed)
 
