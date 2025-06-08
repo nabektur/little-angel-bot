@@ -1,7 +1,6 @@
 import sys
 import typing
 import dotenv
-import discord
 import logging
 
 from pydantic          import SecretStr

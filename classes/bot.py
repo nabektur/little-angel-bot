@@ -1,12 +1,24 @@
+import logging
 import discord
 
 from discord.ext import commands
 
 from modules.configuration import config
 
+from classes.database  import db
+from classes.scheduler import scheduler
+
+_log = logging.getLogger(__name__)
+
 class LittleAngelBot(commands.AutoShardedBot):
     async def setup_hook(self):
         from modules.extension_loader import load_all_extensions
+        from modules.spam_runner      import sync_spam_from_database
+
+        await db.start()
+        await sync_spam_from_database(bot)
+        scheduler.start()
+        _log.info("База данных и планировщик запущены")
 
         await load_all_extensions(self)
         await load_all_extensions(self, "listeners")

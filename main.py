@@ -7,19 +7,10 @@ _log = logging.getLogger(__name__)
 
 # Discord Bot
 from classes.bot import bot
-from classes.database  import db
-from classes.scheduler import scheduler
-
-from modules.spam_runner import sync_spam_from_database
 
 
 @bot.event
 async def on_ready():
-
-    await db.start()
-    await sync_spam_from_database(bot)
-    scheduler.start()
-    _log.info("База данных и планировщик запущены")
 
     _log.info(f"Бот запущен как {bot.user}")
 
