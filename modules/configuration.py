@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     BOT_LOGS_CHANNEL_ID: SecretStr
     GUILD_ID: SecretStr
     SPAM_SUGGESTIONS_CHANNEL_ID: SecretStr
-    LITTLE_ANGEL_COLOR: int = 0x9147ff
+    LITTLE_ANGEL_COLOR: str = "#9147ff"
 
     model_config = SettingsConfigDict(
         env_file=ENV_PATH, enable_decoding="utf-8"
