@@ -37,10 +37,10 @@ class Help(commands.Cog):
     @app_commands.guild_only
     async def help(self, interaction: discord.Interaction):
         description = f'''
-        </хелп:{await get_command_id_or_load("хелп")}> — Показывает это сообщение.
+        </хелп:{await get_command_id_or_load(self.bot, "хелп")}> — Показывает это сообщение.
 
-        </автопубликация включить:{await get_command_id_or_load("автопубликация включить")}> — Включает автопубликацию новостей на сервере.
-        </автопубликация выключить:{await get_command_id_or_load("автопубликация выключить")}> — Выключает автопубликацию новостей на сервере.
+        </автопубликация включить:{await get_command_id_or_load(self.bot, "автопубликация включить")}> — Включает автопубликацию новостей на сервере.
+        </автопубликация выключить:{await get_command_id_or_load(self.bot, "автопубликация выключить")}> — Выключает автопубликацию новостей на сервере.
         '''
         embed = discord.Embed(title='Справка', description=description, color=config.LITTLE_ANGEL_COLOR)
         embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")

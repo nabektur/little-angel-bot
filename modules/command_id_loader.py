@@ -14,10 +14,10 @@ def get_full_command_name(cmd: typing.Union[app_commands.Group, app_commands.Com
         parent = parent.parent
     return ' '.join(parents + [cmd.name])
 
-async def get_command_id_or_load(name: str, bot: LittleAngelBot) -> typing.Optional[int]:
+async def get_command_id_or_load(name: str, bot: LittleAngelBot) -> int:
     if not SLASH_COMMAND_IDS:
         await load_or_update_command_ids(bot)
-    return SLASH_COMMAND_IDS.get(name)
+    return SLASH_COMMAND_IDS.get(name, 0)
 
 async def load_or_update_command_ids(bot: LittleAngelBot) -> typing.Dict[str, typing.Optional[int]]:
 
