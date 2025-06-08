@@ -262,6 +262,9 @@ class Snipe(commands.Cog):
             position = len(snipe_existing_data) - 1
         else:
             position = position - 1
+
+        snipe_existing_data[position]
+
         await snippet(self.bot, interaction, channel, position, None, "send")
 
     @snipe.error
