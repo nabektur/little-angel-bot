@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     GUILD_ID: SecretStr
     SPAM_SUGGESTIONS_CHANNEL_ID: SecretStr
     LITTLE_ANGEL_COLOR: int = 0x9147ff
+    ACTIVITY_NAME: str = "ДЕПНУЛ Lamborghini за $500,000."
+    STREAMING_URL: str = "https://www.twitch.tv/jasteeq"
 
     model_config = SettingsConfigDict(
         env_file=ENV_PATH, enable_decoding="utf-8"

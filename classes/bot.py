@@ -2,6 +2,8 @@ import discord
 
 from discord.ext import commands
 
+from modules.configuration import config
+
 class LittleAngelBot(commands.AutoShardedBot):
     async def setup_hook(self):
         from modules.extension_loader import load_all_extensions
@@ -19,7 +21,7 @@ bot = LittleAngelBot(
     intents=discord_intents,
     status=discord.Status.idle,
     activity=discord.Streaming(
-        name="ДЕПНУЛ НЕЙМАРА ЗА $500,000!",
-        url="https://www.twitch.tv/jasteeq"
+        name=config.ACTIVITY_NAME,
+        url=config.STREAMING_URL
     )
 )
