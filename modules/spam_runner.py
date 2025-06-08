@@ -40,12 +40,9 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
             await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
             await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
             return
-        task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
+        asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
     else:
-        task = asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], key[4]))
-
-    task.name = "Автоспам"
-    task.channel_id = channel.id
+        asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], key[4]))
 
 async def check_sp(channel_id):
     return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel_id) != None

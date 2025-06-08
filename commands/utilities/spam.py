@@ -60,9 +60,7 @@ class Spam(commands.Cog):
                 else:
                     await channel.send(embed=discord.Embed(description=f'☑️ Спам активирован по команде {interaction.user.mention}!', color=config.LITTLE_ANGEL_COLOR))
             await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5) ON CONFLICT (channel_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
-            task = asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
-            task.name = "Спам"
-            task.channel_id = channel.id
+            asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
 
     spam_group = app_commands.Group(
         name="спам",
