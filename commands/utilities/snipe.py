@@ -84,9 +84,10 @@ class snipe_archive(discord.ui.View):
         self.message = message
         self.author_id = author_id
         self.channel_id = channel_id
+        self.finished = False
 
     async def on_timeout(self) -> None:
-        if self.message.embeds[0].title == "☑️ Успешно!":
+        if self.finished:
             return
         for item in self.children:
             item.disabled = True
@@ -163,6 +164,7 @@ class snipe_archive(discord.ui.View):
             return await interaction.followup.delete_message(interaction.message.id)
         emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
+        self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🧹")
@@ -175,6 +177,7 @@ class snipe_archive(discord.ui.View):
             pass
         emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
+        self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
 
 class Snipe(commands.Cog):
