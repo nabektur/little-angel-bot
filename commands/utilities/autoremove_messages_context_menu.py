@@ -45,6 +45,12 @@ class DurationModal(discord.ui.Modal, title="Удаление сообщения
         if duration > timedelta(days=30) or duration < timedelta(seconds=3):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
 
+        channel_permissions = interaction.channel.permissions_for(interaction.guild.me)
+        if not (channel_permissions.read_messages and channel_permissions.read_message_history):
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права просматривать указанный канал или просматривать историю его сообщений для использования этой команды!"), ephemeral=True)
+        if not channel_permissions.manage_messages:
+            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями в канале для использования этой команды!"), ephemeral=True)
+
         duration_datetime = datetime.now(timezone.utc) + duration
         scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[self.message.id, self.message.channel.id])
 
@@ -55,6 +61,12 @@ async def delayed_delete_context(interaction: discord.Interaction, message: disc
     if message.author.id != interaction.user.id and not message.channel.permissions_for(interaction.user).manage_messages:
         return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
     
+    channel_permissions = interaction.channel.permissions_for(interaction.guild.me)
+    if not (channel_permissions.read_messages and channel_permissions.read_message_history):
+        return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права просматривать указанный канал или просматривать историю его сообщений для использования этой команды!"), ephemeral=True)
+    if not channel_permissions.manage_messages:
+        return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями в канале для использования этой команды!"), ephemeral=True)
+
     await interaction.response.send_modal(DurationModal(message))
 
 async def setup(bot: LittleAngelBot):
