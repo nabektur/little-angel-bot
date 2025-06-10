@@ -54,7 +54,7 @@ class DurationModal(discord.ui.Modal, title="Удаление сообщения
         duration_datetime = datetime.now(timezone.utc) + duration
         scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[self.message.id, self.message.channel.id])
 
-        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)"), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)\n\n**[Ссылка на сообщение]({self.message.jump_url})**"), ephemeral=True)
 
 @app_commands.context_menu(name="Удалить сообщение позже")
 async def delayed_delete_context(interaction: discord.Interaction, message: discord.Message):

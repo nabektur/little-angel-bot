@@ -18,6 +18,8 @@ class ServersUpdate(commands.Cog):
             try:
                 await channel.send(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="Привет!", description=f"Спасибо, что добавили меня на ваш сервер!\n\nКоманды можете посмотреть, введя </хелп:1381175398473273354>\n\n🍀 Удачи!"))
                 success = True
+            except discord.Forbidden:
+                ...
             finally:
                 if success:
                     break
@@ -29,8 +31,8 @@ class ServersUpdate(commands.Cog):
             try:
                 async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.bot_add):
                     user = entry.user
-            except:
-                pass
+            except discord.Forbidden:
+                ...
             if user:
                 embed.description = f"Добавил: {user.mention} ({user}) с ID: {user.id}\n" + embed.description
             embed.set_footer(icon_url=guild.icon.url if guild.icon else None, text=guild.name)
