@@ -61,7 +61,7 @@ class esnipe_archive(discord.ui.View):
             before.content = "**Нет содержания**"
         if not after.content:
             after.content = "**Нет содержания**"
-        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}").add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})"))
+        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
 
     @discord.ui.button(style=discord.ButtonStyle.blurple, emoji="➡")
     async def esoon(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -91,7 +91,7 @@ class esnipe_archive(discord.ui.View):
             before.content = "**Нет содержания**"
         if not after.content:
             after.content = "**Нет содержания**"
-        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}").add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})"))
+        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🗑️")
     async def edelete(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -147,6 +147,8 @@ class ESnipe(commands.Cog):
             return
         if message_after.author.bot:
             return
+        if message_before.content == message_after.content:
+            return
 
         channel_id = message_after.channel.id
         existing = await esnipe_cache.get(channel_id) or []
@@ -179,7 +181,7 @@ class ESnipe(commands.Cog):
         if not after.content:
             after.content = "**Нет содержания**"
         view = esnipe_archive(self.bot, timeout=300, channel_id=channel.id, author_id=interaction.user.id)
-        await interaction.response.send_message(view=view, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{position + 1} / {rpos}").add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})"))
+        await interaction.response.send_message(view=view, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{position + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
         view.message = await interaction.original_response()
 
     @esnipe.error

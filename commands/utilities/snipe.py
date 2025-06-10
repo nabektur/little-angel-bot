@@ -29,21 +29,21 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
     sniped_embed.set_author(name=s.author.display_name, icon_url=s.author.display_avatar.url, url=f"https://discord.com/users/{s.author.id}")
     if s.type == discord.MessageType.reply:
         try:
-            sniped_embed.add_field(name="Ответил на:", value=f"[Это сообщение]({s.reference.resolved.jump_url})")
+            sniped_embed.add_field(name="Ответил на:", value=f"[Это сообщение]({s.reference.resolved.jump_url})", inline=False)
         except:
-            sniped_embed.add_field(name="Ответил на:", value=f"Удалённое сообщение")
+            sniped_embed.add_field(name="Ответил на:", value=f"Удалённое сообщение", inline=False)
     if prava:
         deleted_user = snipess['deleted_user']
         if deleted_user:
-            sniped_embed.add_field(name="Сообщение удалил:", value=f"{deleted_user} ({deleted_user.mention})")
+            sniped_embed.add_field(name="Сообщение удалил:", value=f"{deleted_user} ({deleted_user.mention})", inline=False)
     else:
-        sniped_embed.add_field(name="Внимание!", value="Бот не имеет доступа к журналу аудита для корректной работы команды!")
+        sniped_embed.add_field(name="Внимание!", value="Бот не имеет доступа к журналу аудита для корректной работы команды!", inline=False)
     files = [discord.File(io.BytesIO(field['bytes']), filename=field['filename']) for field in snipess['files']]
     if s.stickers:
         sr = ""
         for sticker in s.stickers:
             sr += f"\n[{sticker.name}]({sticker.url}) (ID: {sticker.id})"
-        sniped_embed.add_field(name="Стикеры:", value=sr)
+        sniped_embed.add_field(name="Стикеры:", value=sr, inline=False)
     if s.components:
         cr = ""
         for component in s.components:
@@ -52,8 +52,8 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
                 if component.label and component.emoji:
                     opis += f"{component.label}"
                 cr += f"\nКнопка ({opis})"
-        sniped_embed.add_field(name="Компоненты:", value=cr)
-    sniped_embed.add_field(name="Позиция:", value=f"{index + 1} / {rpos}")
+        sniped_embed.add_field(name="Компоненты:", value=cr, inline=False)
+    sniped_embed.add_field(name="Позиция:", value=f"{index + 1} / {rpos}", inline=False)
     if not view:
         view = snipe_archive(bot, timeout=300, channel_id=channel.id, author_id=ci.user.id)
     else:
