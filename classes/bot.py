@@ -17,7 +17,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         discord_intents.message_content = True
 
         super().__init__(
-            command_prefix=commands.when_mentioned_or("."),
+            command_prefix=commands.when_mentioned_or(config.BOT_PREFIX),
             case_insensitive=True,
             help_command=None,
             intents=discord_intents,

@@ -10,13 +10,16 @@ ENV_PATH = dotenv.find_dotenv()
 
 class Settings(BaseSettings):
     LOGGING_LEVEL: typing.Literal["DEBUG", "INFO", "ERROR", "WARNING", "CRITICAL"] = "INFO"
+    
     DATABASE_URL: SecretStr
     DISCORD_TOKEN: SecretStr
     BOT_LOGS_CHANNEL_ID: SecretStr
     GUILD_ID: SecretStr
     SPAM_SUGGESTIONS_CHANNEL_ID: SecretStr
+
+    BOT_PREFIX: str = "."
     LITTLE_ANGEL_COLOR: int = 0x5b00c1
-    ACTIVITY_NAME: str = "ДЕПНУЛ Lamborghini за $500,000."
+    ACTIVITY_NAME: str = "Отжал 100 Собак у Подписчиков!"
     STREAMING_URL: str = "https://www.twitch.tv/jasteeq"
 
     model_config = SettingsConfigDict(
