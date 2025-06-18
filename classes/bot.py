@@ -41,7 +41,12 @@ class LittleAngelBot(commands.AutoShardedBot):
         await load_all_extensions(self)
         await load_all_extensions(self, "listeners")
 
-def shutdown():
-    _log.info("Бот остановлен")
+    async def close(self):
+        await db.close()
+        scheduler.shutdown(wait=True)
+
+        _log.info("База данных и планировщик остановлены")
+
+        await super().close()
 
 bot = LittleAngelBot()

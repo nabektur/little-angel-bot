@@ -7,7 +7,7 @@ from modules.configuration import config
 _log = logging.getLogger(__name__)
 
 # Discord Bot
-from classes.bot import bot, shutdown
+from classes.bot import bot
 
 @bot.event
 async def on_ready():
@@ -23,7 +23,7 @@ def main():
     except Exception as e:
         _log.error(f"Произошла ошибка {e}:\n{traceback.format_exc()}")
     finally:
-        shutdown()
+        _log.info("Бот остановлен")
 
 if __name__ == '__main__':
     # Запуск
