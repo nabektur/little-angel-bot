@@ -23,6 +23,7 @@ async def main():
         bot.run(config.DISCORD_TOKEN.get_secret_value())
     except Exception as e:
         _log.error(f"Произошла ошибка {e}:\n{traceback.format_exc()}")
+    finally:
         await bot.close()
 
 if __name__ == '__main__':
