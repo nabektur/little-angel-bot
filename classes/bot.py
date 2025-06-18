@@ -50,7 +50,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
     async def close(self):
         await db.close()
-        scheduler.shutdown(wait=True)
+        await asyncio.to_thread(scheduler.shutdown, wait=True)
 
         _log.info("База данных и планировщик остановлены")
 
