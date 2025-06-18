@@ -27,6 +27,9 @@ def main():
     except Exception as e:
         _log.error(f"Произошла ошибка {e}:\n{traceback.format_exc()}")
     finally:
+        if bot.is_closed() is False:
+            asyncio.run(asyncio.to_thread(bot.close))
+            
         _log.info("Бот остановлен")
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         from modules.spam_runner      import sync_spam_from_database
 
         await db.start()
-        await sync_spam_from_database(bot)
+        await sync_spam_from_database(self)
         scheduler.start()
         _log.info("База данных и планировщик запущены")
 
