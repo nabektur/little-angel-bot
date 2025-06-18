@@ -2,4 +2,4 @@
 Прикольный бот от создателя уже мёртвого "Крутяка"
 
 ## Аватарка бота
-![Аватарка бота](https://github.com/Toster404/little-angel-bot/blob/main/little-angel.jpg)
+![Аватарка бота](https://github.com/nabektur/little-angel-bot/blob/main/little-angel.jpg)
