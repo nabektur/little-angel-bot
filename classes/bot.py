@@ -1,3 +1,5 @@
+import sys
+import signal
 import asyncio
 import logging
 import discord
@@ -30,6 +32,11 @@ class LittleAngelBot(commands.AutoShardedBot):
         )
 
     async def setup_hook(self):
+        if sys.platform != "win32":
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown()))
+
         from modules.extension_loader import load_all_extensions
         from modules.spam_runner      import sync_spam_from_database
 
@@ -41,12 +48,12 @@ class LittleAngelBot(commands.AutoShardedBot):
         await load_all_extensions(self)
         await load_all_extensions(self, "listeners")
 
-    async def close(self):
-        await db.close()
-        scheduler.shutdown(wait=True)
+async def shutdown():
+    await db.close()
+    scheduler.shutdown(wait=True)
 
-        _log.info("База данных и планировщик остановлены")
+    _log.info("База данных и планировщик остановлены")
 
-        await super().close()
+    await bot.close()
 
 bot = LittleAngelBot()
