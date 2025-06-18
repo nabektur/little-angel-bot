@@ -35,7 +35,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         if sys.platform != "win32":
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
-                loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(self.close()))
+                loop.add_signal_handler(sig, lambda _sig=sig: asyncio.create_task(self.close()))
 
         from modules.extension_loader import load_all_extensions
         from modules.spam_runner      import sync_spam_from_database
