@@ -18,14 +18,14 @@ async def on_ready():
     if log_channel:
         await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=config.LITTLE_ANGEL_COLOR))
 
-async def main():
+def main():
     try:
         bot.run(config.DISCORD_TOKEN.get_secret_value())
     except Exception as e:
         _log.error(f"Произошла ошибка {e}:\n{traceback.format_exc()}")
     finally:
-        await bot.close()
+        bot.close()
 
 if __name__ == '__main__':
     # Запуск
-    asyncio.run(main())
+    main()

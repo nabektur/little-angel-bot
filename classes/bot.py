@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import discord
 
@@ -40,14 +41,11 @@ class LittleAngelBot(commands.AutoShardedBot):
         await load_all_extensions(self)
         await load_all_extensions(self, "listeners")
 
-    async def close(self):
-        await db.close()
+def shutdown_connections():
+    asyncio.run(db.close())
+    if scheduler.state != 0:
         scheduler.shutdown(wait=True)
 
-        _log.info("База данных и планировщик остановлены")
-
-        await super().close()
-
-        _log.info("Бот остановлен")
+    _log.info("База данных и планировщик остановлены")
 
 bot = LittleAngelBot()
