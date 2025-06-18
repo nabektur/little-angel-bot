@@ -42,7 +42,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
     async def close(self):
         await db.close()
-        await scheduler.shutdown(wait=True)
+        scheduler.shutdown(wait=True)
 
         _log.info("База данных и планировщик остановлены")
 
