@@ -18,6 +18,7 @@ class LittleAngelBot(commands.AutoShardedBot):
     def __init__(self):
         discord_intents = discord.Intents.default()
         discord_intents.message_content = True
+        discord_intents.members = True
 
         super().__init__(
             command_prefix=commands.when_mentioned_or(config.BOT_PREFIX),
