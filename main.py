@@ -4,6 +4,10 @@ import logging
 import discord
 import traceback
 
+from modules.keep_alive import keep_alive
+
+keep_alive()
+
 from modules.configuration import config
 
 _log = logging.getLogger(__name__)

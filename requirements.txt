@@ -7,3 +7,4 @@ pydantic-settings
 SQLAlchemy
 psycopg2
 aiocache
+flask
