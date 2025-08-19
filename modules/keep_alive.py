@@ -1,17 +1,17 @@
-from flask import Flask
-from threading import Thread
+import asyncio
+import uvicorn
 
-app = Flask('')
+from fastapi import FastAPI
 
-@app.route('/')
+app = FastAPI()
 
-def home():
-    return f"<h1>😎I'm Awake Already!🔥</h1>"
+@app.get("/")
+async def home():
+    return {"message": "😎 I'm Awake Already!🔥"}
 
 def run():
-  app.run(host='0.0.0.0',port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")
 
-
-def keep_alive():  
-    t = Thread(target=run)
-    t.start()
+def keep_alive():
+    loop = asyncio.get_event_loop()
+    loop.create_task(asyncio.to_thread(run))
