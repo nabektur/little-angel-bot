@@ -2,6 +2,7 @@ import secrets
 import typing
 import asyncio
 import discord
+import logging
 import aiohttp
 
 from datetime import datetime, timezone
@@ -96,12 +97,13 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
             pass
 
     except Exception as e:
+        logging.error(f"Error occurred in run_spam: {e}")
         await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
         await channel.send(embed=discord.Embed(
             title='⚠️ Спам остановлен!',
             color=0xfcb603,
             timestamp=datetime.now(timezone.utc),
-            description=f'Причина: {e.__class__.__name__} - {str(e)}'
+            description='Причина: неизвестная ошибка'
         ))
 
     # except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
