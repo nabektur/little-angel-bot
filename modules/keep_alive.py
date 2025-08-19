@@ -9,6 +9,10 @@ app = FastAPI()
 async def home():
     return {"message": "😎 I'm Awake Already!🔥"}
 
+@app.head("/")
+async def head():
+    return {"message": "😎 I'm Awake Already!🔥"}
+
 def run():
     uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")
 
