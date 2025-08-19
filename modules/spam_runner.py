@@ -78,13 +78,24 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
 
     except discord.errors.NotFound:
         await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
-    except discord.errors.HTTPException:
-        await asyncio.sleep(3)
-    except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
+    except discord.errors.Forbidden:
         await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
-        await channel.send(embed=discord.Embed(
-            title='⚠️ Спам остановлен!',
-            color=0xfcb603,
-            timestamp=datetime.now(timezone.utc),
-            description='Причина: Ошибка сервера Discord'
-        ))
+        try:
+            await channel.send(embed=discord.Embed(
+                title='⚠️ Спам остановлен!',
+                color=0xfcb603,
+                timestamp=datetime.now(timezone.utc),
+                description='Причина: Доступ запрещен'
+            ))
+        except discord.errors.Forbidden:
+            pass
+    except Exception as e:
+        await asyncio.sleep(3)
+    # except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
+    #     await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
+    #     await channel.send(embed=discord.Embed(
+    #         title='⚠️ Спам остановлен!',
+    #         color=0xfcb603,
+    #         timestamp=datetime.now(timezone.utc),
+    #         description='Причина: Ошибка сервера Discord'
+    #     ))
