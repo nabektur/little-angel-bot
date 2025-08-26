@@ -40,8 +40,10 @@
 
 import os
 import aiosqlite
+
 from typing import Any, List, Optional, Tuple
 
+from modules.configuration import config
 
 
 class Database:
@@ -61,6 +63,16 @@ class Database:
         await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar PRIMARY KEY);")
         await self.execute("CREATE TABLE IF NOT EXISTS blocked_users (user_id bigint PRIMARY KEY, blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason varchar);")
         await self.execute("CREATE TABLE IF NOT EXISTS autopublish (channel_id bigint PRIMARY KEY);")
+
+        await self.conn.executemany(
+            "INSERT OR IGNORE INTO spamtexts_ordinary (text) VALUES (?)",
+            [(text,) for text in config.DEFAULT_ORDINARY_TEXTS]
+        )
+
+        await self.conn.executemany(
+            "INSERT OR IGNORE INTO spamtexts_nsfw (text) VALUES (?)",
+            [(text,) for text in config.DEFAULT_NSFW_TEXTS]
+        )
 
     async def execute(self, query: str, *args) -> None:
         if not isinstance(args, (Tuple, List)):
