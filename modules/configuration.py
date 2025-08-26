@@ -11,7 +11,7 @@ ENV_PATH = dotenv.find_dotenv()
 class Settings(BaseSettings):
     LOGGING_LEVEL: typing.Literal["DEBUG", "INFO", "ERROR", "WARNING", "CRITICAL"] = "INFO"
     
-    DATABASE_URL: SecretStr
+    # DATABASE_URL: SecretStr
     DISCORD_TOKEN: SecretStr
     BOT_LOGS_CHANNEL_ID: SecretStr
     GUILD_ID: SecretStr

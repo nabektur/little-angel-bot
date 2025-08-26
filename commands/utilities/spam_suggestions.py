@@ -19,7 +19,7 @@ class SuggestSpamView(discord.ui.View):
     @discord.ui.button(style=discord.ButtonStyle.blurple, custom_id="spam_suggestion_accept", emoji="☑️")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         table = "spamtexts_nsfw" if self.spam_type == "nsfw" else "spamtexts_ordinary"
-        await db.execute(f"INSERT INTO {table} (text) VALUES ($1) ON CONFLICT DO NOTHING;", self.suggestion)
+        await db.execute(f"INSERT INTO {table} (text) VALUES (?) ON CONFLICT DO NOTHING;", self.suggestion)
         await interaction.message.delete()
         await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу (`{self.spam_type}`).", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
 
@@ -30,7 +30,7 @@ class SuggestSpamView(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.secondary, custom_id="spam_suggestion_block", emoji="🚫")
     async def block(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await db.execute("INSERT INTO blocked_users (user_id, reason) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING;", self.user_id, "Злоупотребление предложкой")
+        await db.execute("INSERT INTO blocked_users (user_id, reason) VALUES (?, ?) ON CONFLICT (user_id) DO NOTHING;", self.user_id, "Злоупотребление предложкой")
         await interaction.message.delete()
         await interaction.response.send_message(embed=discord.Embed(description="🚫 Пользователь заблокирован.", color=0xff0000), ephemeral=True)
 
@@ -61,7 +61,7 @@ class SpamSuggestion(commands.Cog):
         async def on_submit(self, interaction: discord.Interaction):
             user_id = interaction.user.id
 
-            blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = $1", user_id)
+            blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = ?", user_id)
             if blocked:
                 return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 
@@ -80,7 +80,7 @@ class SpamSuggestion(commands.Cog):
     @app_commands.describe(type="Выберите категорию спама")
     async def suggest_spam(self, interaction: discord.Interaction, type: typing.Literal["ordinary", "nsfw"]):
 
-        blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = $1", interaction.user.id)
+        blocked = await db.fetchone("SELECT * FROM blocked_users WHERE user_id = ?", interaction.user.id)
         if blocked:
             return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 
