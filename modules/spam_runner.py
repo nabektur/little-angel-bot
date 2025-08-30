@@ -22,16 +22,19 @@ async def sync_spam_from_database(bot: LittleAngelBot):
 async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
     try:
         channel = await bot.fetch_channel(key[2])
-        if isinstance(channel, discord.Thread):
-            wchannel = channel.parent
+        if key[1] == "webhook":
+            if isinstance(channel, discord.Thread):
+                wchannel = channel.parent
+            else:
+                wchannel = channel
+            webhooks = await wchannel.webhooks()
+            webhook = [webhook for webhook in webhooks if(webhook.name == "Ангелочек")]
+            if webhook:
+                webhook = webhook[0]
+            else:
+                webhook = await wchannel.create_webhook(name="Ангелочек", avatar=await bot.user.avatar.read())
         else:
-            wchannel = channel
-        webhooks = await wchannel.webhooks()
-        webhook = [webhook for webhook in webhooks if(webhook.name == "Ангелочек")]
-        if webhook:
-            webhook = webhook[0]
-        else:
-            webhook = await wchannel.create_webhook(name="Ангелочек", avatar=await bot.user.avatar.read())
+            webhook = None
     except:
         return
 
@@ -49,7 +52,7 @@ async def check_sp(channel_id):
     return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = ?", channel_id) != None
 
 
-async def run_spam(type: str, method: str, channel, webhook, ments=None, duration=None):
+async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=None, ments=None, duration=None):
 
     if type == "default":
         if isinstance(channel, discord.TextChannel) or isinstance(channel, discord.VoiceChannel):
@@ -73,9 +76,11 @@ async def run_spam(type: str, method: str, channel, webhook, ments=None, duratio
                 text = f"{ments}\n{text}"
 
             if method == "webhook":
-                await webhook.send(wait=True, content=text, thread=thread) if thread else await webhook.send(wait=True, content=text)
+                await webhook.send(wait=False, content=text, thread=thread) if thread else await webhook.send(wait=False, content=text)
             else:
                 await channel.send(content=text)
+
+            await asyncio.sleep(2)
 
     except discord.errors.HTTPException:
         await asyncio.sleep(3)
