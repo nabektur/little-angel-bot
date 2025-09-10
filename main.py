@@ -21,6 +21,14 @@ async def on_ready():
     if log_channel:
         await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=config.LITTLE_ANGEL_COLOR))
 
+    chan = bot.get_channel(1415362186607591508)
+
+    msg = await chan.fetch_message(1415373182881497158)
+
+    embed = discord.Embed(title="<a:black_melting_heart:1410351745170935959> Умничка", description="А теперь нажми на реакцию галочки ниже для завершения верификации", color=0x5b00c1)
+
+    await msg.edit(content="@everyone", embed=embed)
+
 def main():
     try:
         bot.run(config.DISCORD_TOKEN.get_secret_value())
