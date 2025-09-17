@@ -25,7 +25,7 @@ class LittleAngelBot(commands.AutoShardedBot):
             case_insensitive=True,
             help_command=None,
             intents=discord_intents,
-            status=discord.Status.idle,
+            # status=discord.Status.idle,
         )
 
     async def setup_hook(self):
