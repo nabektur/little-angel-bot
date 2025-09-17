@@ -47,6 +47,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         _log.info("База данных и планировщик запущены")
 
+        await change_status_periodically(self)
         change_status_periodically.start(self)
 
         await load_all_extensions(self, "commands")
