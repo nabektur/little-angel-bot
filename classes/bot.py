@@ -36,7 +36,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         from modules.keep_alive       import keep_alive
         from modules.spam_runner      import sync_spam_from_database
-        from modules.status_update    import change_status_periodically
+        from modules.status_update    import change_status_periodically, change_status
         from modules.extension_loader import load_all_extensions
 
         keep_alive()
@@ -47,7 +47,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         _log.info("База данных и планировщик запущены")
 
-        await change_status_periodically(self)
+        await change_status(self)
         change_status_periodically.start(self)
 
         await load_all_extensions(self, "commands")
