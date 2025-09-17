@@ -39,7 +39,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         from modules.keep_alive       import keep_alive
         from modules.spam_runner      import sync_spam_from_database
-        from modules.status_update    import change_status_periodically, change_status
+        from modules.status_update    import change_status_periodically
         from modules.extension_loader import load_all_extensions
 
         keep_alive()
