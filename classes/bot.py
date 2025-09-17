@@ -4,7 +4,7 @@ import asyncio
 import logging
 import discord
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from modules.configuration import config
 
@@ -26,10 +26,6 @@ class LittleAngelBot(commands.AutoShardedBot):
             help_command=None,
             intents=discord_intents,
             status=discord.Status.idle,
-            activity=discord.Streaming(
-                name=config.ACTIVITY_NAME,
-                url=config.STREAMING_URL
-            )
         )
 
     async def setup_hook(self):
@@ -62,3 +58,10 @@ class LittleAngelBot(commands.AutoShardedBot):
         await super().close()
 
 bot = LittleAngelBot()
+
+@tasks.loop(seconds=5)
+async def change_status_periodically():
+    next_status = next(config.ACTIVITY_NAMES)
+    await bot.change_presence(
+        activity=discord.Streaming(name=next_status.get("name"), url=next_status.get("streaming_url")) if next_status.get("streaming_url") else discord.CustomActivity(name=next_status.get("name"))
+    )
