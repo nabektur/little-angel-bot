@@ -61,7 +61,7 @@ class LittleAngelBot(commands.AutoShardedBot):
 
 bot = LittleAngelBot()
 
-@tasks.loop(seconds=5)
+@tasks.loop(hours=1)
 async def change_status_periodically():
     next_status = next(config.ACTIVITY_NAMES)
     await bot.change_presence(
