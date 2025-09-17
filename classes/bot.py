@@ -20,12 +20,15 @@ class LittleAngelBot(commands.AutoShardedBot):
         discord_intents.message_content = True
         discord_intents.members = True
 
+        next_status = next(config.ACTIVITY_NAMES)
+
         super().__init__(
             command_prefix=commands.when_mentioned_or(config.BOT_PREFIX),
             case_insensitive=True,
             help_command=None,
             intents=discord_intents,
             status=discord.Status.idle,
+            activity=discord.Streaming(name=next_status.get("name"), url=next_status.get("streaming_url")) if next_status.get("streaming_url") else discord.CustomActivity(name=next_status.get("name"))
         )
 
     async def setup_hook(self):
@@ -47,7 +50,6 @@ class LittleAngelBot(commands.AutoShardedBot):
 
         _log.info("База данных и планировщик запущены")
 
-        await change_status(self)
         change_status_periodically.start(self)
 
         await load_all_extensions(self, "commands")
