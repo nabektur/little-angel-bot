@@ -4,7 +4,7 @@ import asyncio
 import logging
 import discord
 
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from modules.configuration import config
 
@@ -34,21 +34,22 @@ class LittleAngelBot(commands.AutoShardedBot):
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, lambda _sig=sig: asyncio.create_task(self.close()))
 
-        from modules.keep_alive import keep_alive
+        from modules.keep_alive       import keep_alive
+        from modules.spam_runner      import sync_spam_from_database
+        from modules.status_update    import change_status_periodically
+        from modules.extension_loader import load_all_extensions
 
         keep_alive()
-
-        from modules.extension_loader import load_all_extensions
-        from modules.spam_runner      import sync_spam_from_database
 
         await db.start()
         await sync_spam_from_database(self)
         scheduler.start()
+
         _log.info("База данных и планировщик запущены")
 
-        change_status_periodically.start()
+        change_status_periodically.start(self)
 
-        await load_all_extensions(self)
+        await load_all_extensions(self, "commands")
         await load_all_extensions(self, "listeners")
 
     async def close(self):
@@ -60,11 +61,3 @@ class LittleAngelBot(commands.AutoShardedBot):
         await super().close()
 
 bot = LittleAngelBot()
-
-@tasks.loop(hours=1)
-async def change_status_periodically():
-    next_status = next(config.ACTIVITY_NAMES)
-    await bot.change_presence(
-        status=discord.Status.idle,
-        activity=discord.Streaming(name=next_status.get("name"), url=next_status.get("streaming_url")) if next_status.get("streaming_url") else discord.CustomActivity(name=next_status.get("name"))
-    )
