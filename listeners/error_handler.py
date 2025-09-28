@@ -1,7 +1,6 @@
 import discord
 
 from discord.ext          import commands
-from discord.ext.commands import CommandNotFound
 
 from classes.bot import LittleAngelBot
 
@@ -14,8 +13,8 @@ class ErrorHandler(commands.Cog):
 
     
     @commands.Cog.listener()
-    async def on_command_error(ctx, error):
-        if isinstance(error, CommandNotFound):
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.CommandNotFound):
             return
         raise error
 
