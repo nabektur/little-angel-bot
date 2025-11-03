@@ -41,7 +41,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
     if key[4]:
         duration = datetime.fromtimestamp(int(key[4]), timezone.utc)
         if datetime.now(timezone.utc) >= duration:
-            await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+            await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
             await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
             return
         asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], duration))
@@ -49,7 +49,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
         asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[3], key[4]))
 
 async def check_sp(channel_id):
-    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = ?", channel_id) != None
+    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel_id) != None
 
 
 async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=None, ments=None, duration=None):
@@ -67,7 +67,7 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
     try:
         while await check_sp(channel.id):
             if duration and datetime.now(timezone.utc) >= duration:
-                await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+                await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
                 await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
                 break
 
@@ -87,10 +87,10 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
         asyncio.create_task(run_spam(type, method, channel, webhook, ments, duration))
 
     except discord.errors.NotFound:
-        await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+        await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
 
     except discord.errors.Forbidden:
-        await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+        await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
         try:
             await channel.send(embed=discord.Embed(
                 title='⚠️ Спам остановлен!',
@@ -103,7 +103,7 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
 
     except Exception as e:
         logging.error(f"Error occurred in run_spam: {e}")
-        await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+        await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
         await channel.send(embed=discord.Embed(
             title='⚠️ Спам остановлен!',
             color=0xfcb603,
@@ -112,7 +112,7 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
         ))
 
     # except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
-    #     await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
+    #     await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
     #     await channel.send(embed=discord.Embed(
     #         title='⚠️ Спам остановлен!',
     #         color=0xfcb603,

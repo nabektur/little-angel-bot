@@ -14,7 +14,7 @@ class UnblockUser(commands.Cog):
     @commands.command(name="unblock", description="Разблокировать пользователя")
     @commands.is_owner()
     async def unblock_user_command(self, ctx: commands.Context, *, user_id: int):
-        await db.execute("DELETE FROM blocked_users WHERE user_id = ?;", user_id)
+        await db.execute("DELETE FROM blocked_users WHERE user_id = $1;", user_id)
         await ctx.reply(embed=discord.Embed(description="☑️ Пользователь разблокирован!", color=config.LITTLE_ANGEL_COLOR))
 
 async def setup(bot: LittleAngelBot):
