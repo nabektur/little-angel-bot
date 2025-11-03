@@ -19,11 +19,27 @@ class Database:
         await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar PRIMARY KEY);")
         await self.execute("CREATE TABLE IF NOT EXISTS blocked_users (user_id bigint PRIMARY KEY, blocked_at TIMESTAMP DEFAULT NOW(), reason varchar);")
         await self.execute("CREATE TABLE IF NOT EXISTS autopublish (channel_id bigint PRIMARY KEY);")
+
+        await self.executemany(
+            "INSERT INTO spamtexts_ordinary (text) VALUES ($1) ON CONFLICT DO NOTHING;",
+            [(text,) for text in config.DEFAULT_ORDINARY_TEXTS]
+        )
+
+        await self.executemany(
+            "INSERT INTO spamtexts_nsfw (text) VALUES ($1) ON CONFLICT DO NOTHING;",
+            [(text,) for text in config.DEFAULT_NSFW_TEXTS]
+        )
         
     async def execute(self, query: str, *args) -> str:
         async with self.pool.acquire() as conn:
             return await conn.execute(query, *args)
-    
+        
+    async def executemany(self, query: str, args_list: List[Any]) -> None:
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                for args in args_list:
+                    await conn.execute(query, *args)
+
     async def fetch(self, query: str, *args) -> List[asyncpg.Record]:
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)
