@@ -18,6 +18,7 @@ class Ping(commands.Cog):
 
     @app_commands.command(name="пинг", description="Показывает задержку бота")
     async def ping(self, interaction: discord.Interaction):
+        raise discord.DiscordException("pong")
         start_rest_latency = time.monotonic()
         await interaction.response.send_message("🏓 Считаю пинг...")
         end_rest_latency = time.monotonic()
@@ -38,9 +39,9 @@ class Ping(commands.Cog):
     async def ping_error(self, interaction: discord.Interaction, error):
         _log.error(traceback.format_exc())
         if interaction.response.is_done():
-            await interaction.followup.send(embed=discord.Embed(title="❌ Произошла ошибка!", description="Непредвиденная ошибка, прошу связаться с разработчиком", color=0xff0000))
+            await interaction.followup.send(embed=discord.Embed(title="❌ Произошла ошибка!", description="Непредвиденная ошибка, прошу связаться с разработчиком. По всей видимости, что-то не так с ботом", color=0xff0000))
         else:
-            await interaction.response.send_message(embed=discord.Embed(title="❌ Произошла ошибка!", description="Непредвиденная ошибка, прошу связаться с разработчиком", color=0xff0000))
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Произошла ошибка!", description="Непредвиденная ошибка, прошу связаться с разработчиком. По всей видимости, что-то не так с ботом", color=0xff0000))
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(Ping(bot))
