@@ -18,7 +18,6 @@ class Ping(commands.Cog):
 
     @app_commands.command(name="пинг", description="Показывает задержку бота")
     async def ping(self, interaction: discord.Interaction):
-        raise discord.DiscordException("pong")
         start_rest_latency = time.monotonic()
         await interaction.response.send_message("🏓 Считаю пинг...")
         end_rest_latency = time.monotonic()
