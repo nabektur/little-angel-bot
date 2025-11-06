@@ -1,5 +1,6 @@
 import os
 import asyncpg
+import typing
 
 from typing import Any, List, Optional
 
@@ -32,22 +33,24 @@ class Database:
         
     async def execute(self, query: str, *args) -> str:
         async with self.pool.acquire() as conn:
-            return await conn.execute(query, *args)
-        
+            connection = typing.cast(asyncpg.Connection, conn)
+            return await connection.execute(query, *args)
+
     async def executemany(self, query: str, args_list: List[Any]) -> None:
         async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                for args in args_list:
-                    await conn.execute(query, *args)
+            connection = typing.cast(asyncpg.Connection, conn)
+            await connection.executemany(query, args_list)
 
     async def fetch(self, query: str, *args) -> List[asyncpg.Record]:
         async with self.pool.acquire() as conn:
-            return await conn.fetch(query, *args)
+            connection = typing.cast(asyncpg.Connection, conn)
+            return await connection.fetch(query, *args)
     
     async def fetchone(self, query: str, *args) -> Optional[asyncpg.Record]:
         async with self.pool.acquire() as conn:
-            return await conn.fetchrow(query, *args)
-    
+            connection = typing.cast(asyncpg.Connection, conn)
+            return await connection.fetchrow(query, *args)
+
     async def close(self):
         if self.pool:
             await self.pool.close()

@@ -12,6 +12,8 @@ from classes.bot      import LittleAngelBot
 
 from modules.configuration import config
 
+_log = logging.getLogger(__name__)
+
 async def get_spamtexts(texts_type: typing.Literal["ordinary", "nsfw"] = "ordinary"):
     return [row[0] for row in await db.fetch(f"SELECT * FROM spamtexts_{texts_type}")]
 
@@ -102,7 +104,7 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
             pass
 
     except Exception as e:
-        logging.error(f"Error occurred in run_spam: {e}")
+        _log.error(f"Error occurred in run_spam: {e}")
         await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
         await channel.send(embed=discord.Embed(
             title='⚠️ Спам остановлен!',
