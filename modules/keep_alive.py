@@ -15,7 +15,7 @@ async def head():
     return {"message": "😎 I'm Awake Already!🔥"}
 
 def run():
-    uvicorn.run(app, host="0.0.0.0", port=os.getenv("PORT", 80), log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 80)), log_level="info")
 
 def keep_alive():
     loop = asyncio.get_event_loop()
