@@ -83,4 +83,6 @@ async def cycle_of_rofles(bot: LittleAngelBot):
     function_to_call = secrets.choice(functions)
     rofl_result = await function_to_call()
     rofls_channel = bot.get_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
+    if not rofls_channel:
+        rofls_channel = await bot.fetch_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
     await rofls_channel.send(rofl_result)
