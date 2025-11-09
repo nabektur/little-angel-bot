@@ -28,6 +28,7 @@ source_text = """
 гриндер и вл фурриёбы
 я не фурри я просто люблю аниме с животными
 ну давай без осков Бектур Әкеніңұлы
+https://cdn.discordapp.com/attachments/1415345171092213782/1437025749012975737/togif.gif?ex=6911be05&is=69106c85&hm=68f7b780f87f664166760a0c75214d47d28307b6f35d6589976b7d2a17395d0e&
 """
 
 fream_core = markovify.NewlineText(source_text, state_size=1)
