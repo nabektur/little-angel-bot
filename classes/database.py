@@ -20,6 +20,7 @@ class Database:
         await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar PRIMARY KEY);")
         await self.execute("CREATE TABLE IF NOT EXISTS blocked_users (user_id bigint PRIMARY KEY, blocked_at TIMESTAMP DEFAULT NOW(), reason varchar);")
         await self.execute("CREATE TABLE IF NOT EXISTS autopublish (channel_id bigint PRIMARY KEY);")
+        await self.execute("CREATE TABLE IF NOT EXISTS ipou_reconstructions (number bigint PRIMARY KEY);")
 
         await self.executemany(
             "INSERT INTO spamtexts_ordinary (text) VALUES ($1) ON CONFLICT DO NOTHING;",
@@ -54,6 +55,15 @@ class Database:
     async def close(self):
         if self.pool:
             await self.pool.close()
+
+    async def get_ipou_reconstruction_count(self) -> int:
+        row = await self.fetchone("SELECT number FROM ipou_reconstructions ORDER BY number DESC LIMIT 1;")
+        if row:
+            # await self.execute("INSERT INTO ipou_reconstructions (number) VALUES ($1);", row['number'] + 1)
+            await self.execute("UPDATE ipou_reconstructions SET number = number + 1;")
+            return row['number']
+        await self.execute("INSERT INTO ipou_reconstructions (number) VALUES (1);")
+        return 1
 
 db = Database()
 
