@@ -1,3 +1,5 @@
+import logging
+import traceback
 import asyncio
 import secrets
 import markovify
@@ -7,6 +9,9 @@ from classes.database      import db
 from modules.configuration import config
 
 from discord.ext import tasks
+from discord.errors import DiscordServerError, HTTPException, Forbidden, NotFound
+
+_log = logging.getLogger(__name__)
 
 source_text = """
 нужны срочно бусты
@@ -82,10 +87,18 @@ async def fream_sentence():
 
 @tasks.loop(seconds=10)
 async def cycle_of_rofles(bot: LittleAngelBot):
-    functions = [fream_sentence, calculate_ipou_reconstruction]
-    function_to_call = secrets.choice(functions)
-    rofl_result = await function_to_call()
-    rofls_channel = bot.get_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
-    if not rofls_channel:
-        rofls_channel = await bot.fetch_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
-    await rofls_channel.send(rofl_result)
+    try:
+        functions = [fream_sentence, calculate_ipou_reconstruction]
+        function_to_call = secrets.choice(functions)
+        rofl_result = await function_to_call()
+        rofls_channel = bot.get_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
+        if not rofls_channel:
+            rofls_channel = await bot.fetch_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
+        await rofls_channel.send(rofl_result)
+    except (DiscordServerError, HTTPException):
+        pass
+    except (Forbidden, NotFound):
+        cycle_of_rofles.stop()
+        _log.error(f"Цикл рофлов остановлен из-за ошибки прав доступа к каналу {config.ROFLS_CHANNEL_ID.get_secret_value()}\n{traceback.format_exc()}")
+    except Exception as e:
+        _log.error(f"Ошибка в цикле рофлов: {e}\n{traceback.format_exc()}")
