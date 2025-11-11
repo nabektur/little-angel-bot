@@ -96,6 +96,7 @@ async def cycle_of_rofles(bot: LittleAngelBot):
             rofls_channel = await bot.fetch_channel(int(config.ROFLS_CHANNEL_ID.get_secret_value()))
         await rofls_channel.send(rofl_result)
     except (DiscordServerError, HTTPException):
+        _log.warning(f"Проблемы с сервером Discord, пропуск рофла...\n{traceback.format_exc()}")
         pass
     except (Forbidden, NotFound):
         cycle_of_rofles.stop()
