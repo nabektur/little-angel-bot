@@ -9,5 +9,5 @@ psycopg2
 aiocache
 fastapi
 uvicorn
-markovify
+# markovify
 # aiosqlite
