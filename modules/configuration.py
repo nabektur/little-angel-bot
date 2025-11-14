@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     BOT_LOGS_CHANNEL_ID: SecretStr
     GUILD_ID: SecretStr
     SPAM_SUGGESTIONS_CHANNEL_ID: SecretStr
-    ROFLS_CHANNEL_ID: SecretStr
+    # ROFLS_CHANNEL_ID: SecretStr
 
     BOT_PREFIX: str = "."
     LITTLE_ANGEL_COLOR: int = 0x5b00c1
