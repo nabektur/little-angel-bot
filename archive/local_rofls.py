@@ -1,3 +1,5 @@
+# await self.execute("CREATE TABLE IF NOT EXISTS ipou_reconstructions (number bigint PRIMARY KEY);")
+
 import logging
 import traceback
 import asyncio
