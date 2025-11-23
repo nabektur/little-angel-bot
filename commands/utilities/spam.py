@@ -44,7 +44,7 @@ class Spam(commands.Cog):
         else:
             if not channel_permissions.send_messages:
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
-        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
+        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1 LIMIT 1", channel.id):
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён в данном канале!", color=0xff0000), ephemeral=True)
         else:
             await interaction.response.defer()
@@ -74,7 +74,7 @@ class Spam(commands.Cog):
     async def spam_stop_command(self, interaction: discord.Interaction, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None):
         if not channel:
             channel = interaction.channel
-        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1", channel.id):
+        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1 LIMIT 1", channel.id):
             await interaction.response.defer()
             await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
             await interaction.followup.send(embed=discord.Embed(description='☑️ Спам остановлен!', color=config.LITTLE_ANGEL_COLOR))

@@ -14,7 +14,7 @@ from classes.database  import db
 from modules.configuration  import config
 
 async def is_autopub(channel_id: int):
-    return await db.fetchone("SELECT channel_id FROM autopublish WHERE channel_id = $1", channel_id) != None
+    return await db.fetchone("SELECT channel_id FROM autopublish WHERE channel_id = $1 LIMIT 1", channel_id) != None
 
 
 class AutoPublish(commands.Cog):
