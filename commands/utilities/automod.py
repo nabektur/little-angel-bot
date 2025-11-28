@@ -86,10 +86,12 @@ class AutoModeration(commands.Cog):
                                 color=0xff0000
                             )
                             embed.set_footer(text=f"ID: {message.author.id}")
+                            embed.set_thumbnail(url=message.author.display_avatar.url)
+                            embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
                             embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel}`)", inline=False)
                             await log_channel.send(embed=embed)
                             await message.delete()
-                            await message.author.timeout(until=timedelta(hours=1), reason="Реклама в текстовом файле.")
+                            await message.author.timeout(timedelta(hours=1), reason="Реклама в текстовом файле.")
                             return
 
 
