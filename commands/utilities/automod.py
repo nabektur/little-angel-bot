@@ -91,7 +91,7 @@ class AutoModeration(commands.Cog):
                             embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel}`)", inline=False)
                             await log_channel.send(embed=embed)
                             await message.delete()
-                            await message.author.timeout(timedelta(hours=1), reason="Реклама в текстовом файле.")
+                            await message.author.timeout(timedelta(hours=1), reason="Реклама в текстовом файле")
                             return
 
 
