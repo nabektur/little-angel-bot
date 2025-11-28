@@ -82,7 +82,7 @@ class AutoModeration(commands.Cog):
                             log_channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
                             embed = discord.Embed(
                                 title="Реклама внутри файлов",
-                                description=f"Участнику {message.author.mention} (`{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nЧасть текста, на которую среагировал бот:```\n{matched}```",
+                                description=f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nЧасть текста, на которую среагировал бот:```\n{matched}```",
                                 color=0xff0000
                             )
                             embed.set_footer(text=f"ID: {message.author.id}")
