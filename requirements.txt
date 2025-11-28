@@ -9,5 +9,10 @@ psycopg2
 aiocache
 fastapi
 uvicorn
+fuzzywuzzy
+rapidfuzz
+cachetools
+types-cachetools
+async-cache
 # markovify
 # aiosqlite
