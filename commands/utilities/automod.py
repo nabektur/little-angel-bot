@@ -32,7 +32,7 @@ links_patterns = [
 ]
 
 @AsyncLRU(maxsize=1024)
-async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> bool:
+async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> typing.Union[bool, str]:
     if not text:
         return False
     
@@ -43,14 +43,14 @@ async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> boo
 
     for p in patterns:
         if p in text:
-            return True
+            return text
 
     words = text.replace("/", " ").replace("\\", " ").replace("-", " ").split()
 
     for w in words:
         for p in patterns:
             if fuzz.ratio(w, p) > 80:
-                return True
+                return text
 
     return False
 
@@ -77,9 +77,19 @@ class AutoModeration(commands.Cog):
                         return
                     else:
                         content = file_bytes.decode(errors='ignore')
-                        if await find_spam_matches(content):
+                        matched = await find_spam_matches(content)
+                        if matched:
+                            log_channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
+                            embed = discord.Embed(
+                                title="Реклама внутри файлов",
+                                description=f"Участнику {message.author.mention} (`{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nТекст, на который среагировал бот:```\n{matched}```",
+                                color=0xff0000
+                            )
+                            embed.set_footer(text=f"ID: {message.author.id}")
+                            embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel}`)", inline=False)
+                            await log_channel.send(embed=embed)
                             await message.delete()
-                            await message.author.timeout(timedelta(hours=1), "Приглашения в текстовом файле.")
+                            await message.author.timeout(until=timedelta(hours=1), reason="Приглашения в текстовом файле.")
                             return
 
 

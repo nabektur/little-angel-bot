@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     BOT_LOGS_CHANNEL_ID: SecretStr
     GUILD_ID: SecretStr
     SPAM_SUGGESTIONS_CHANNEL_ID: SecretStr
+    AUTOMOD_LOGS_CHANNEL_ID: SecretStr
     # ROFLS_CHANNEL_ID: SecretStr
 
     BOT_PREFIX: str = "."
