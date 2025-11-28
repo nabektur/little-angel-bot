@@ -43,14 +43,14 @@ async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> typ
 
     for p in patterns:
         if p in text:
-            return text
+            return p
 
     words = text.replace("/", " ").replace("\\", " ").replace("-", " ").split()
 
     for w in words:
         for p in patterns:
             if fuzz.ratio(w, p) > 80:
-                return text
+                return w
 
     return False
 
@@ -82,14 +82,14 @@ class AutoModeration(commands.Cog):
                             log_channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
                             embed = discord.Embed(
                                 title="Реклама внутри файлов",
-                                description=f"Участнику {message.author.mention} (`{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nТекст, на который среагировал бот:```\n{matched}```",
+                                description=f"Участнику {message.author.mention} (`{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nЧасть текста, на которую среагировал бот:```\n{matched}```",
                                 color=0xff0000
                             )
                             embed.set_footer(text=f"ID: {message.author.id}")
                             embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel}`)", inline=False)
                             await log_channel.send(embed=embed)
                             await message.delete()
-                            await message.author.timeout(until=timedelta(hours=1), reason="Приглашения в текстовом файле.")
+                            await message.author.timeout(until=timedelta(hours=1), reason="Реклама в текстовом файле.")
                             return
 
 
