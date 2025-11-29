@@ -171,8 +171,8 @@ class AutoModeration(commands.Cog):
             if priority in ["full", "high"]:
 
                 activity_info = (
-                    f"Тип: {message.activity.type}\n"
-                    f"Party ID: {message.activity.party_id}\n"
+                    f"Тип: {message.activity.get('type')}\n"
+                    f"Party ID: {message.activity.get('party_id')}\n"
                 )
 
                 log_embed = discord.Embed(
