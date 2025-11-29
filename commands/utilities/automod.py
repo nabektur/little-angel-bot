@@ -253,8 +253,8 @@ class AutoModeration(commands.Cog):
         # расстановка приоритетов
         priority: int = 1
 
-        # if message.channel.permissions_for(message.author).manage_messages:
-        #     priority = 0
+        if message.channel.permissions_for(message.author).manage_messages:
+            priority = 0
 
         # модерация активности
 
@@ -275,13 +275,22 @@ class AutoModeration(commands.Cog):
                     f"Party ID: {message.activity.get('party_id')}\n"
                 )
 
+                if hit_data <= 2:
+                    log_embed_description = (
+                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                        f"Причина: подозрение на рекламу через активность\n\n"
+                        f"Информация об активности:\n```\n{activity_info}```"
+                    )
+                else:
+                    log_embed_description = (
+                        f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
+                        f"Причина: реклама через активность.\n\n"
+                        f"Информация об активности:\n```\n{activity_info}```"
+                    )
+
                 log_embed = discord.Embed(
                     title="Реклама через активность",
-                    description=(
-                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n" if hit_data <= 2 else f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                        f"Причина: подозрение на рекламу через активность\n\n" if hit_data <=2 else f"Причина: реклама через активность.\n\n"
-                        f"Информация об активности:\n```\n{activity_info}```"
-                    ),
+                    description=log_embed_description,
                     color=0xff0000
                 )
                 log_embed.set_footer(text=f"ID: {message.author.id}")
@@ -291,14 +300,24 @@ class AutoModeration(commands.Cog):
 
                 await self.safe_send_to_log(embed=log_embed)
 
-                mention_embed = discord.Embed(
-                    title="Реклама внутри активности",
-                    description=(
+                if hit_data <= 2:
+                    mention_embed_description = (
                         f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
-                        f"Наказание не применяется, за исключением удаления сообщения\n\n" if hit_data <=2 else f"Тебе выдан мут на 1 час\n\n"
+                        f"Наказание не применяется, за исключением удаления сообщения\n\n"
                         f"Информация об активности:\n```\n{activity_info}```\n\n"
                         f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
-                    ),
+                    )
+                else:
+                    mention_embed_description = (
+                        f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
+                        f"Тебе выдан мут на 1 час\n\n"
+                        f"Информация об активности:\n```\n{activity_info}```\n\n"
+                        f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
+                    )
+
+                mention_embed = discord.Embed(
+                    title="Реклама внутри активности",
+                    description=mention_embed_description,
                     color=0xff0000
                 )
                 mention_embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -334,14 +353,24 @@ class AutoModeration(commands.Cog):
                         # первые 300 символов сообщения
                         preview = message.content[:300].replace("`", "'")
 
-                        log_embed = discord.Embed(
-                            title="Реклама в сообщении",
-                            description=(
-                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n" if hit_data <=2 else f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                                f"Причина: подозрение на рекламу в сообщении\n\n" if hit_data <=2 else f"Причина: реклама в сообщении.\n\n"
+                        if hit_data <= 2:
+                            log_embed_description = (
+                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                                f"Причина: подозрение на рекламу в сообщении\n\n"
                                 f"Совпадение:\n```\n{matched}\n```\n"
                                 f"Первые 300 символов:\n```\n{preview}\n```"
-                            ),
+                            )
+                        else:
+                            log_embed_description = (
+                                f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
+                                f"Причина: реклама в сообщении.\n\n"
+                                f"Совпадение:\n```\n{matched}\n```\n"
+                                f"Первые 300 символов:\n```\n{preview}\n```"
+                            )
+
+                        log_embed = discord.Embed(
+                            title="Реклама в сообщении",
+                            description=log_embed_description,
                             color=0xff0000
                         )
 
@@ -352,14 +381,24 @@ class AutoModeration(commands.Cog):
 
                         await self.safe_send_to_log(embed=log_embed)
 
-                        mention_embed = discord.Embed(
-                            title="Реклама в сообщении",
-                            description=(
+                        if hit_data <= 2:
+                            mention_embed_description = (
                                 f"На сервере запрещена реклама сторонних серверов\n"
-                                f"Наказание не применяется, за исключением удаления сообщения\n\n" if hit_data <=2 else f"Тебе выдан мут на 1 час\n\n"
+                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
                                 f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
                                 f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                            ),
+                            )
+                        else:
+                            mention_embed_description = (
+                                f"На сервере запрещена реклама сторонних серверов\n"
+                                f"Тебе выдан мут на 1 час\n\n"
+                                f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
+                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+                            )
+
+                        mention_embed = discord.Embed(
+                            title="Реклама в сообщении",
+                            description=mention_embed_description,
                             color=0xff0000
                         )
                         mention_embed.set_thumbnail(url=message.author.display_avatar.url)
