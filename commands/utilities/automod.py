@@ -332,6 +332,7 @@ class AutoModeration(commands.Cog):
 
                 if hit_data > 2:
                     await self.safe_timeout(message.author, timedelta(hours=1), "Реклама через активность")
+                    await hit_cache.delete(message.author.id)
 
                 return
                 
@@ -413,6 +414,7 @@ class AutoModeration(commands.Cog):
 
                         if hit_data > 2:
                             await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в сообщении")
+                            await hit_cache.delete(message.author.id)
 
                         return
 
