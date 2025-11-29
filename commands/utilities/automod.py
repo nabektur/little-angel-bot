@@ -279,7 +279,7 @@ class AutoModeration(commands.Cog):
                             description=(
                                 f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
                                 f"Причина: подозрение на рекламу в сообщении\n\n"
-                                f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
+                                f"Совпадение:\n```\n{matched}\n```\n"
                                 f"Первые 300 символов:\n```\n{preview}\n```"
                             ),
                             color=0xff0000
@@ -297,7 +297,7 @@ class AutoModeration(commands.Cog):
                             description=(
                                 f"На сервере запрещена реклама сторонних серверов\n"
                                 f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                                f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n\n"
+                                f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
                                 f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                             ),
                             color=0xff0000
@@ -355,7 +355,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час.\n"
                             f"Причина: реклама внутри прикрепленного файла.\n\n"
-                            f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
+                            f"Совпадение:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n"
                             f"Первые 300 символов:\n```\n{preview}\n```"
                         ),
@@ -374,7 +374,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"На сервере запрещена реклама сторонних серверов (даже внутри файлов)\n"
                             f"Тебе выдан мут на 1 час\n\n"
-                            f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n"
+                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n\n"
                             f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                         ),
