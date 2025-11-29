@@ -71,68 +71,6 @@ ENCLOSED_ALPHANUM_MAP = {
     "🆮": "n","🆯": "o",
 }
 
-async def normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-
-    out = []
-
-    for ch in text:
-
-        # удаляет zero-width
-        if ZERO_WIDTH_RE.match(ch):
-            continue
-
-        # обведённые буквы 🄰🄱
-        if ch in ENCLOSED_ALPHANUM_MAP:
-            out.append(ENCLOSED_ALPHANUM_MAP[ch])
-            continue
-
-        # региональные 🇦🇧
-        if ch in REGIONAL_INDICATOR_MAP:
-            out.append(REGIONAL_INDICATOR_MAP[ch])
-            continue
-
-        # emoji-буквы 🅳🅾️🅶
-        if ch in EMOJI_ASCII_MAP:
-            out.append(EMOJI_ASCII_MAP[ch])
-            continue
-
-        # кириллица
-        if ch.lower() in HOMOGLYPHS:
-            out.append(HOMOGLYPHS[ch.lower()])
-            continue
-
-        # NFKD - мат. шрифты, фуллвайд
-        decomp = unicodedata.normalize("NFKD", ch)
-        if decomp and decomp[0].isalpha():
-            base = decomp[0].lower()
-            if "a" <= base <= "z":
-                out.append(base)
-                continue
-
-        # цифры
-        if ch.isdigit():
-            out.append(ch)
-            continue
-
-        # разделители оставляем как пробел
-        if ch in "|/._-":
-            out.append(" ")
-            continue
-
-        # всё остальное -> пробел
-        out.append(" ")
-
-    normalized = "".join(out)
-    normalized = re.sub(r"\s+", " ", normalized)
-    return normalized.strip()
-
-async def clean_text(text: str):
-    text = text.lower()
-    text = re.sub(r"[ \t\r\n\.\|\•\·\_]+", "", text)
-    text = re.sub(r"[^a-z0-9/]", "", text)
-    return text
-
 FANCY_MAP = {
     "🅳": "d", "🅸": "i", "🆂": "s", "🅲": "c", "🅾": "o",
     "🆁": "r", "🅶": "g", "🆄": "u",
@@ -140,34 +78,75 @@ FANCY_MAP = {
     "о": "o", "с": "c", "р": "p",
 }
 
-async def normalize_fancy(text: str) -> str:
-    # заменяет fancy-символы
-    for k, v in FANCY_MAP.items():
-        text = text.replace(k, v)
+_COMBINED_MAP = {}
+_COMBINED_MAP.update(EMOJI_ASCII_MAP)
+_COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
+_COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
+# HOMOGLYPHS — у нас маппинг кириллицы->латиницы, добавляем напрямую
+_COMBINED_MAP.update(HOMOGLYPHS)
 
-    # убирает всё не A-Z или 0-9
-    text = re.sub(r"[^a-zA-Z0-9]", "", text)
+async def _char_to_ascii(ch: str) -> str:
+    """Пытается привести символ к ascii букве/цифре. Возвращаем '' если удаляем, ' ' если разделитель."""
+    # zero width — удаляем совсем
+    if ZERO_WIDTH_RE.match(ch):
+        return ""
+    # прямые маппинги (emoji, regional, enclosed, простые кирилки)
+    if ch in _COMBINED_MAP:
+        return _COMBINED_MAP[ch]
+    # декомпозиция NFKD — ловит математические/фуллвайд буквы (𝕕 -> d; Ｄ -> D)
+    decomp = unicodedata.normalize("NFKD", ch)
+    if decomp:
+        base = decomp[0]
+        if ('A' <= base <= 'Z') or ('a' <= base <= 'z'):
+            return base.lower()
+    # цифра остаётся
+    if ch.isdigit():
+        return ch
+    # разделители, точки и т.п. — считаем как разделитель (вернём пробел)
+    if ch in " \t\r\n./\\|_•·-:":
+        return " "
+    # всё остальное — убираем (возвращаем пробел чтобы не склеивать слова через мусор)
+    return " "
 
-    return text.lower()
+async def normalize_and_compact(raw_text: str) -> str:
+    """
+    1) декодировка %xx,
+    2) заменяет символы в один проход на ascii (или пробел/пусто),
+    3) склеивает (убирает все не a-z0-9) -> compact lower-case строка.
+    """
+    # 1) декодировка %xx
+    try:
+        text = urllib.parse.unquote(raw_text)
+    except Exception:
+        text = raw_text
+
+    # 2) NFKC нормализация
+    text = unicodedata.normalize("NFKC", text)
+
+    out_chars = []
+    for ch in text:
+        out = await _char_to_ascii(ch)
+        # _char_to_ascii возвращает '' для удаления, ' ' для разделителя, или ascii-symbol
+        out_chars.append(out)
+
+    # соединяет, убирает лишние пробелы, приводит к нижнему регистру и удаляет всё кроме a-z0-9
+    collapsed = "".join(out_chars)
+    collapsed = re.sub(r"\s+", " ", collapsed).strip()
+    compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
+    return compact
 
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
 
-    # декодирование URL
-    text = await url_decode(raw_text)
-
-    # функции нормализации
-    text = await normalize_text(text)
-    cleaned = await clean_text(text)
-    norm = await normalize_fancy(cleaned)
+    # функция нормализации
+    compact = await normalize_and_compact(raw_text)
 
     # --- Discord ---
-    if "discordgg" in norm or "discordcom" in norm or "discordappcom" in norm:
-        return "discordgg" if "discordgg" in norm else "discord.com" if "discordcom" in norm else "discordapp.com"
-
+    if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
+        return "discordgg" if "discordgg" in compact else "discord.com" if "discordcom" in compact else "discordapp.com"
     # --- Telegram ---
-    if "tme" in norm or "telegramme" in norm or "telegramorg" in norm:
-        return "t.me" if "tme" in norm else "telegram.me" if "telegramme" in norm else "telegram.org"
+    if "tme" in compact or "telegramme" in compact or "telegramorg" in compact:
+        return "t.me" if "tme" in compact else "telegram.me" if "telegramme" in compact else "telegram.org"
 
     return None
 
