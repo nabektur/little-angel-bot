@@ -157,7 +157,7 @@ async def detect_links(raw_text: str):
     text = await url_decode(raw_text)
 
     # функции нормализации
-    text = await normalize_text(raw_text)
+    text = await normalize_text(text)
     cleaned = await clean_text(text)
     norm = await normalize_fancy(cleaned)
 
