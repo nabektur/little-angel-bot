@@ -15,6 +15,26 @@ import re
 import unicodedata
 from rapidfuzz import fuzz
 
+def remove_diacritics(s: str):
+    return ''.join(c for c in unicodedata.normalize("NFD", s)
+                   if unicodedata.category(c) != "Mn")
+
+def collapse_fancy_letters(s: str):
+    out = []
+    for char in s:
+        try:
+            name = unicodedata.name(char)
+            if "LETTER" in name:
+                # выцепляем последнюю латинскую букву из имени
+                # например "MATHEMATICAL BOLD SMALL G" -> "G"
+                letter = name.split("LETTER")[-1].strip().split()[-1]
+                out.append(letter.lower())
+            else:
+                out.append(char)
+        except ValueError:
+            out.append(char)
+    return "".join(out)
+
 # Гомоглифы (кириллица, греческие, математика)
 HOMOGLYPHS = {
     # кириллица -> латиница
@@ -65,30 +85,41 @@ ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
 # Все не буквенно-цифровые -> пробел
 NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
 
+INTERFERENCE_RE = re.compile(r"[\u2500-\u257F\u2580-\u259F\u25A0-\u25FF\u2600-\u27BF]+")
+
 @AsyncLRU(maxsize=5000)
 async def normalize_text(text: str) -> str:
     if not text:
         return ""
 
-    # убирает zero-width
     text = ZERO_WIDTH_RE.sub("", text)
-
-    # нормализует Unicode
-    text = unicodedata.normalize("NFKD", text)
     text = unicodedata.normalize("NFKC", text)
 
-    text = text.lower()
+    # удаляет диакритику (кружки, точки, черточки, комбинируемые символы)
+    text = remove_diacritics(text)
 
-    # гомоглифы -> нормальная форма
+    # fancy unicode -> ascii (𝓭 -> d)
+    text = collapse_fancy_letters(text)
+
+    # гомоглифы
     text = text.translate(HOMO_MAP)
 
-    # leet -> норма
+    # leet
     text = text.translate(LEET_MAP)
 
-    # любые не-символы -> пробел
+    # удаляет emoji-квадраты и декоративные символы
+    text = INTERFERENCE_RE.sub(" ", text)
+
+    # приводит к нижнему регистру
+    text = text.lower()
+
+    # заменяет всё не алфавитно-цифровое на пробел
     text = NON_ALNUM_RE.sub(" ", text)
 
-    # убирает повторные пробелы
+    # склеивает d i s c o r d g g → discordgg
+    text = re.sub(r"(?<=\b[a-z]) (?=[a-z]\b)", "", text)
+
+    # убирает множественные пробелы
     text = re.sub(r"\s+", " ", text)
 
     return text.strip()
