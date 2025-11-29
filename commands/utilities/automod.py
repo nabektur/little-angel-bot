@@ -68,10 +68,53 @@ ENCLOSED_ALPHANUM_MAP = {
 }
 
 FANCY_MAP = {
-    "🅳": "d", "🅸": "i", "🆂": "s", "🅲": "c", "🅾": "o",
-    "🆁": "r", "🅶": "g", "🆄": "u",
-    # доп кириллица
-    "о": "o", "с": "c", "р": "p",
+    **{chr(i): chr(i - 0xFEE0).lower() for i in range(0xFF21, 0xFF3B)},
+    **{chr(i): chr(i - 0xFEE0).lower() for i in range(0xFF41, 0xFF5B)},
+
+    **{chr(0x1D400 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D41A + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D434 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D44E + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D468 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D482 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D49C + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,7,11,12,17,18]},
+    **{chr(0x1D4B6 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D4D0 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D4EA + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D504 + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,18,23]},
+    **{chr(0x1D51E + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D538 + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,17]},
+    **{chr(0x1D552 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D5A0 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D5BA + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D5D4 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D5EE + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D608 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D622 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D63C + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D656 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1D670 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x1D68A + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x24B6 + i): chr(ord('a') + i) for i in range(26)},
+    **{chr(0x24D0 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1F150 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1F130 + i): chr(ord('a') + i) for i in range(26)},
+
+    **{chr(0x1F170 + i): chr(ord('a') + i) for i in range(26)},
 }
 
 _COMBINED_MAP = {}
@@ -80,6 +123,7 @@ _COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
 _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
 # HOMOGLYPHS - у нас маппинг кириллицы->латиницы, добавляем напрямую
 _COMBINED_MAP.update(HOMOGLYPHS)
+_COMBINED_MAP.update(FANCY_MAP)
 
 async def _char_to_ascii(ch: str) -> str:
 
@@ -93,8 +137,21 @@ async def _char_to_ascii(ch: str) -> str:
         return _COMBINED_MAP[ch]
 
     code = ord(ch)
+
     if 0x1F1E6 <= code <= 0x1F1FF:
         return chr(ord("a") + (code - 0x1F1E6))
+
+    decomp = unicodedata.normalize("NFKD", ch)
+    if decomp:
+        base = decomp[0]
+        if ('A' <= base <= 'Z') or ('a' <= base <= 'z'):
+            return base.lower()
+
+    if ch.isdigit():
+        return ch
+
+    if ch in " \t\r\n./\\|_•·-:":
+        return " "
 
     try:
         name = unicodedata.name(ch)
@@ -102,30 +159,11 @@ async def _char_to_ascii(ch: str) -> str:
         name = ""
 
     if name:
-        nm = name.upper()
-
-        if "LATIN" in nm and "LETTER" in nm:
-            toks = nm.split()
-            for t in reversed(toks):
-                if len(t) == 1 and 'A' <= t <= 'Z':
-                    return t.lower()
-            if toks[-1] in ("SMALL", "CAPITAL") and len(toks) >= 2 and len(toks[-2]) == 1:
-                return toks[-2].lower()
-        for token in toks:
+        nm = name.upper().split()
+        # одиночная буква где-то внутри имени
+        for token in nm:
             if len(token) == 1 and 'A' <= token <= 'Z':
                 return token.lower()
-
-    decomp = unicodedata.normalize("NFKD", ch)
-    if decomp:
-        first = decomp[0]
-        if ('A' <= first <= 'Z') or ('a' <= first <= 'z'):
-            return first.lower()
-
-    if ch.isdigit():
-        return ch
-
-    if ch in " \t\r\n./\\|_•·-:":
-        return " "
 
     return " "
     
