@@ -79,13 +79,59 @@ LEET_MAP = str.maketrans({
     "8": "b",
 })
 
-# Zero-width символы
+# zero-width символы
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
 
-# Все не буквенно-цифровые -> пробел
+# все не буквенно-цифровые -> пробел
 NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
 
 INTERFERENCE_RE = re.compile(r"[\u2500-\u257F\u2580-\u259F\u25A0-\u25FF\u2600-\u27BF]+")
+
+# маппинг конкретных emoji-символов
+EMOJI_ASCII_MAP = {
+    "🅰️": "a", "🅱️": "b", "🅾️": "o", "🅿️": "p",
+    "Ⓜ️": "m", "ℹ️": "i", "❌": "x", "⭕": "o",
+}
+
+
+# regional indicator символы 🇦–🇿 (U+1F1E6–U+1F1FF)
+REGIONAL_INDICATOR_MAP = {
+    chr(code): chr(ord('a') + code - 0x1F1E6)
+    for code in range(0x1F1E6, 0x1F1FF + 1)
+}
+
+def normalize_unicode_letter(ch: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", ch)
+    # оставляет только ascii-букву
+    if decomposed and 'a' <= decomposed[0].lower() <= 'z':
+        return decomposed[0].lower()
+    return ch
+
+def replace_emoji_letters(text: str):
+    result = []
+
+    for ch in text:
+
+        # точечный маппинг (🅰️ → a)
+        if ch in EMOJI_ASCII_MAP:
+            result.append(EMOJI_ASCII_MAP[ch])
+            continue
+
+        # региональные флаги (🇦 → a)
+        if ch in REGIONAL_INDICATOR_MAP:
+            result.append(REGIONAL_INDICATOR_MAP[ch])
+            continue
+
+        # математические/фуллвид/курсивные символы (𝘢 → a, Ａ → a)
+        norm = normalize_unicode_letter(ch)
+        if norm != ch:
+            result.append(norm)
+            continue
+
+        # обычный символ
+        result.append(ch)
+
+    return "".join(result)
 
 @AsyncLRU(maxsize=5000)
 async def normalize_text(text: str) -> str:
@@ -106,6 +152,9 @@ async def normalize_text(text: str) -> str:
 
     # leet
     text = text.translate(LEET_MAP)
+
+    # заменяет emoji-символы на ascii
+    text = replace_emoji_letters(text)
 
     # удаляет emoji-квадраты и декоративные символы
     text = INTERFERENCE_RE.sub(" ", text)
