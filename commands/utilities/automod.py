@@ -16,11 +16,7 @@ from cache import AsyncLRU
 from classes.bot import LittleAngelBot
 from modules.configuration import config
 
-async def url_decode(text: str):
-    try:
-        return urllib.parse.unquote(text)
-    except:
-        return text
+VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
 
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 
@@ -82,55 +78,73 @@ _COMBINED_MAP = {}
 _COMBINED_MAP.update(EMOJI_ASCII_MAP)
 _COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
 _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
-# HOMOGLYPHS — у нас маппинг кириллицы->латиницы, добавляем напрямую
+# HOMOGLYPHS - у нас маппинг кириллицы->латиницы, добавляем напрямую
 _COMBINED_MAP.update(HOMOGLYPHS)
 
 async def _char_to_ascii(ch: str) -> str:
-    """Пытается привести символ к ascii букве/цифре. Возвращаем '' если удаляем, ' ' если разделитель."""
-    # zero width — удаляем совсем
+
+    if VARIATION_SELECTOR_RE.match(ch):
+        return ""
+
     if ZERO_WIDTH_RE.match(ch):
         return ""
-    # прямые маппинги (emoji, regional, enclosed, простые кирилки)
+
     if ch in _COMBINED_MAP:
         return _COMBINED_MAP[ch]
-    # декомпозиция NFKD — ловит математические/фуллвайд буквы (𝕕 -> d; Ｄ -> D)
+
+    code = ord(ch)
+    if 0x1F1E6 <= code <= 0x1F1FF:
+        return chr(ord("a") + (code - 0x1F1E6))
+
+    try:
+        name = unicodedata.name(ch)
+    except ValueError:
+        name = ""
+
+    if name:
+        nm = name.upper()
+
+        if "LATIN" in nm and "LETTER" in nm:
+            toks = nm.split()
+            for t in reversed(toks):
+                if len(t) == 1 and 'A' <= t <= 'Z':
+                    return t.lower()
+            if toks[-1] in ("SMALL", "CAPITAL") and len(toks) >= 2 and len(toks[-2]) == 1:
+                return toks[-2].lower()
+        for token in toks:
+            if len(token) == 1 and 'A' <= token <= 'Z':
+                return token.lower()
+
     decomp = unicodedata.normalize("NFKD", ch)
     if decomp:
-        base = decomp[0]
-        if ('A' <= base <= 'Z') or ('a' <= base <= 'z'):
-            return base.lower()
-    # цифра остаётся
+        first = decomp[0]
+        if ('A' <= first <= 'Z') or ('a' <= first <= 'z'):
+            return first.lower()
+
     if ch.isdigit():
         return ch
-    # разделители, точки и т.п. — считаем как разделитель (вернём пробел)
+
     if ch in " \t\r\n./\\|_•·-:":
         return " "
-    # всё остальное — убираем (возвращаем пробел чтобы не склеивать слова через мусор)
+
     return " "
+    
 
 async def normalize_and_compact(raw_text: str) -> str:
-    """
-    1) декодировка %xx,
-    2) заменяет символы в один проход на ascii (или пробел/пусто),
-    3) склеивает (убирает все не a-z0-9) -> compact lower-case строка.
-    """
-    # 1) декодировка %xx
+
     try:
         text = urllib.parse.unquote(raw_text)
     except Exception:
         text = raw_text
 
-    # 2) NFKC нормализация
+
     text = unicodedata.normalize("NFKC", text)
 
-    out_chars = []
+    out = []
     for ch in text:
-        out = await _char_to_ascii(ch)
-        # _char_to_ascii возвращает '' для удаления, ' ' для разделителя, или ascii-symbol
-        out_chars.append(out)
+        out.append(await _char_to_ascii(ch))
 
-    # соединяет, убирает лишние пробелы, приводит к нижнему регистру и удаляет всё кроме a-z0-9
-    collapsed = "".join(out_chars)
+    collapsed = "".join(out)
     collapsed = re.sub(r"\s+", " ", collapsed).strip()
     compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
     return compact
@@ -143,7 +157,7 @@ async def detect_links(raw_text: str):
 
     # --- Discord ---
     if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
-        return "discordgg" if "discordgg" in compact else "discord.com" if "discordcom" in compact else "discordapp.com"
+        return "discord.gg" if "discordgg" in compact else "discord.com" if "discordcom" in compact else "discordapp.com"
     # --- Telegram ---
     if "tme" in compact or "telegramme" in compact or "telegramorg" in compact:
         return "t.me" if "tme" in compact else "telegram.me" if "telegramme" in compact else "telegram.org"
