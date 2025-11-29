@@ -298,12 +298,16 @@ class AutoModeration(commands.Cog):
             return
         
         # расстановка приоритетов
-        priority: int = 1
+        priority: int = 2
 
         if message.channel.permissions_for(message.author).manage_messages:
             priority = 0
         elif message.channel.id in config.ADS_CHANNELS_IDS:
             priority = 0
+        else:
+            now = datetime.now(timezone.utc)
+            if message.author.joined_at and (now - message.author.joined_at) > timedelta(weeks=2):
+                priority = 1
 
         # модерация активности
 
@@ -387,7 +391,7 @@ class AutoModeration(commands.Cog):
         # модерация сообщений
         if message.content:
                 
-                if priority > 0:
+                if priority > 1:
 
                     matched = await detect_links(message.content)
 
