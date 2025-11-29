@@ -5,6 +5,8 @@ import discord
 import asyncio
 import unicodedata
 
+import urllib.parse
+
 from rapidfuzz import fuzz
 
 from datetime import timedelta, datetime, timezone
@@ -13,6 +15,12 @@ from discord.ext import commands
 from cache import AsyncLRU
 from classes.bot import LittleAngelBot
 from modules.configuration import config
+
+async def url_decode(text: str):
+    try:
+        return urllib.parse.unquote(text)
+    except:
+        return text
 
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 
@@ -144,15 +152,16 @@ async def normalize_fancy(text: str) -> str:
 
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
+
+    # декодирование URL
+    text = await url_decode(raw_text)
+
     # функции нормализации
     text = await normalize_text(raw_text)
     cleaned = await clean_text(text)
-
-    # применяет ещё одну нормализацию для fancy-символов
     norm = await normalize_fancy(cleaned)
 
     # --- Discord ---
-    # Ловит любую форму discord.gg
     if "discordgg" in norm or "discordcom" in norm or "discordappcom" in norm:
         return "discordgg" if "discordgg" in norm else "discord.com" if "discordcom" in norm else "discordapp.com"
 
