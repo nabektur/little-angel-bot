@@ -230,9 +230,12 @@ class Snipe(commands.Cog):
             'perms': False
         }
         try:
-            sdict['files'] = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
-        except:
-            sdict['files'] = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+            try:
+                sdict['files'] = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
+            except:
+                sdict['files'] = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+        except discord.NotFound:
+            sdict['files'] = []
 
         try:
             async for entry in message.guild.audit_logs(limit=1, action=discord.AuditLogAction.message_delete):
