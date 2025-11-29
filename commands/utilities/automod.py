@@ -166,6 +166,8 @@ class AutoModeration(commands.Cog):
         # базовые проверки
         if message.author == self.bot.user:
             return
+        if message.author.bot:
+            return
         if not message.guild:
             return
         if message.guild.id != int(config.GUILD_ID.get_secret_value()):
@@ -207,13 +209,13 @@ class AutoModeration(commands.Cog):
                             f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
                             f"Наказание не применяется, за исключением удаления сообщения\n\n"
                             f"Информация об активности:\n```\n{activity_info}```\n\n"
-                            f"Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
-                            f"Если ты считаешь, что это ошибка, проигнорируй это сообщение"
+                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
                         ),
                         color=0xff0000
                     )
                     mention_embed.set_thumbnail(url=message.author.display_avatar.url)
                     mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
 
                     await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
@@ -286,7 +288,7 @@ class AutoModeration(commands.Cog):
                             f"Тебе выдан мут на 1 час\n\n"
                             f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n\n"
-                            f"Дополнительную информацию можно посмотреть в канале автомодерации"
+                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                         ),
                         color=0xff0000
                     )
