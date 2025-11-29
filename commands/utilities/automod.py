@@ -45,6 +45,7 @@ HOMOGLYPHS = {
     "｜": "l", "∣": "l",
     "∕": "/",
 }
+HOMO_MAP = str.maketrans(HOMOGLYPHS)
 
 # leetspeak
 LEET_MAP = str.maketrans({
@@ -64,7 +65,8 @@ ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
 # Все не буквенно-цифровые -> пробел
 NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
 
-def normalize_text(text: str) -> str:
+@AsyncLRU(maxsize=5000)
+async def normalize_text(text: str) -> str:
     if not text:
         return ""
 
@@ -78,7 +80,7 @@ def normalize_text(text: str) -> str:
     text = text.lower()
 
     # гомоглифы -> нормальная форма
-    text = "".join(HOMOGLYPHS.get(ch, ch) for ch in text)
+    text = text.translate(HOMO_MAP)
 
     # leet -> норма
     text = text.translate(LEET_MAP)
@@ -106,7 +108,7 @@ async def find_spam_matches(text: str, patterns=None):
     if not text:
         return False
 
-    norm = normalize_text(text)
+    norm = await normalize_text(text)
     no_spaces = norm.replace(" ", "")
 
     if patterns is None:
@@ -221,7 +223,54 @@ class AutoModeration(commands.Cog):
 
                     await self.safe_delete(message)
                     return
+                
+        
+        # модерация сообщений
+        if message.content:
 
+                matched = await find_spam_matches(message.content)
+
+                if matched:
+
+                    # первые 300 символов сообщения
+                    preview = message.content[:300].replace("`", "'")
+
+                    log_embed = discord.Embed(
+                        title="Реклама в сообщении",
+                        description=(
+                            f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                            f"Причина: подозрение на рекламу в сообщении\n\n"
+                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Первые 300 символов:\n```\n{preview}\n```"
+                        ),
+                        color=0xff0000
+                    )
+
+                    log_embed.set_footer(text=f"ID: {message.author.id}")
+                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+
+                    await self.safe_send_to_log(embed=log_embed)
+
+                    mention_embed = discord.Embed(
+                        title="Реклама в сообщении",
+                        description=(
+                            f"На сервере запрещена реклама сторонних серверов\n"
+                            f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
+                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+                        ),
+                        color=0xff0000
+                    )
+                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
+
+                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
+
+                    await self.safe_delete(message)
+                    return
 
         # модерация вложенных файлов
 
@@ -232,7 +281,7 @@ class AutoModeration(commands.Cog):
                 if not attachment.content_type:
                     continue
 
-                if not ("multipart" in attachment.content_type or "text" in attachment.content_type):
+                if not any(ct in attachment.content_type for ct in ["text", "json", "xml", "csv", "html", "htm", "md", "yaml", "yml", "ini", "log", "multipart", "text/plain", "text/html", "text/markdown", "text/xml", "text/csv", "text/yaml", "text/yml", "text/ini", "text/log"]):
                     continue
 
                 # ограничение по размеру
