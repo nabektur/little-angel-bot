@@ -61,6 +61,11 @@ class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
+    async def safe_send_to_channel(self, channel: discord.abc.Messageable, *args, **kwargs):
+        try:
+            return await channel.send(*args, **kwargs)
+        except Exception:
+            return None
 
     async def safe_send_to_log(self, *args, **kwargs):
         try:
@@ -71,13 +76,11 @@ class AutoModeration(commands.Cog):
         except Exception:
             return None
 
-
     async def safe_delete(self, msg: discord.Message):
         try: 
             await msg.delete()
         except Exception:
             pass
-
 
     async def safe_timeout(self, member: discord.Member, duration: timedelta, reason: str):
         try:
@@ -111,7 +114,7 @@ class AutoModeration(commands.Cog):
                         f"Party ID: {message.activity.party_id}\n"
                     )
 
-                    embed = discord.Embed(
+                    log_embed = discord.Embed(
                         title="Реклама через активность",
                         description=(
                             f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
@@ -120,12 +123,28 @@ class AutoModeration(commands.Cog):
                         ),
                         color=0xff0000
                     )
-                    embed.set_footer(text=f"ID: {message.author.id}")
-                    embed.set_thumbnail(url=message.author.display_avatar.url)
-                    embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
+                    log_embed.set_footer(text=f"ID: {message.author.id}")
+                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    log_embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
 
-                    await self.safe_send_to_log(embed=embed)
+                    await self.safe_send_to_log(embed=log_embed)
+
+                    mention_embed = discord.Embed(
+                        title="Реклама внутри активности",
+                        description=(
+                            f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
+                            f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                            f"Информация об активности:\n```\n{activity_info}```\n\n"
+                            f"Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
+                            f"Если ты считаешь, что это ошибка, проигнорируй это сообщение"
+                        ),
+                        color=0xff0000
+                    )
+                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+
+                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
                     await self.safe_delete(message)
                     return
@@ -170,7 +189,7 @@ class AutoModeration(commands.Cog):
                         f"Тип: {attachment.content_type}\n"
                     )
 
-                    embed = discord.Embed(
+                    log_embed = discord.Embed(
                         title="Реклама внутри файла",
                         description=(
                             f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час.\n"
@@ -182,12 +201,28 @@ class AutoModeration(commands.Cog):
                         color=0xff0000
                     )
 
-                    embed.set_footer(text=f"ID: {message.author.id}")
-                    embed.set_thumbnail(url=message.author.display_avatar.url)
-                    embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+                    log_embed.set_footer(text=f"ID: {message.author.id}")
+                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
 
-                    await self.safe_send_to_log(embed=embed)
+                    await self.safe_send_to_log(embed=log_embed)
+
+                    mention_embed = discord.Embed(
+                        title="Реклама внутри файла",
+                        description=(
+                            f"На сервере запрещена реклама сторонних серверов (даже внутри файлов)\n"
+                            f"Тебе выдан мут на 1 час\n\n"
+                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n"
+                            f"Информация о файле:\n```\n{file_info}```\n\n"
+                            f"Дополнительную информацию можно посмотреть в канале автомодерации"
+                        ),
+                        color=0xff0000
+                    )
+                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+
+                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
                     await self.safe_delete(message)
                     await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
