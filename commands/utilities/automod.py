@@ -11,6 +11,86 @@ from cache import AsyncLRU
 from classes.bot import LittleAngelBot
 from modules.configuration import config
 
+import re
+import unicodedata
+
+# карта гомоглифов
+HOMOGLYPHS = {
+    # перевод кириллица → латиница
+    "а": "a", "А": "A",
+    "е": "e", "Е": "E",
+    "о": "o", "О": "O",
+    "р": "p", "Р": "P",
+    "с": "c", "С": "C",
+    "х": "x", "Х": "X",
+    "у": "y", "У": "Y",
+    "к": "k", "К": "K",
+    "м": "m", "М": "M",
+    "т": "t", "Т": "T",
+    "в": "b", "В": "B",
+    "й": "i", "Й": "I",
+    "ё": "e", "Ё": "E",
+
+    # греческие аналоги
+    "α": "a", "β": "b", "γ": "y", "δ": "d",
+    "ε": "e", "ζ": "z", "η": "h", "ι": "i",
+    "κ": "k", "λ": "l", "μ": "m", "ν": "n",
+    "ο": "o", "π": "p", "ρ": "p", "σ": "s",
+    "τ": "t", "υ": "y", "φ": "f", "χ": "x",
+    "ω": "w",
+
+    # похожие математические символы
+    "∅": "o", "○": "o", "●": "o", "•": "o",
+    "∣": "l", "｜": "l", "∕": "/",
+}
+
+# leet перевод в нормальный текст
+LEET_MAP = str.maketrans({
+    "0": "o",
+    "1": "i",
+    "3": "e",
+    "4": "a",
+    "5": "s",
+    "6": "b",
+    "7": "t",
+    "8": "b",
+})
+
+# zero-width символы
+ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
+
+# любые спецсимволы, кроме a-z0-9
+NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
+
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+
+    # убирает zero-width
+    text = ZERO_WIDTH_RE.sub("", text)
+
+    # нормализует Unicode
+    text = unicodedata.normalize("NFKD", text)
+    text = unicodedata.normalize("NFKC", text)
+
+    # приводит к нижнему регистру
+    text = text.lower()
+
+    # перевод гомоглифов
+    text = "".join(HOMOGLYPHS.get(ch, ch) for ch in text)
+
+    # leetspeak переводит в нормальный текст
+    text = text.translate(LEET_MAP)
+
+    # убирает обфускацию (любой не-буквенно-цифровой -> пробел)
+    text = NON_ALNUM_RE.sub(" ", text)
+
+    # убирает многократные пробелы
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
 
 links_patterns = [
     "discord.gg",
@@ -18,11 +98,6 @@ links_patterns = [
     "discordapp.com/invite",
     "t.me/joinchat",
     "t.me",
-    "https://discord.gg",
-    "https://discord.com/invite",
-    "https://discordapp.com/invite",
-    "https://t.me/joinchat",
-    "https://t.me"
 ]
 
 
@@ -30,29 +105,30 @@ links_patterns = [
 
 
 @AsyncLRU(maxsize=1024)
-async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> typing.Union[bool, str]:
+async def find_spam_matches(text: str, patterns=None):
     if not text:
         return False
-    
+
+    text = normalize_text(text)
+    clean_no_spaces = text.replace(" ", "")
+
     if patterns is None:
         patterns = links_patterns
 
-    text = text.lower()
+    # прямые вхождения
+    for t in (text, clean_no_spaces):
+        for p in patterns:
+            if p in t:
+                return p
 
-    # прямое совпадение
-    for p in patterns:
-        if p in text:
-            return p
-
-    # частичное совпадение
-    words = text.replace("/", " ").replace("\\", " ").replace("-", " ").split()
-    words = words[:5000] # ограничение по количеству слов
+    # fuzzy match (нечёткое совпадение)
+    words = text.split()
+    words = words[:5000]
 
     for w in words:
         for p in patterns:
-            if len(w) >= 3 and len(w) <= len(p) + 3:
-                if fuzz.ratio(w, p) > 80:
-                    return w
+            if fuzz.ratio(w, p) > 80:
+                return w
 
     return False
 
