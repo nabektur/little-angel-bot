@@ -13,10 +13,11 @@ from modules.configuration import config
 
 import re
 import unicodedata
+from rapidfuzz import fuzz
 
-# карта гомоглифов
+# Гомоглифы (кириллица, греческие, математика)
 HOMOGLYPHS = {
-    # перевод кириллица → латиница
+    # кириллица -> латиница
     "а": "a", "А": "A",
     "е": "e", "Е": "E",
     "о": "o", "О": "O",
@@ -31,7 +32,7 @@ HOMOGLYPHS = {
     "й": "i", "Й": "I",
     "ё": "e", "Ё": "E",
 
-    # греческие аналоги
+    # греческие
     "α": "a", "β": "b", "γ": "y", "δ": "d",
     "ε": "e", "ζ": "z", "η": "h", "ι": "i",
     "κ": "k", "λ": "l", "μ": "m", "ν": "n",
@@ -39,12 +40,13 @@ HOMOGLYPHS = {
     "τ": "t", "υ": "y", "φ": "f", "χ": "x",
     "ω": "w",
 
-    # похожие математические символы
-    "∅": "o", "○": "o", "●": "o", "•": "o",
-    "∣": "l", "｜": "l", "∕": "/",
+    # похожие знаки
+    "○": "o", "●": "o", "•": "o", "∅": "o",
+    "｜": "l", "∣": "l",
+    "∕": "/",
 }
 
-# leet перевод в нормальный текст
+# leetspeak
 LEET_MAP = str.maketrans({
     "0": "o",
     "1": "i",
@@ -56,12 +58,11 @@ LEET_MAP = str.maketrans({
     "8": "b",
 })
 
-# zero-width символы
+# Zero-width символы
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
 
-# любые спецсимволы, кроме a-z0-9
+# Все не буквенно-цифровые -> пробел
 NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
-
 
 def normalize_text(text: str) -> str:
     if not text:
@@ -74,24 +75,24 @@ def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKD", text)
     text = unicodedata.normalize("NFKC", text)
 
-    # приводит к нижнему регистру
     text = text.lower()
 
-    # перевод гомоглифов
+    # гомоглифы -> нормальная форма
     text = "".join(HOMOGLYPHS.get(ch, ch) for ch in text)
 
-    # leetspeak переводит в нормальный текст
+    # leet -> норма
     text = text.translate(LEET_MAP)
 
-    # убирает обфускацию (любой не-буквенно-цифровой -> пробел)
+    # любые не-символы -> пробел
     text = NON_ALNUM_RE.sub(" ", text)
 
-    # убирает многократные пробелы
+    # убирает повторные пробелы
     text = re.sub(r"\s+", " ", text)
 
     return text.strip()
 
 
+# паттерны ссылок
 links_patterns = [
     "discord.gg",
     "discord.com/invite",
@@ -101,29 +102,24 @@ links_patterns = [
 ]
 
 
-# MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 мегабайт лимит
-
-
-@AsyncLRU(maxsize=1024)
 async def find_spam_matches(text: str, patterns=None):
     if not text:
         return False
 
-    text = normalize_text(text)
-    clean_no_spaces = text.replace(" ", "")
+    norm = normalize_text(text)
+    no_spaces = norm.replace(" ", "")
 
     if patterns is None:
         patterns = links_patterns
 
-    # прямые вхождения
-    for t in (text, clean_no_spaces):
+    # Прямое вхождение (с пробелами и без)
+    for candidate in (norm, no_spaces):
         for p in patterns:
-            if p in t:
+            if p in candidate:
                 return p
 
-    # fuzzy match (нечёткое совпадение)
-    words = text.split()
-    words = words[:5000]
+    # Нечёткое совпадение по словам
+    words = norm.split()[:4000]
 
     for w in words:
         for p in patterns:
@@ -131,7 +127,6 @@ async def find_spam_matches(text: str, patterns=None):
                 return w
 
     return False
-
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
