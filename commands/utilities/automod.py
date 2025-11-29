@@ -296,7 +296,7 @@ class AutoModeration(commands.Cog):
                 log_embed.set_footer(text=f"ID: {message.author.id}")
                 log_embed.set_thumbnail(url=message.author.display_avatar.url)
                 log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                log_embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
+                log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
 
                 await self.safe_send_to_log(embed=log_embed)
 
@@ -377,7 +377,7 @@ class AutoModeration(commands.Cog):
                         log_embed.set_footer(text=f"ID: {message.author.id}")
                         log_embed.set_thumbnail(url=message.author.display_avatar.url)
                         log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+                        log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
 
                         await self.safe_send_to_log(embed=log_embed)
 
@@ -468,7 +468,7 @@ class AutoModeration(commands.Cog):
                     log_embed.set_footer(text=f"ID: {message.author.id}")
                     log_embed.set_thumbnail(url=message.author.display_avatar.url)
                     log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+                    log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
 
                     await self.safe_send_to_log(embed=log_embed)
 
