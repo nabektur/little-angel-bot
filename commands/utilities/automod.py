@@ -114,7 +114,7 @@ class AutoModeration(commands.Cog):
                     embed = discord.Embed(
                         title="Реклама через активность",
                         description=(
-                            f"Удалено сообщение от {message.author.mention} (`@{message.author}`)\n"
+                            f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
                             f"Причина: подозрение на рекламу через активность\n\n"
                             f"Информация об активности:\n```\n{activity_info}```"
                         ),
