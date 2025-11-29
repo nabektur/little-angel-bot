@@ -4,19 +4,13 @@ import discord
 import asyncio
 
 from rapidfuzz import fuzz
-
-from datetime                  import timedelta, datetime, timezone
-from apscheduler.triggers.date import DateTrigger
-
-from cache import AsyncLRU, AsyncTTL
-
-from discord     import app_commands
+from datetime import timedelta, datetime, timezone
 from discord.ext import commands
 
-from classes.bot       import LittleAngelBot
-from classes.database  import db
+from cache import AsyncLRU
+from classes.bot import LittleAngelBot
+from modules.configuration import config
 
-from modules.configuration  import config
 
 links_patterns = [
     "discord.gg",
@@ -31,6 +25,10 @@ links_patterns = [
     "https://t.me"
 ]
 
+
+# MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 мегабайт лимит
+
+
 @AsyncLRU(maxsize=1024)
 async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> typing.Union[bool, str]:
     if not text:
@@ -41,58 +39,159 @@ async def find_spam_matches(text: str, patterns: typing.List[str] = None) -> typ
 
     text = text.lower()
 
+    # прямое совпадение
     for p in patterns:
         if p in text:
             return p
 
+    # частичное совпадение
     words = text.replace("/", " ").replace("\\", " ").replace("-", " ").split()
+    words = words[:5000] # ограничение по количеству слов
 
     for w in words:
         for p in patterns:
-            if fuzz.ratio(w, p) > 80:
-                return w
+            if len(w) >= 3 and len(w) <= len(p) + 3:
+                if fuzz.ratio(w, p) > 80:
+                    return w
 
     return False
+
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
+
+    async def safe_send_to_log(self, *args, **kwargs):
+        try:
+            channel = self.bot.get_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
+            if not channel:
+                channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
+            return await channel.send(*args, **kwargs)
+        except Exception:
+            return None
+
+
+    async def safe_delete(self, msg: discord.Message):
+        try: 
+            await msg.delete()
+        except Exception:
+            pass
+
+
+    async def safe_timeout(self, member: discord.Member, duration: timedelta, reason: str):
+        try:
+            await member.timeout(duration, reason=reason)
+        except Exception:
+            pass
+
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+
+        # базовые проверки
         if message.author == self.bot.user:
             return
         if not message.guild:
             return
         if message.guild.id != int(config.GUILD_ID.get_secret_value()):
             return
-        if message.activity != None:
-            await message.delete()
+
+
+        # модерация активности
+
+        if message.activity is not None:
+
+            # если участник зашёл меньше 2 недель назад -> удаляет и логирует
+            if message.author.joined_at:
+                if (datetime.now(timezone.utc) - message.author.joined_at) < timedelta(weeks=2):
+
+                    activity_info = (
+                        f"Тип: {message.activity.type}\n"
+                        f"Party ID: {message.activity.party_id}\n"
+                    )
+
+                    embed = discord.Embed(
+                        title="Реклама через активность",
+                        description=(
+                            f"Удалено сообщение от {message.author.mention} (`@{message.author}`)\n"
+                            f"Причина: подозрение на рекламу через activity\n\n"
+                            f"Информация об активности:\n```\n{activity_info}```"
+                        ),
+                        color=0xff0000
+                    )
+                    embed.set_footer(text=f"ID: {message.author.id}")
+                    embed.set_thumbnail(url=message.author.display_avatar.url)
+                    embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
+
+                    await self.safe_send_to_log(embed=embed)
+
+                    await self.safe_delete(message)
+                    return
+
+
+        # модерация вложенных файлов
+
         if message.attachments:
+
             for attachment in message.attachments:
-                if attachment.content_type and ("multipart" in attachment.content_type or "text" in attachment.content_type):
-                    try: 
-                        file_bytes = await attachment.read()
-                    except: 
-                        return
-                    else:
-                        content = file_bytes.decode(errors='ignore')
-                        matched = await find_spam_matches(content)
-                        if matched:
-                            log_channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
-                            embed = discord.Embed(
-                                title="Реклама внутри файлов",
-                                description=f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час за рекламу в текстовом файле\n\nЧасть текста, на которую среагировал бот:```\n{matched}```",
-                                color=0xff0000
-                            )
-                            embed.set_footer(text=f"ID: {message.author.id}")
-                            embed.set_thumbnail(url=message.author.display_avatar.url)
-                            embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                            embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel}`)", inline=False)
-                            await log_channel.send(embed=embed)
-                            await message.delete()
-                            await message.author.timeout(timedelta(hours=1), reason="Реклама в текстовом файле")
-                            return
+
+                if not attachment.content_type:
+                    continue
+
+                if not ("multipart" in attachment.content_type or "text" in attachment.content_type):
+                    continue
+
+                # ограничение по размеру
+                # if attachment.size > MAX_FILE_SIZE_BYTES:
+                #     continue
+
+                try:
+                    file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
+                except (asyncio.TimeoutError, discord.HTTPException):
+                    continue
+
+                if file_bytes.count(b"\x00") > 100:
+                    continue  # бинарный файл
+
+                content = file_bytes[:1_000_000].decode(errors='ignore')
+
+                matched = await find_spam_matches(content)
+
+                if matched:
+
+                    # первые 300 символов файла
+                    preview = content[:300].replace("`", "'")
+
+                    file_info = (
+                        f"Имя файла: {attachment.filename}\n"
+                        f"Размер: {attachment.size} байт\n"
+                        f"Тип: {attachment.content_type}\n"
+                    )
+
+                    embed = discord.Embed(
+                        title="Реклама внутри файла",
+                        description=(
+                            f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час.\n"
+                            f"Причина: реклама внутри прикрепленного файла.\n\n"
+                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Информация о файле:\n```\n{file_info}```\n"
+                            f"Первые 300 символов:\n```\n{preview}\n```"
+                        ),
+                        color=0xff0000
+                    )
+
+                    embed.set_footer(text=f"ID: {message.author.id}")
+                    embed.set_thumbnail(url=message.author.display_avatar.url)
+                    embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                    embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+
+                    await self.safe_send_to_log(embed=embed)
+
+                    await self.safe_delete(message)
+                    await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
+                    return
 
 
 async def setup(bot: LittleAngelBot):
