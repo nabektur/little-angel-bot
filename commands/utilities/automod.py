@@ -1,9 +1,12 @@
 import io
 import typing
+import re
 import discord
 import asyncio
+import unicodedata
 
 from rapidfuzz import fuzz
+
 from datetime import timedelta, datetime, timezone
 from discord.ext import commands
 
@@ -11,204 +14,106 @@ from cache import AsyncLRU
 from classes.bot import LittleAngelBot
 from modules.configuration import config
 
-import re
-import unicodedata
-from rapidfuzz import fuzz
-
-def remove_diacritics(s: str):
-    return ''.join(c for c in unicodedata.normalize("NFD", s)
-                   if unicodedata.category(c) != "Mn")
-
-def collapse_fancy_letters(s: str):
-    out = []
-    for char in s:
-        try:
-            name = unicodedata.name(char)
-            if "LETTER" in name:
-                # выцепляем последнюю латинскую букву из имени
-                # например "MATHEMATICAL BOLD SMALL G" -> "G"
-                letter = name.split("LETTER")[-1].strip().split()[-1]
-                out.append(letter.lower())
-            else:
-                out.append(char)
-        except ValueError:
-            out.append(char)
-    return "".join(out)
-
-# Гомоглифы (кириллица, греческие, математика)
-HOMOGLYPHS = {
-    # кириллица -> латиница
-    "а": "a", "А": "A",
-    "е": "e", "Е": "E",
-    "о": "o", "О": "O",
-    "р": "p", "Р": "P",
-    "с": "c", "С": "C",
-    "х": "x", "Х": "X",
-    "у": "y", "У": "Y",
-    "к": "k", "К": "K",
-    "м": "m", "М": "M",
-    "т": "t", "Т": "T",
-    "в": "b", "В": "B",
-    "й": "i", "Й": "I",
-    "ё": "e", "Ё": "E",
-
-    # греческие
-    "α": "a", "β": "b", "γ": "y", "δ": "d",
-    "ε": "e", "ζ": "z", "η": "h", "ι": "i",
-    "κ": "k", "λ": "l", "μ": "m", "ν": "n",
-    "ο": "o", "π": "p", "ρ": "p", "σ": "s",
-    "τ": "t", "υ": "y", "φ": "f", "χ": "x",
-    "ω": "w",
-
-    # похожие знаки
-    "○": "o", "●": "o", "•": "o", "∅": "o",
-    "｜": "l", "∣": "l",
-    "∕": "/",
-}
-HOMO_MAP = str.maketrans(HOMOGLYPHS)
-
-# leetspeak
-LEET_MAP = str.maketrans({
-    "0": "o",
-    "1": "i",
-    "3": "e",
-    "4": "a",
-    "5": "s",
-    "6": "b",
-    "7": "t",
-    "8": "b",
-})
-
-# zero-width символы
-ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF]")
-
-# все не буквенно-цифровые -> пробел
-NON_ALNUM_RE = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
-
-INTERFERENCE_RE = re.compile(r"[\u2500-\u257F\u2580-\u259F\u25A0-\u25FF\u2600-\u27BF]+")
-
-# маппинг конкретных emoji-символов
+# emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
     "🅰️": "a", "🅱️": "b", "🅾️": "o", "🅿️": "p",
     "Ⓜ️": "m", "ℹ️": "i", "❌": "x", "⭕": "o",
 }
 
-
-# regional indicator символы 🇦–🇿 (U+1F1E6–U+1F1FF)
+# 🇦 -> a
 REGIONAL_INDICATOR_MAP = {
-    chr(code): chr(ord('a') + code - 0x1F1E6)
+    chr(code): chr(ord('a') + (code - 0x1F1E6))
     for code in range(0x1F1E6, 0x1F1FF + 1)
 }
 
-def normalize_unicode_letter(ch: str) -> str:
-    decomposed = unicodedata.normalize("NFKD", ch)
-    # оставляет только ascii-букву
-    if decomposed and 'a' <= decomposed[0].lower() <= 'z':
-        return decomposed[0].lower()
-    return ch
+# Кириллица -> латиница
+HOMOGLYPHS = {
+    "а": "a", "е": "e", "о": "o", "р": "p",
+    "с": "c", "х": "x", "у": "y", "к": "k",
+    "м": "m", "т": "t", "в": "b", "н": "h",
+    "д": "d", "г": "g", "б": "b",
+}
 
-def replace_emoji_letters(text: str):
-    result = []
+async def normalize_text(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+
+    out = []
 
     for ch in text:
 
-        # точечный маппинг (🅰️ → a)
-        if ch in EMOJI_ASCII_MAP:
-            result.append(EMOJI_ASCII_MAP[ch])
-            continue
-
-        # региональные флаги (🇦 → a)
+        # региональные буквы 🇦🇧
         if ch in REGIONAL_INDICATOR_MAP:
-            result.append(REGIONAL_INDICATOR_MAP[ch])
+            out.append(REGIONAL_INDICATOR_MAP[ch])
             continue
 
-        # математические/фуллвид/курсивные символы (𝘢 → a, Ａ → a)
-        norm = normalize_unicode_letter(ch)
-        if norm != ch:
-            result.append(norm)
+        # emoji-буквы 🅳🅾️🅶
+        if ch in EMOJI_ASCII_MAP:
+            out.append(EMOJI_ASCII_MAP[ch])
             continue
 
-        # обычный символ
-        result.append(ch)
+        # кириллица -> латиница
+        if ch.lower() in HOMOGLYPHS:
+            out.append(HOMOGLYPHS[ch.lower()])
+            continue
 
-    return "".join(result)
+        # NFKD мат. символы Q𝕠𝖗𝖉
+        decomp = unicodedata.normalize("NFKD", ch)
+        if decomp and 'a' <= decomp[0].lower() <= 'z':
+            out.append(decomp[0].lower())
+            continue
 
-@AsyncLRU(maxsize=5000)
-async def normalize_text(text: str) -> str:
-    if not text:
-        return ""
+        # цифры
+        if ch.isdigit():
+            out.append(ch)
+            continue
 
-    text = ZERO_WIDTH_RE.sub("", text)
-    text = unicodedata.normalize("NFKC", text)
+        # всё остальное -> пробел
+        out.append(" ")
 
-    # удаляет диакритику (кружки, точки, черточки, комбинируемые символы)
-    text = remove_diacritics(text)
+    normalized = "".join(out)
 
-    # fancy unicode -> ascii (𝓭 -> d)
-    text = collapse_fancy_letters(text)
+    # убрать повторные пробелы
+    normalized = re.sub(r"\s+", " ", normalized)
 
-    # гомоглифы
-    text = text.translate(HOMO_MAP)
+    return normalized.strip()
 
-    # leet
-    text = text.translate(LEET_MAP)
-
-    # заменяет emoji-символы на ascii
-    text = replace_emoji_letters(text)
-
-    # удаляет emoji-квадраты и декоративные символы
-    text = INTERFERENCE_RE.sub(" ", text)
-
-    # приводит к нижнему регистру
+async def clean_text(text: str):
     text = text.lower()
+    text = re.sub(r"[\s\.\|\•\·\_]+", "", text)
+    text = re.sub(r"[^a-z0-9]", "", text)
+    return text
 
-    # заменяет всё не алфавитно-цифровое на пробел
-    text = NON_ALNUM_RE.sub(" ", text)
-
-    # склеивает d i s c o r d g g → discordgg
-    text = re.sub(r"(?<=\b[a-z]) (?=[a-z]\b)", "", text)
-
-    # убирает множественные пробелы
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
-
-
-# паттерны ссылок
-links_patterns = [
-    "discord.gg",
-    "discord.com/invite",
-    "discordapp.com/invite",
-    "t.me/joinchat",
-    "t.me",
+DISCORD_PATTERNS = [
+    re.compile(r"discordgg([a-z0-9]{2,32})"),
+    re.compile(r"discordcominvite([a-z0-9]{2,32})"),
+    re.compile(r"discordappcominvite([a-z0-9]{2,32})"),
 ]
 
+TELEGRAM_PATTERNS = [
+    re.compile(r"tme([a-z0-9_/]{2,64})"),
+    re.compile(r"telegramme([a-z0-9_/]{2,64})"),
+    re.compile(r"telegramorg([a-z0-9_/]{2,64})"),
+]
 
-async def find_spam_matches(text: str, patterns=None):
-    if not text:
-        return False
+@AsyncLRU(maxsize=5000)
+async def detect_links(raw_text: str):
+    text = await normalize_text(raw_text)
+    cleaned = await clean_text(text)
 
-    norm = await normalize_text(text)
-    no_spaces = norm.replace(" ", "")
+    # Discord
+    for rgx in DISCORD_PATTERNS:
+        m = rgx.search(cleaned)
+        if m:
+            return ("discord", m.group(1))
 
-    if patterns is None:
-        patterns = links_patterns
+    # Telegram
+    for rgx in TELEGRAM_PATTERNS:
+        m = rgx.search(cleaned)
+        if m:
+            return ("telegram", m.group(1))
 
-    # Прямое вхождение (с пробелами и без)
-    for candidate in (norm, no_spaces):
-        for p in patterns:
-            if p in candidate:
-                return p
+    return None, None
 
-    # Нечёткое совпадение по словам
-    words = norm.split()[:4000]
-
-    for w in words:
-        for p in patterns:
-            if fuzz.ratio(w, p) > 80:
-                return w
-
-    return False
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -254,63 +159,64 @@ class AutoModeration(commands.Cog):
             return
         if message.guild.id != int(config.GUILD_ID.get_secret_value()):
             return
-
+        
+        #расстановка приоритетов
+        priority: typing.Literal["full", "high", "low", "none"] = "full"
 
         # модерация активности
 
         if message.activity is not None:
 
-            # если участник зашёл меньше 2 недель назад -> удаляет и логирует
-            if message.author.joined_at:
-                if (datetime.now(timezone.utc) - message.author.joined_at) < timedelta(weeks=2):
+            # условия срабатывания
+            if priority in ["full", "high"]:
 
-                    activity_info = (
-                        f"Тип: {message.activity.type}\n"
-                        f"Party ID: {message.activity.party_id}\n"
-                    )
+                activity_info = (
+                    f"Тип: {message.activity.type}\n"
+                    f"Party ID: {message.activity.party_id}\n"
+                )
 
-                    log_embed = discord.Embed(
-                        title="Реклама через активность",
-                        description=(
-                            f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                            f"Причина: подозрение на рекламу через активность\n\n"
-                            f"Информация об активности:\n```\n{activity_info}```"
-                        ),
-                        color=0xff0000
-                    )
-                    log_embed.set_footer(text=f"ID: {message.author.id}")
-                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    log_embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
+                log_embed = discord.Embed(
+                    title="Реклама через активность",
+                    description=(
+                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                        f"Причина: подозрение на рекламу через активность\n\n"
+                        f"Информация об активности:\n```\n{activity_info}```"
+                    ),
+                    color=0xff0000
+                )
+                log_embed.set_footer(text=f"ID: {message.author.id}")
+                log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                log_embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=False)
 
-                    await self.safe_send_to_log(embed=log_embed)
+                await self.safe_send_to_log(embed=log_embed)
 
-                    mention_embed = discord.Embed(
-                        title="Реклама внутри активности",
-                        description=(
-                            f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
-                            f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                            f"Информация об активности:\n```\n{activity_info}```\n\n"
-                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
-                        ),
-                        color=0xff0000
-                    )
-                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
+                mention_embed = discord.Embed(
+                    title="Реклама внутри активности",
+                    description=(
+                        f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
+                        f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                        f"Информация об активности:\n```\n{activity_info}```\n\n"
+                        f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
+                    ),
+                    color=0xff0000
+                )
+                mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
 
-                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
+                await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
-                    await self.safe_delete(message)
-                    return
+                await self.safe_delete(message)
+                return
                 
         
         # модерация сообщений
-        if message.content:
+        if message.content and priority in ["full"]:
 
-                matched = await find_spam_matches(message.content)
+                matched_platform, matched = await detect_links(message.content)
 
-                if matched:
+                if matched_platform and matched:
 
                     # первые 300 символов сообщения
                     preview = message.content[:300].replace("`", "'")
@@ -320,7 +226,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
                             f"Причина: подозрение на рекламу в сообщении\n\n"
-                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
                             f"Первые 300 символов:\n```\n{preview}\n```"
                         ),
                         color=0xff0000
@@ -338,7 +244,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"На сервере запрещена реклама сторонних серверов\n"
                             f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
+                            f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n\n"
                             f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                         ),
                         color=0xff0000
@@ -354,7 +260,7 @@ class AutoModeration(commands.Cog):
 
         # модерация вложенных файлов
 
-        if message.attachments:
+        if message.attachments and priority in ["full", "high", "low"]:
 
             for attachment in message.attachments:
 
@@ -378,9 +284,9 @@ class AutoModeration(commands.Cog):
 
                 content = file_bytes[:1_000_000].decode(errors='ignore')
 
-                matched = await find_spam_matches(content)
+                matched_platform, matched = await detect_links(content)
 
-                if matched:
+                if matched_platform and matched:
 
                     # первые 300 символов файла
                     preview = content[:300].replace("`", "'")
@@ -396,7 +302,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час.\n"
                             f"Причина: реклама внутри прикрепленного файла.\n\n"
-                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n"
                             f"Первые 300 символов:\n```\n{preview}\n```"
                         ),
@@ -415,7 +321,7 @@ class AutoModeration(commands.Cog):
                         description=(
                             f"На сервере запрещена реклама сторонних серверов (даже внутри файлов)\n"
                             f"Тебе выдан мут на 1 час\n\n"
-                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n"
+                            f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n\n"
                             f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                         ),
