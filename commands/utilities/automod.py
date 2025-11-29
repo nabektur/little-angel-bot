@@ -190,25 +190,25 @@ async def normalize_and_compact(raw_text: str) -> str:
     compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
     return compact
 
-BAD_PATTERNS = [
-    "discord.gg", "discord.com", "discordapp.com",
-    "t.me", "telegram", "telegram.me",
-    "discordgg", "discordcom", "discordappcom",
-    "tme", "telegramme", "telegramorg",
-]
+DISCORD_DOMAINS = ["gg", "com", "app", "app.com"]
 
-def fuzzy_detect(text: str, threshold=85):
-    for pattern in BAD_PATTERNS:
-        score = fuzz.partial_ratio(pattern, text)
-        if score >= threshold:
-            return pattern
-    return None
+async def looks_like_discord(word: str, threshold=70):
+    score = fuzz.partial_ratio("discord", word)
+    return score >= threshold
 
-async def async_fuzzy_detect(text, threshold=85):
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None, lambda: fuzzy_detect(text, threshold)
-    )
+def extract_possible_domains(text: str):
+    text = text.replace(" ", "")
+    candidates = []
+
+    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,4})", text)
+    for a, b in dom1:
+        candidates.append(a + "." + b)
+
+    dom2 = re.findall(r"([a-zA-Z0-9]+)(gg|com|app)", text)
+    for a, b in dom2:
+        candidates.append(a + b)
+
+    return candidates
 
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
@@ -223,9 +223,23 @@ async def detect_links(raw_text: str):
     if "tme" in compact or "telegramme" in compact or "telegramorg" in compact:
         return "t.me" if "tme" in compact else "telegram.me" if "telegramme" in compact else "telegram.org"
     
-    fuzzy = await async_fuzzy_detect(compact)
-    if fuzzy:
-        return fuzzy
+    # --- доменные структуры ---
+    candidates = extract_possible_domains(compact)
+
+    for cand in candidates:
+
+        # отделяем левую часть домена
+        left = cand.split(".")[0].replace("gg","").replace("com","").replace("app","")
+
+        # проверяем, похожа ли левая часть на discord
+        if await looks_like_discord(left):
+
+            # игнорируем слово discord (не ссылка)
+            if left == "discord":
+                continue
+
+            # ловим только ссылки
+            return f"discord-like link ({cand})"
 
     return None
 
