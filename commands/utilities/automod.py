@@ -14,6 +14,8 @@ from cache import AsyncLRU
 from classes.bot import LittleAngelBot
 from modules.configuration import config
 
+ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
+
 # emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
     "🅰️": "a", "🅱️": "b", "🅾️": "o", "🅿️": "p",
@@ -68,12 +70,16 @@ async def normalize_text(text: str) -> str:
 
     for ch in text:
 
+        # удаляет zero-width
+        if ZERO_WIDTH_RE.match(ch):
+            continue
+
         # обведённые буквы 🄰🄱
         if ch in ENCLOSED_ALPHANUM_MAP:
             out.append(ENCLOSED_ALPHANUM_MAP[ch])
             continue
 
-        # региональные буквы 🇦🇧
+        # региональные 🇦🇧
         if ch in REGIONAL_INDICATOR_MAP:
             out.append(REGIONAL_INDICATOR_MAP[ch])
             continue
@@ -83,68 +89,78 @@ async def normalize_text(text: str) -> str:
             out.append(EMOJI_ASCII_MAP[ch])
             continue
 
-        # кириллица -> латиница
+        # кириллица
         if ch.lower() in HOMOGLYPHS:
             out.append(HOMOGLYPHS[ch.lower()])
             continue
 
-        # NFKD мат. символы Q𝕠𝖗𝖉
+        # NFKD - мат. шрифты, фуллвайд
         decomp = unicodedata.normalize("NFKD", ch)
-        if decomp and 'a' <= decomp[0].lower() <= 'z':
-            out.append(decomp[0].lower())
-            continue
+        if decomp and decomp[0].isalpha():
+            base = decomp[0].lower()
+            if "a" <= base <= "z":
+                out.append(base)
+                continue
 
         # цифры
         if ch.isdigit():
             out.append(ch)
             continue
 
+        # разделители оставляем как пробел
+        if ch in "|/._-":
+            out.append(" ")
+            continue
+
         # всё остальное -> пробел
         out.append(" ")
 
     normalized = "".join(out)
-
-    # убрать повторные пробелы
     normalized = re.sub(r"\s+", " ", normalized)
-
     return normalized.strip()
 
 async def clean_text(text: str):
     text = text.lower()
-    text = re.sub(r"[\s\.\|\•\·\_]+", "", text)
-    text = re.sub(r"[^a-z0-9]", "", text)
+    text = re.sub(r"[ \t\r\n\.\|\•\·\_]+", "", text)
+    text = re.sub(r"[^a-z0-9/]", "", text)
     return text
 
-DISCORD_PATTERNS = [
-    re.compile(r"discordgg([a-z0-9]{2,32})"),
-    re.compile(r"discordcominvite([a-z0-9]{2,32})"),
-    re.compile(r"discordappcominvite([a-z0-9]{2,32})"),
-]
+FANCY_MAP = {
+    "🅳": "d", "🅸": "i", "🆂": "s", "🅲": "c", "🅾": "o",
+    "🆁": "r", "🅶": "g", "🆄": "u",
+    # доп кириллица
+    "о": "o", "с": "c", "р": "p",
+}
 
-TELEGRAM_PATTERNS = [
-    re.compile(r"tme([a-z0-9_/]{2,64})"),
-    re.compile(r"telegramme([a-z0-9_/]{2,64})"),
-    re.compile(r"telegramorg([a-z0-9_/]{2,64})"),
-]
+async def normalize_fancy(text: str) -> str:
+    # заменяет fancy-символы
+    for k, v in FANCY_MAP.items():
+        text = text.replace(k, v)
+
+    # убирает всё не A-Z или 0-9
+    text = re.sub(r"[^a-zA-Z0-9]", "", text)
+
+    return text.lower()
 
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
+    # функции нормализации
     text = await normalize_text(raw_text)
     cleaned = await clean_text(text)
 
-    # Discord
-    for rgx in DISCORD_PATTERNS:
-        m = rgx.search(cleaned)
-        if m:
-            return ("discord", m.group(1))
+    # применяет ещё одну нормализацию для fancy-символов
+    norm = await normalize_fancy(cleaned)
 
-    # Telegram
-    for rgx in TELEGRAM_PATTERNS:
-        m = rgx.search(cleaned)
-        if m:
-            return ("telegram", m.group(1))
+    # --- Discord ---
+    # Ловит любую форму discord.gg
+    if "discordgg" in norm or "discordcom" in norm or "discordappcom" in norm:
+        return ("discord", None)
 
-    return None, None
+    # --- Telegram ---
+    if "tme" in norm or "telegramme" in norm or "telegramorg" in norm:
+        return ("telegram", None)
+
+    return (None, None)
 
 
 class AutoModeration(commands.Cog):
@@ -192,8 +208,11 @@ class AutoModeration(commands.Cog):
         if message.guild.id != int(config.GUILD_ID.get_secret_value()):
             return
         
-        #расстановка приоритетов
+        # расстановка приоритетов
         priority: typing.Literal["full", "high", "low", "none"] = "full"
+
+        # if message.channel.permissions_for(message.author).manage_messages:
+        #     priority = "none"
 
         # модерация активности
 
@@ -244,51 +263,53 @@ class AutoModeration(commands.Cog):
                 
         
         # модерация сообщений
-        if message.content and priority in ["full"]:
+        if message.content:
+                
+                if priority in ["full"]:
 
-                matched_platform, matched = await detect_links(message.content)
+                    matched_platform, matched = await detect_links(message.content)
 
-                if matched_platform and matched:
+                    if matched_platform and matched:
 
-                    # первые 300 символов сообщения
-                    preview = message.content[:300].replace("`", "'")
+                        # первые 300 символов сообщения
+                        preview = message.content[:300].replace("`", "'")
 
-                    log_embed = discord.Embed(
-                        title="Реклама в сообщении",
-                        description=(
-                            f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                            f"Причина: подозрение на рекламу в сообщении\n\n"
-                            f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
-                            f"Первые 300 символов:\n```\n{preview}\n```"
-                        ),
-                        color=0xff0000
-                    )
+                        log_embed = discord.Embed(
+                            title="Реклама в сообщении",
+                            description=(
+                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                                f"Причина: подозрение на рекламу в сообщении\n\n"
+                                f"Совпадение:\n```\n{matched} | {matched_platform}\n```\n"
+                                f"Первые 300 символов:\n```\n{preview}\n```"
+                            ),
+                            color=0xff0000
+                        )
 
-                    log_embed.set_footer(text=f"ID: {message.author.id}")
-                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
+                        log_embed.set_footer(text=f"ID: {message.author.id}")
+                        log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                        log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                        log_embed.add_field(name="Канал:", value=message.channel.mention, inline=False)
 
-                    await self.safe_send_to_log(embed=log_embed)
+                        await self.safe_send_to_log(embed=log_embed)
 
-                    mention_embed = discord.Embed(
-                        title="Реклама в сообщении",
-                        description=(
-                            f"На сервере запрещена реклама сторонних серверов\n"
-                            f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                            f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n\n"
-                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                        ),
-                        color=0xff0000
-                    )
-                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
+                        mention_embed = discord.Embed(
+                            title="Реклама в сообщении",
+                            description=(
+                                f"На сервере запрещена реклама сторонних серверов\n"
+                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                                f"Совпадение, на которое отреагировал бот:\n```\n{matched} | {matched_platform}\n```\n\n"
+                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+                            ),
+                            color=0xff0000
+                        )
+                        mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                        mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
 
-                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
+                        await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
-                    await self.safe_delete(message)
-                    return
+                        await self.safe_delete(message)
+                        return
 
         # модерация вложенных файлов
 
