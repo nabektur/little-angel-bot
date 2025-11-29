@@ -7,14 +7,16 @@ import unicodedata
 
 import urllib.parse
 
-from rapidfuzz import fuzz
+from aiocache import SimpleMemoryCache
+from cache    import AsyncLRU
 
-from datetime import timedelta, datetime, timezone
+from datetime    import timedelta, datetime, timezone
 from discord.ext import commands
 
-from cache import AsyncLRU
-from classes.bot import LittleAngelBot
+from classes.bot           import LittleAngelBot
 from modules.configuration import config
+
+hit_cache = SimpleMemoryCache()
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
 
@@ -249,17 +251,24 @@ class AutoModeration(commands.Cog):
             return
         
         # расстановка приоритетов
-        priority: typing.Literal["full", "high", "low", "none"] = "full"
+        priority: int = 1
 
         # if message.channel.permissions_for(message.author).manage_messages:
-        #     priority = "none"
+        #     priority = 0
 
         # модерация активности
 
         if message.activity is not None:
 
             # условия срабатывания
-            if priority in ["full", "high"]:
+            if priority > 0:
+
+                if not await hit_cache.get(message.author.id):
+                    await hit_cache.set(message.author.id, 0, ttl=3600)
+
+                hit_data: int = await hit_cache.get(message.author.id)
+                await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
+                hit_data = await hit_cache.get(message.author.id)
 
                 activity_info = (
                     f"Тип: {message.activity.get('type')}\n"
@@ -269,8 +278,8 @@ class AutoModeration(commands.Cog):
                 log_embed = discord.Embed(
                     title="Реклама через активность",
                     description=(
-                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                        f"Причина: подозрение на рекламу через активность\n\n"
+                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n" if hit_data <= 2 else f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
+                        f"Причина: подозрение на рекламу через активность\n\n" if hit_data <=2 else f"Причина: реклама через активность.\n\n"
                         f"Информация об активности:\n```\n{activity_info}```"
                     ),
                     color=0xff0000
@@ -286,7 +295,7 @@ class AutoModeration(commands.Cog):
                     title="Реклама внутри активности",
                     description=(
                         f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
-                        f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                        f"Наказание не применяется, за исключением удаления сообщения\n\n" if hit_data <=2 else f"Тебе выдан мут на 1 час\n\n"
                         f"Информация об активности:\n```\n{activity_info}```\n\n"
                         f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
                     ),
@@ -294,22 +303,33 @@ class AutoModeration(commands.Cog):
                 )
                 mention_embed.set_thumbnail(url=message.author.display_avatar.url)
                 mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
+                mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
 
                 await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
                 await self.safe_delete(message)
+
+                if hit_data > 2:
+                    await self.safe_timeout(message.author, timedelta(hours=1), "Реклама через активность")
+
                 return
                 
         
         # модерация сообщений
         if message.content:
                 
-                if priority in ["full"]:
+                if priority > 0:
 
                     matched = await detect_links(message.content)
 
                     if matched:
+
+                        if not await hit_cache.get(message.author.id):
+                            await hit_cache.set(message.author.id, 0, ttl=3600)
+
+                        hit_data: int = await hit_cache.get(message.author.id)
+                        await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
+                        hit_data = await hit_cache.get(message.author.id)
 
                         # первые 300 символов сообщения
                         preview = message.content[:300].replace("`", "'")
@@ -317,8 +337,8 @@ class AutoModeration(commands.Cog):
                         log_embed = discord.Embed(
                             title="Реклама в сообщении",
                             description=(
-                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                                f"Причина: подозрение на рекламу в сообщении\n\n"
+                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n" if hit_data <=2 else f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
+                                f"Причина: подозрение на рекламу в сообщении\n\n" if hit_data <=2 else f"Причина: реклама в сообщении.\n\n"
                                 f"Совпадение:\n```\n{matched}\n```\n"
                                 f"Первые 300 символов:\n```\n{preview}\n```"
                             ),
@@ -336,7 +356,7 @@ class AutoModeration(commands.Cog):
                             title="Реклама в сообщении",
                             description=(
                                 f"На сервере запрещена реклама сторонних серверов\n"
-                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                                f"Наказание не применяется, за исключением удаления сообщения\n\n" if hit_data <=2 else f"Тебе выдан мут на 1 час\n\n"
                                 f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
                                 f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
                             ),
@@ -344,16 +364,20 @@ class AutoModeration(commands.Cog):
                         )
                         mention_embed.set_thumbnail(url=message.author.display_avatar.url)
                         mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение")
-
+                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
+                        
                         await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
                         await self.safe_delete(message)
+
+                        if hit_data > 2:
+                            await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в сообщении")
+
                         return
 
         # модерация вложенных файлов
 
-        if message.attachments and priority in ["full", "high", "low"]:
+        if message.attachments and priority > 0:
 
             for attachment in message.attachments:
 
@@ -393,7 +417,7 @@ class AutoModeration(commands.Cog):
                     log_embed = discord.Embed(
                         title="Реклама внутри файла",
                         description=(
-                            f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час.\n"
+                            f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
                             f"Причина: реклама внутри прикрепленного файла.\n\n"
                             f"Совпадение:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n"
