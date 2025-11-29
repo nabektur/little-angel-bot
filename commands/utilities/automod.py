@@ -154,13 +154,13 @@ async def detect_links(raw_text: str):
     # --- Discord ---
     # Ловит любую форму discord.gg
     if "discordgg" in norm or "discordcom" in norm or "discordappcom" in norm:
-        return ("discord", None)
+        return "discordgg" if "discordgg" in norm else "discord.com" if "discordcom" in norm else "discordapp.com"
 
     # --- Telegram ---
     if "tme" in norm or "telegramme" in norm or "telegramorg" in norm:
-        return ("telegram", None)
+        return "t.me" if "tme" in norm else "telegram.me" if "telegramme" in norm else "telegram.org"
 
-    return (None, None)
+    return None
 
 
 class AutoModeration(commands.Cog):
@@ -267,9 +267,9 @@ class AutoModeration(commands.Cog):
                 
                 if priority in ["full"]:
 
-                    matched_platform, matched = await detect_links(message.content)
+                    matched = await detect_links(message.content)
 
-                    if matched_platform and matched:
+                    if matched:
 
                         # первые 300 символов сообщения
                         preview = message.content[:300].replace("`", "'")
@@ -337,9 +337,9 @@ class AutoModeration(commands.Cog):
 
                 content = file_bytes[:1_000_000].decode(errors='ignore')
 
-                matched_platform, matched = await detect_links(content)
+                matched = await detect_links(content)
 
-                if matched_platform and matched:
+                if matched:
 
                     # первые 300 символов файла
                     preview = content[:300].replace("`", "'")
