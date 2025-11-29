@@ -115,7 +115,7 @@ class AutoModeration(commands.Cog):
                         title="Реклама через активность",
                         description=(
                             f"Удалено сообщение от {message.author.mention} (`@{message.author}`)\n"
-                            f"Причина: подозрение на рекламу через activity\n\n"
+                            f"Причина: подозрение на рекламу через активность\n\n"
                             f"Информация об активности:\n```\n{activity_info}```"
                         ),
                         color=0xff0000
