@@ -255,7 +255,7 @@ class AutoModeration(commands.Cog):
 
         if message.channel.permissions_for(message.author).manage_messages:
             priority = 0
-        elif str(message.channel.id) in config.ADS_CHANNELS_IDS.get_secret_value().split(", "):
+        elif message.channel.id in config.ADS_CHANNELS_IDS:
             priority = 0
 
         # модерация активности
