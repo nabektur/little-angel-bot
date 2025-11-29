@@ -217,11 +217,19 @@ async def detect_links(raw_text: str):
     compact = await normalize_and_compact(raw_text)
 
     # --- Discord ---
+
     if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
         return "discord.gg" if "discordgg" in compact else "discord.com" if "discordcom" in compact else "discordapp.com"
+    
     # --- Telegram ---
-    if "tme" in compact or "telegramme" in compact or "telegramorg" in compact:
-        return "t.me" if "tme" in compact else "telegram.me" if "telegramme" in compact else "telegram.org"
+
+    if "telegramme" in compact or "telegramorg" in compact:
+        return "telegram.me" if "telegramme" in compact else "telegram.org"
+    if "t.me" in raw_text.replace(" ", "").lower():
+        return "t.me"
+    if re.search(r"(telegram\.me|telegram\.org)", raw_text.replace(" ", "").lower()):
+        m = re.search(r"(telegram\.me|telegram\.org)", raw_text.replace(" ", "").lower())
+        return m.group(1)
     
     # --- доменные структуры ---
     candidates = extract_possible_domains(compact)
