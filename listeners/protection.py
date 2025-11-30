@@ -446,7 +446,7 @@ class AutoModeration(commands.Cog):
                 # защита от засирания чата 
                 if priority > 0:
                 
-                    if await is_spam_block(message.content) and priority > 1:
+                    if await is_spam_block(message.content):
 
                         if not await hit_cache.get(message.author.id):
                             await hit_cache.set(message.author.id, 0, ttl=3600)
