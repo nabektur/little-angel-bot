@@ -386,7 +386,7 @@ class AutoModeration(commands.Cog):
 
         # MENTION EMBED
         mention_desc = (
-            f"{reason_text}\n"
+            f"Причина срабатывания: {reason_text}\n"
             f"{punishment}\n\n"
             f"{extra_info}\n"
             f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
