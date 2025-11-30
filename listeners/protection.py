@@ -264,6 +264,45 @@ async def detect_links(raw_text: str):
 
     return None
 
+EMPTY_SPAM_LINE_RE = re.compile(r"^[\s\`\u200B-\u200F\uFEFF]{0,}$")
+
+async def is_spam_block(message: str) -> bool:
+    """
+    пустые строки, код-блоки, мусорные символы.
+    """
+
+    # слишком много строк
+    lines = message.split("\n")
+    if len(lines) >= 40:
+        empty_like = sum(1 for l in lines if EMPTY_SPAM_LINE_RE.match(l))
+        if empty_like / len(lines) >= 0.7:
+            return True
+
+    # код-блок
+    if message.count("```") >= 2:
+        inner = message.split("```")
+        if len(inner) >= 3:
+            code = inner[1]
+            if len(code) > 1500 or code.count("\n") > 25:
+                return True
+
+    # содержит более 3000 символов
+    if len(message) > 3000:
+        compact = re.sub(r"[a-zA-Z0-9а-яА-ЯёЁ]+", "", message)
+        if len(compact) / len(message) >= 0.7:
+            return True
+
+    # много повторяющихся символов
+    if re.search(r"(.)\1{40,}", message):
+        return True
+
+    # много zero-width / невидимых символов
+    inv = re.findall(ZERO_WIDTH_RE, message)
+    if len(inv) > 50:
+        return True
+
+    return False
+
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -404,6 +443,75 @@ class AutoModeration(commands.Cog):
         # модерация сообщений
         if message.content:
                 
+                # защита от засирания чата 
+                if priority > 0:
+                
+                    if await is_spam_block(message.content) and priority > 1:
+
+                        if not await hit_cache.get(message.author.id):
+                            await hit_cache.set(message.author.id, 0, ttl=3600)
+
+                        hit_data: int = await hit_cache.get(message.author.id)
+                        await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
+                        hit_data = await hit_cache.get(message.author.id)
+
+                        if hit_data <= 2:
+                            log_embed_description = (
+                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
+                                f"Причина: засорение чата (пустые строки / код-блоки / мусор)\n\n"
+                            )
+                        else:
+                            log_embed_description = (
+                                f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
+                                f"Причина: засорение чата (пустые строки / код-блоки / мусор)\n\n"
+                            )
+
+                        log_embed = discord.Embed(
+                            title="Удалён спам / засорение чата",
+                            description=log_embed_description,
+                            color=0xff0000
+                        )
+
+                        log_embed.set_footer(text=f"ID: {message.author.id}")
+                        log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                        log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                        log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
+
+                        await self.safe_send_to_log(embed=log_embed)
+
+                        if hit_data <= 2:
+                            mention_embed_description = (
+                                f"На сервере запрещено засорять чат и мешать взаимодействию участников\n\n"
+                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
+                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+                            )
+                        else:
+                            mention_embed_description = (
+                                f"На сервере запрещено засорять чат и мешать взаимодействию участников\n\n"
+                                f"Тебе выдан мут на 1 час\n\n"
+                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+                            )
+
+                        mention_embed = discord.Embed(
+                            title="Спам / засорение чата",
+                            description=mention_embed_description,
+                            color=0xff0000
+                        )
+                        mention_embed.set_thumbnail(url=message.author.display_avatar.url)
+                        mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
+                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
+                        
+                        await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
+
+                        await self.safe_delete(message)
+
+                        if hit_data > 2:
+                            await self.safe_timeout(message.author, timedelta(hours=1), "Спам / засорение чата")
+                            await hit_cache.delete(message.author.id)
+
+                        return
+                
+                # детект рекламы
                 if priority > 1:
 
                     matched = await detect_links(message.content)
