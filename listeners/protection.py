@@ -219,7 +219,16 @@ async def detect_links(raw_text: str):
     # --- Discord ---
 
     if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
-        return "discord.gg" if "discordgg" in compact else "discord.com" if "discordcom" in compact else "discordapp.com"
+        if "discordgg" in compact:
+            return "discord.gg"
+        if "discordcom" in compact:
+            return "discord.com"
+        if "discordappcom" in compact:
+            if not (any(x in raw_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"])):
+                return "discordapp.com"
+            elif "invite" in compact:
+                return "discordapp.com"
+
     
     # --- Telegram ---
 
@@ -247,7 +256,7 @@ async def detect_links(raw_text: str):
                 continue
 
             # ловим только ссылки
-            return f"discord-like link ({cand})"
+            return f"Похоже на ссылку приглашения в Discord сервер ({cand})"
 
     return None
 
