@@ -17,7 +17,7 @@ from classes.bot import bot
 async def on_ready():
     _log.info(f"Бот запущен как {bot.user}")
 
-    log_channel = bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
+    log_channel = bot.get_channel(config.BOT_LOGS_CHANNEL_ID)
     if log_channel:
         await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=config.LITTLE_ANGEL_COLOR))
 

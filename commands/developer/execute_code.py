@@ -24,7 +24,7 @@ class ExecuteCode(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
 
-    @commands.command(name="run", description="Запустить команду", guild=discord.Object(id=config.GUILD_ID.get_secret_value()))
+    @commands.command(name="run", description="Запустить команду", guild=discord.Object(id=config.GUILD_ID))
     @commands.is_owner()
     async def run(self, ctx: commands.Context, *, cmd: str):
         fn_name = "_eval_expr"

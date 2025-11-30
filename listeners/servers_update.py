@@ -24,7 +24,7 @@ class ServersUpdate(commands.Cog):
                 if success:
                     break
 
-        log_channel = self.bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
+        log_channel = self.bot.get_channel(config.BOT_LOGS_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(title="Бот был добавлен на сервер", color=config.LITTLE_ANGEL_COLOR, description = f"Участников: {guild.member_count}\nID сервера: {guild.id}")
             user = None
@@ -40,7 +40,7 @@ class ServersUpdate(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
-        log_channel = self.bot.get_channel(int(config.BOT_LOGS_CHANNEL_ID.get_secret_value()))
+        log_channel = self.bot.get_channel(config.BOT_LOGS_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(title="Бот был удалён с сервера", description=f"Участников: {guild.member_count}\nID сервера: {guild.id}", color=config.LITTLE_ANGEL_COLOR)
             embed.set_footer(icon_url=guild.icon.url if guild.icon else None, text=guild.name)

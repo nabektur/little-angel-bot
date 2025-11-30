@@ -264,9 +264,9 @@ class AutoModeration(commands.Cog):
 
     async def safe_send_to_log(self, *args, **kwargs):
         try:
-            channel = self.bot.get_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
+            channel = self.bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
             if not channel:
-                channel = await self.bot.fetch_channel(int(config.AUTOMOD_LOGS_CHANNEL_ID.get_secret_value()))
+                channel = await self.bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
             return await channel.send(*args, **kwargs)
         except Exception:
             return None
@@ -294,7 +294,7 @@ class AutoModeration(commands.Cog):
             return
         if not message.guild:
             return
-        if message.guild.id != int(config.GUILD_ID.get_secret_value()):
+        if message.guild.id != config.GUILD_ID:
             return
         
         # расстановка приоритетов
@@ -337,7 +337,7 @@ class AutoModeration(commands.Cog):
                 else:
                     log_embed_description = (
                         f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                        f"Причина: реклама через активность.\n\n"
+                        f"Причина: реклама через активность\n\n"
                         f"Информация об активности:\n```\n{activity_info}```"
                     )
 
@@ -417,7 +417,7 @@ class AutoModeration(commands.Cog):
                         else:
                             log_embed_description = (
                                 f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                                f"Причина: реклама в сообщении.\n\n"
+                                f"Причина: реклама в сообщении\n\n"
                                 f"Совпадение:\n```\n{matched}\n```\n"
                                 f"Первые 300 символов:\n```\n{preview}\n```"
                             )
@@ -512,7 +512,7 @@ class AutoModeration(commands.Cog):
                         title="Реклама внутри файла",
                         description=(
                             f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                            f"Причина: реклама внутри прикрепленного файла.\n\n"
+                            f"Причина: реклама внутри прикрепленного файла\n\n"
                             f"Совпадение:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n"
                             f"Первые 300 символов:\n```\n{preview}\n```"
@@ -546,6 +546,64 @@ class AutoModeration(commands.Cog):
                     await self.safe_delete(message)
                     await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
                     return
+                
+    async def safe_ban(self, guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None):
+        try:
+            await guild.ban(member, reason=reason)
+        except Exception:
+            pass
+                
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+
+        guild = channel.guild
+
+        if guild.id != config.GUILD_ID:
+            return
+        
+        if channel.id in config.SECURED_CHANNELS_IDS:
+
+            who_deleted = None
+
+            try:
+                await asyncio.sleep(0.3)
+                async for entry in guild.audit_logs(limit=15, action=discord.AuditLogAction.channel_delete):
+                    if entry.target.id == channel.id:
+                        who_deleted = entry.user
+                        break
+            except:
+                pass
+                
+
+            if who_deleted:
+                log_embed = discord.Embed(
+                    title="Удаление защищённого канала",
+                    description=(
+                        f"Участник {who_deleted.mention} (`@{who_deleted}`) был забанен на сервере\n"
+                        f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`). Скорее всего, это была попытка краша сервера\n\n"
+                    ),
+                    color=0xff0000
+                )
+                log_embed.set_footer(text=f"ID: {who_deleted.id}")
+                log_embed.set_thumbnail(url=who_deleted.display_avatar.url)
+
+                await self.safe_ban(guild, who_deleted, reason=f"Удаление защищённого канала #{channel.name} ({channel.id})")
+
+            else:
+                log_embed = discord.Embed(
+                    title="Удаление защищённого канала",
+                    description=(
+                        f"Защищённый канал `#{channel.name}` (`{channel.id}`) был удалён, но не удалось определить, кем именно\n"
+                        f"Возможная причина: попытка краша сервера\n\n"
+                    ),
+                    color=0xff0000
+                )
+                log_embed.set_footer(text="Не удалось определить, кто удалил канал")
+
+            log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+            log_embed.add_field(name="Канал:", value=f"{channel.mention} (`#{channel.name}`)", inline=False)
+            
+            await self.safe_send_to_log(embed=log_embed)
 
 
 async def setup(bot: LittleAngelBot):

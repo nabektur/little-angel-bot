@@ -68,7 +68,7 @@ class SpamSuggestion(commands.Cog):
             embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=self.text.value, color=config.LITTLE_ANGEL_COLOR)
             embed.set_footer(text=f"От: {interaction.user} ({user_id}) | Тип: {self.type}")
 
-            channel = self.bot.get_channel(int(config.SPAM_SUGGESTIONS_CHANNEL_ID.get_secret_value()))
+            channel = self.bot.get_channel(config.SPAM_SUGGESTIONS_CHANNEL_ID)
             if channel:
                 await channel.send(embed=embed, view=SuggestSpamView(user_id, self.text.value, self.type))
 
