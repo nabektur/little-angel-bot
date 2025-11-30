@@ -547,9 +547,9 @@ class AutoModeration(commands.Cog):
                     await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
                     return
                 
-    async def safe_ban(self, guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None):
+    async def safe_ban(self, guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
         try:
-            await guild.ban(member, reason=reason)
+            await guild.ban(member, reason=reason, delete_message_seconds=delete_message_seconds)
         except Exception:
             pass
                 
