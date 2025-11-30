@@ -193,6 +193,8 @@ async def normalize_and_compact(raw_text: str) -> str:
 DISCORD_DOMAINS = ["gg", "com", "app", "app.com"]
 
 async def looks_like_discord(word: str, threshold=70):
+    if len(word) < 5:
+        return False
     score = fuzz.partial_ratio("discord", word)
     return score >= threshold
 
