@@ -264,9 +264,9 @@ class AutoModeration(commands.Cog):
 
     async def safe_send_to_log(self, *args, **kwargs):
         try:
-            channel = self.bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+            channel: discord.TextChannel = self.bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
             if not channel:
-                channel = await self.bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+                channel: discord.TextChannel = await self.bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
             return await channel.send(*args, **kwargs)
         except Exception:
             return None
@@ -561,50 +561,70 @@ class AutoModeration(commands.Cog):
         if guild.id != config.GUILD_ID:
             return
         
-        if channel.id in config.PROTECTED_CHANNELS_IDS:
+        if channel.id not in config.PROTECTED_CHANNELS_IDS:
+            return
 
-            who_deleted = None
+        who_deleted: typing.List[typing.Union[discord.User, discord.Member]] = []
 
-            try:
-                await asyncio.sleep(0.3)
-                async for entry in guild.audit_logs(limit=15, action=discord.AuditLogAction.channel_delete):
-                    if entry.target.id == channel.id:
-                        who_deleted = entry.user
-                        break
-            except:
-                pass
-                
+        try:
+            await asyncio.sleep(1)
+            async for entry in guild.audit_logs(limit=15, action=discord.AuditLogAction.channel_delete):
+                if entry.target.id == channel.id:
+                    if entry.user.id == self.bot.user.id:
+                        return
+                    who_deleted.append(entry.user)
+                    break
+        except:
+            pass
 
-            if who_deleted:
-                log_embed = discord.Embed(
-                    title="Удаление защищённого канала",
-                    description=(
-                        f"Участник {who_deleted.mention} (`@{who_deleted}`) был забанен на сервере\n"
-                        f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`)\n"
-                        f"Скорее всего, это была попытка краша сервера"
-                    ),
-                    color=0xff0000
-                )
-                log_embed.set_footer(text=f"ID: {who_deleted.id}")
-                log_embed.set_thumbnail(url=who_deleted.display_avatar.url)
-
-                await self.safe_ban(guild, who_deleted, reason=f"Удаление защищённого канала #{channel.name} ({channel.id})")
-
-            else:
-                log_embed = discord.Embed(
-                    title="Удаление защищённого канала",
-                    description=(
-                        f"Защищённый канал `#{channel.name}` (`{channel.id}`) был удалён, но не удалось определить, кем именно\n"
-                        f"Возможная причина: попытка краша сервера\n\n"
-                    ),
-                    color=0xff0000
-                )
-                log_embed.set_footer(text="Не удалось определить, кто удалил канал")
-
+        for user in who_deleted.copy():
+            if user.bot:
+                try:
+                    async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.bot_add, after=datetime.now(timezone.utc) - timedelta(days=3)):
+                        if entry.target.id == user.id:
+                            who_deleted.append(entry.user)
+                            break
+                except:
+                    pass
+            
+        if not who_deleted:
+            log_embed = discord.Embed(
+                title="Удаление защищённого канала",
+                description=(
+                    f"Защищённый канал `#{channel.name}` (`{channel.id}`) был удалён, но не удалось определить, кем именно\n"
+                    f"Возможная причина: попытка краша сервера\n\n"
+                ),
+                color=0xff0000
+            )
+            log_embed.set_footer(text="Не удалось определить, кто удалил канал")
             log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
             log_embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)", inline=False)
-            
-            await self.safe_send_to_log(embed=log_embed)
+
+            return await self.safe_send_to_log(embed=log_embed)
+        
+        log_embeds = []
+
+        for index, user in enumerate(who_deleted, 1):
+            log_embed = discord.Embed(
+                title="Удаление защищённого канала",
+                description=(
+                    f"Участник {user.mention} (`@{user}`) был забанен на сервере\n"
+                    f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`)\n"
+                    f"Скорее всего, это была попытка краша сервера"
+                ),
+                color=0xff0000
+            )
+            log_embed.set_footer(text=f"ID: {user.id}")
+            log_embed.set_thumbnail(url=user.display_avatar.url)
+            if index == 1:
+                log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+            log_embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)", inline=False)
+
+            log_embeds.append(log_embed)
+
+            await self.safe_ban(guild, user, reason=f"Удаление защищённого канала #{channel.name} ({channel.id})")
+        
+        await self.safe_send_to_log(embeds=log_embeds)
 
 
 async def setup(bot: LittleAngelBot):
