@@ -255,7 +255,7 @@ async def detect_links(raw_text: str):
             if left == "discord":
                 continue
 
-            if any(x in cand for x in ["imagesext1discordappnet", "mediadiscordappnet", "cdndiscordappcom"]):
+            if any(x in cand for x in ["imagesext1discordapp", "mediadiscordapp", "cdndiscordapp"]):
                 if not "invite" in compact:
                     continue  # это не ссылка-приглашение
 
