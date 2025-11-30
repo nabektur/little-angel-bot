@@ -190,8 +190,6 @@ async def normalize_and_compact(raw_text: str) -> str:
     compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
     return compact
 
-DISCORD_DOMAINS = ["gg", "com", "app", "app.com"]
-
 async def looks_like_discord(word: str, threshold=70):
     if len(word) < 5:
         return False
@@ -559,7 +557,10 @@ class AutoModeration(commands.Cog):
                     await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
 
                     await self.safe_delete(message)
+
                     await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
+
+                    await hit_cache.delete(message.author.id)
                     return
                 
     async def safe_ban(self, guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
