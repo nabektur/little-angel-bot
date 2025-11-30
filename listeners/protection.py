@@ -335,6 +335,88 @@ class AutoModeration(commands.Cog):
         except Exception:
             pass
 
+    async def handle_violation(
+        self,
+        message: discord.Message,
+        reason_title: str,
+        reason_text: str,
+        extra_info: str = "",
+        timeout_reason: str = None,
+        force_harsh: bool = False,
+    ):
+        user = message.author
+        guild = message.guild
+
+        # hit-cache
+        hits = await hit_cache.get(user.id) or 0
+        hits += 1
+        await hit_cache.set(user.id, hits, ttl=3600)
+
+        is_soft = hits <= 2 and not force_harsh
+
+        punishment = (
+            "Наказание не применяется, за исключением удаления сообщения"
+            if is_soft else
+            "Тебе выдан мут на 1 час"
+        )
+
+        # LOG EMBED
+        log_desc = (
+            f"{'Удалено сообщение от' if is_soft else 'Участнику выдан мут'} "
+            f"{user.mention} (`@{user}`)\n"
+            f"Причина: {reason_text}\n\n"
+            f"{extra_info}"
+        )
+
+        log_embed = discord.Embed(
+            title=reason_title,
+            description=log_desc,
+            color=0xff0000
+        )
+        log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+        log_embed.set_footer(text=f"ID: {user.id}")
+        log_embed.set_thumbnail(url=user.display_avatar.url)
+        log_embed.add_field(
+            name="Канал:",
+            value=f"{message.channel.mention} (`#{message.channel.name}`)",
+            inline=False
+        )
+
+        await self.safe_send_to_log(embed=log_embed)
+
+        # MENTION EMBED
+        mention_desc = (
+            f"{reason_text}\n"
+            f"{punishment}\n\n"
+            f"{extra_info}\n"
+            f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+        )
+
+        mention_embed = discord.Embed(
+            title=reason_title,
+            description=mention_desc,
+            color=0xff0000
+        )
+        mention_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+        mention_embed.set_thumbnail(url=user.display_avatar.url)
+        mention_embed.set_footer(
+            text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if is_soft
+                else "Если ты считаешь, что это ошибка, обратись к модераторам"
+        )
+
+        await self.safe_send_to_channel(
+            message.channel,
+            content=user.mention,
+            embed=mention_embed
+        )
+
+        await self.safe_delete(message)
+
+        # выдаёт мут
+        if not is_soft and timeout_reason:
+            await self.safe_timeout(user, timedelta(hours=1), timeout_reason)
+            await hit_cache.delete(user.id)
+
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -366,76 +448,20 @@ class AutoModeration(commands.Cog):
         if message.activity is not None:
 
             # условия срабатывания
-            if priority > 0:
-
-                if not await hit_cache.get(message.author.id):
-                    await hit_cache.set(message.author.id, 0, ttl=3600)
-
-                hit_data: int = await hit_cache.get(message.author.id)
-                await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
-                hit_data = await hit_cache.get(message.author.id)
+            if priority > 1:
 
                 activity_info = (
                     f"Тип: {message.activity.get('type')}\n"
                     f"Party ID: {message.activity.get('party_id')}\n"
                 )
 
-                if hit_data <= 2:
-                    log_embed_description = (
-                        f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                        f"Причина: подозрение на рекламу через активность\n\n"
-                        f"Информация об активности:\n```\n{activity_info}```"
-                    )
-                else:
-                    log_embed_description = (
-                        f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                        f"Причина: реклама через активность\n\n"
-                        f"Информация об активности:\n```\n{activity_info}```"
-                    )
-
-                log_embed = discord.Embed(
-                    title="Реклама через активность",
-                    description=log_embed_description,
-                    color=0xff0000
+                await self.handle_violation(
+                    message,
+                    reason_title="Реклама через активность",
+                    reason_text="реклама через Discord Activity",
+                    extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                    timeout_reason="Реклама через активность"
                 )
-                log_embed.set_footer(text=f"ID: {message.author.id}")
-                log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
-
-                await self.safe_send_to_log(embed=log_embed)
-
-                if hit_data <= 2:
-                    mention_embed_description = (
-                        f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
-                        f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                        f"Информация об активности:\n```\n{activity_info}```\n\n"
-                        f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
-                    )
-                else:
-                    mention_embed_description = (
-                        f"На сервере запрещена реклама сторонних серверов (даже внутри активностей)\n"
-                        f"Тебе выдан мут на 1 час\n\n"
-                        f"Информация об активности:\n```\n{activity_info}```\n\n"
-                        f"-# Дополнительную информацию можно посмотреть в канале автомодерации\n\n"
-                    )
-
-                mention_embed = discord.Embed(
-                    title="Реклама внутри активности",
-                    description=mention_embed_description,
-                    color=0xff0000
-                )
-                mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
-
-                await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
-
-                await self.safe_delete(message)
-
-                if hit_data > 2:
-                    await self.safe_timeout(message.author, timedelta(hours=1), "Реклама через активность")
-                    await hit_cache.delete(message.author.id)
 
                 return
                 
@@ -448,66 +474,12 @@ class AutoModeration(commands.Cog):
                 
                     if await is_spam_block(message.content):
 
-                        if not await hit_cache.get(message.author.id):
-                            await hit_cache.set(message.author.id, 0, ttl=3600)
-
-                        hit_data: int = await hit_cache.get(message.author.id)
-                        await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
-                        hit_data = await hit_cache.get(message.author.id)
-
-                        if hit_data <= 2:
-                            log_embed_description = (
-                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                                f"Причина: засорение чата (пустые строки / код-блоки / мусор)\n\n"
-                            )
-                        else:
-                            log_embed_description = (
-                                f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                                f"Причина: засорение чата (пустые строки / код-блоки / мусор)\n\n"
-                            )
-
-                        log_embed = discord.Embed(
-                            title="Удалён спам / засорение чата",
-                            description=log_embed_description,
-                            color=0xff0000
+                        await self.handle_violation(
+                            message,
+                            reason_title="Спам / засорение чата",
+                            reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                            timeout_reason="Спам / засорение чата"
                         )
-
-                        log_embed.set_footer(text=f"ID: {message.author.id}")
-                        log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                        log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
-
-                        await self.safe_send_to_log(embed=log_embed)
-
-                        if hit_data <= 2:
-                            mention_embed_description = (
-                                f"На сервере запрещено засорять чат и мешать взаимодействию участников\n\n"
-                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                            )
-                        else:
-                            mention_embed_description = (
-                                f"На сервере запрещено засорять чат и мешать взаимодействию участников\n\n"
-                                f"Тебе выдан мут на 1 час\n\n"
-                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                            )
-
-                        mention_embed = discord.Embed(
-                            title="Спам / засорение чата",
-                            description=mention_embed_description,
-                            color=0xff0000
-                        )
-                        mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                        mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
-                        
-                        await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
-
-                        await self.safe_delete(message)
-
-                        if hit_data > 2:
-                            await self.safe_timeout(message.author, timedelta(hours=1), "Спам / засорение чата")
-                            await hit_cache.delete(message.author.id)
 
                         return
                 
@@ -518,75 +490,21 @@ class AutoModeration(commands.Cog):
 
                     if matched:
 
-                        if not await hit_cache.get(message.author.id):
-                            await hit_cache.set(message.author.id, 0, ttl=3600)
-
-                        hit_data: int = await hit_cache.get(message.author.id)
-                        await hit_cache.set(message.author.id, hit_data + 1, ttl=3600)
-                        hit_data = await hit_cache.get(message.author.id)
-
                         # первые 300 символов сообщения
                         preview = message.content[:300].replace("`", "'")
 
-                        if hit_data <= 2:
-                            log_embed_description = (
-                                f"Удалено сообщение от участника {message.author.mention} (`@{message.author}`)\n"
-                                f"Причина: подозрение на рекламу в сообщении\n\n"
-                                f"Совпадение:\n```\n{matched}\n```\n"
-                                f"Первые 300 символов:\n```\n{preview}\n```"
-                            )
-                        else:
-                            log_embed_description = (
-                                f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                                f"Причина: реклама в сообщении\n\n"
-                                f"Совпадение:\n```\n{matched}\n```\n"
-                                f"Первые 300 символов:\n```\n{preview}\n```"
-                            )
-
-                        log_embed = discord.Embed(
-                            title="Реклама в сообщении",
-                            description=log_embed_description,
-                            color=0xff0000
+                        extra = (
+                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Первые 300 символов:\n```\n{preview}\n```"
                         )
 
-                        log_embed.set_footer(text=f"ID: {message.author.id}")
-                        log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                        log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
-
-                        await self.safe_send_to_log(embed=log_embed)
-
-                        if hit_data <= 2:
-                            mention_embed_description = (
-                                f"На сервере запрещена реклама сторонних серверов\n"
-                                f"Наказание не применяется, за исключением удаления сообщения\n\n"
-                                f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
-                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                            )
-                        else:
-                            mention_embed_description = (
-                                f"На сервере запрещена реклама сторонних серверов\n"
-                                f"Тебе выдан мут на 1 час\n\n"
-                                f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n\n"
-                                f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                            )
-
-                        mention_embed = discord.Embed(
-                            title="Реклама в сообщении",
-                            description=mention_embed_description,
-                            color=0xff0000
+                        await self.handle_violation(
+                            message,
+                            reason_title="Реклама в сообщении",
+                            reason_text="реклама в тексте сообщения",
+                            extra_info=extra,
+                            timeout_reason="Реклама в сообщении"
                         )
-                        mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                        mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                        mention_embed.set_footer(text="Если ты считаешь, что это ошибка, проигнорируй это сообщение" if hit_data <=2 else "Если ты считаешь, что это ошибка, обратись к модераторам")
-                        
-                        await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
-
-                        await self.safe_delete(message)
-
-                        if hit_data > 2:
-                            await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в сообщении")
-                            await hit_cache.delete(message.author.id)
 
                         return
 
@@ -629,46 +547,21 @@ class AutoModeration(commands.Cog):
                         f"Тип: {attachment.content_type}\n"
                     )
 
-                    log_embed = discord.Embed(
-                        title="Реклама внутри файла",
-                        description=(
-                            f"Участнику {message.author.mention} (`@{message.author}`) был выдан мут на 1 час\n"
-                            f"Причина: реклама внутри прикрепленного файла\n\n"
-                            f"Совпадение:\n```\n{matched}\n```\n"
-                            f"Информация о файле:\n```\n{file_info}```\n"
-                            f"Первые 300 символов:\n```\n{preview}\n```"
-                        ),
-                        color=0xff0000
+                    extra = (
+                        f"Совпадение:\n```\n{matched}\n```\n"
+                        f"Информация о файле:\n```\n{file_info}```\n"
+                        f"Первые 300 символов:\n```\n{preview}\n```"
                     )
 
-                    log_embed.set_footer(text=f"ID: {message.author.id}")
-                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    log_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
-                    log_embed.add_field(name="Канал:", value=f"{message.channel.mention} (`#{message.channel.name}`)", inline=False)
-
-                    await self.safe_send_to_log(embed=log_embed)
-
-                    mention_embed = discord.Embed(
-                        title="Реклама внутри файла",
-                        description=(
-                            f"На сервере запрещена реклама сторонних серверов (даже внутри файлов)\n"
-                            f"Тебе выдан мут на 1 час\n\n"
-                            f"Совпадение, на которое отреагировал бот:\n```\n{matched}\n```\n"
-                            f"Информация о файле:\n```\n{file_info}```\n\n"
-                            f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
-                        ),
-                        color=0xff0000
+                    await self.handle_violation(
+                        message,
+                        reason_title="Реклама внутри файла",
+                        reason_text="реклама в прикреплённом файле",
+                        extra_info=extra,
+                        timeout_reason="Реклама в файле",
+                        force_harsh=True
                     )
-                    mention_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    mention_embed.set_author(name=message.guild.name, icon_url=message.guild.icon.url if message.guild.icon else None)
 
-                    await self.safe_send_to_channel(message.channel, content=message.author.mention, embed=mention_embed)
-
-                    await self.safe_delete(message)
-
-                    await self.safe_timeout(message.author, timedelta(hours=1), "Реклама в текстовом файле")
-
-                    await hit_cache.delete(message.author.id)
                     return
                 
     async def safe_ban(self, guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
@@ -679,77 +572,89 @@ class AutoModeration(commands.Cog):
                 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
-
         guild = channel.guild
 
         if guild.id != config.GUILD_ID:
             return
-        
+
         if channel.id not in config.PROTECTED_CHANNELS_IDS:
             return
+
+        # Ищем кто удалил канал
+        await asyncio.sleep(1)
 
         who_deleted: typing.List[typing.Union[discord.User, discord.Member]] = []
 
         try:
-            await asyncio.sleep(1)
             async for entry in guild.audit_logs(limit=15, action=discord.AuditLogAction.channel_delete):
                 if entry.target.id == channel.id:
-                    if entry.user.id == self.bot.user.id:
-                        return
-                    who_deleted.append(entry.user)
+                    if entry.user.id != self.bot.user.id:
+                        who_deleted.append(entry.user)
                     break
         except:
             pass
 
-        for user in who_deleted.copy():
+        # Если удалил бот -> ищем кто добавил бота (в течение 3 дней)
+        resolved: typing.List[typing.Union[discord.User, discord.Member]] = []
+
+        for user in who_deleted:
+            resolved.append(user)
             if user.bot:
                 try:
-                    async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.bot_add, after=datetime.now(timezone.utc) - timedelta(days=3)):
+                    async for entry in guild.audit_logs(
+                        limit=10,
+                        action=discord.AuditLogAction.bot_add,
+                        after=datetime.now(timezone.utc) - timedelta(days=3)
+                    ):
                         if entry.target.id == user.id:
-                            who_deleted.append(entry.user)
+                            resolved.append(entry.user)
                             break
                 except:
                     pass
-            
-        if not who_deleted:
-            log_embed = discord.Embed(
+
+        # Никого не нашли -> подозрение на краш
+        if not resolved:
+            embed = discord.Embed(
                 title="Удаление защищённого канала",
                 description=(
-                    f"Защищённый канал `#{channel.name}` (`{channel.id}`) был удалён, но не удалось определить, кем именно\n"
-                    f"Возможная причина: попытка краша сервера\n\n"
+                    f"Защищённый канал `#{channel.name}` ({channel.id}) был удалён, но не удалось определить, кем именно\n"
+                    f"Возможная причина: попытка краша сервера"
                 ),
-                color=0xff0000
+                color=0xFF0000
             )
-            log_embed.set_footer(text="Не удалось определить, кто удалил канал")
-            log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
-            log_embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)", inline=False)
+            embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+            embed.set_footer(text="Удаливший не найден")
+            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)")
 
-            return await self.safe_send_to_log(embed=log_embed)
-        
-        log_embeds = []
+            return await self.safe_send_to_log(embed=embed)
 
-        for index, user in enumerate(who_deleted, 1):
-            log_embed = discord.Embed(
+        # Находим всех + баним каждого
+        embeds = []
+
+        for i, user in enumerate(resolved, 1):
+            reason = f"Удаление защищённого канала #{channel.name} ({channel.id})"
+
+            embed = discord.Embed(
                 title="Удаление защищённого канала",
                 description=(
-                    f"Участник {user.mention} (`@{user}`) был забанен на сервере\n"
+                    f"{user.mention} (`@{user}`) был забанен.\n"
                     f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`)\n"
-                    f"Скорее всего, это была попытка краша сервера"
+                    f"Возможная причина: попытка краша сервера"
                 ),
-                color=0xff0000
+                color=0xFF0000,
             )
-            log_embed.set_footer(text=f"ID: {user.id}")
-            log_embed.set_thumbnail(url=user.display_avatar.url)
-            if index == 1:
-                log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
-            log_embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)", inline=False)
+            embed.set_footer(text=f"ID: {user.id}")
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)")
 
-            log_embeds.append(log_embed)
+            if i == 1:
+                embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
 
-            await self.safe_ban(guild, user, reason=f"Удаление защищённого канала #{channel.name} ({channel.id})")
-        
-        await self.safe_send_to_log(embeds=log_embeds)
+            embeds.append(embed)
 
+            await self.safe_ban(guild, user, reason=reason)
+
+        await self.safe_send_to_log(embeds=embeds)
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(AutoModeration(bot))
