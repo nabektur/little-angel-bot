@@ -561,7 +561,7 @@ class AutoModeration(commands.Cog):
         if guild.id != config.GUILD_ID:
             return
         
-        if channel.id in config.SECURED_CHANNELS_IDS:
+        if channel.id in config.PROTECTED_CHANNELS_IDS:
 
             who_deleted = None
 
@@ -580,7 +580,8 @@ class AutoModeration(commands.Cog):
                     title="Удаление защищённого канала",
                     description=(
                         f"Участник {who_deleted.mention} (`@{who_deleted}`) был забанен на сервере\n"
-                        f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`). Скорее всего, это была попытка краша сервера\n\n"
+                        f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`)\n"
+                        f"Скорее всего, это была попытка краша сервера"
                     ),
                     color=0xff0000
                 )
@@ -601,7 +602,7 @@ class AutoModeration(commands.Cog):
                 log_embed.set_footer(text="Не удалось определить, кто удалил канал")
 
             log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
-            log_embed.add_field(name="Канал:", value=f"{channel.mention} (`#{channel.name}`)", inline=False)
+            log_embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)", inline=False)
             
             await self.safe_send_to_log(embed=log_embed)
 
