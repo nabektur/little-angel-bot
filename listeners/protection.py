@@ -222,7 +222,8 @@ async def detect_links(raw_text: str):
         if "discordgg" in compact:
             return "discord.gg"
         if "discordcom" in compact:
-            return "discord.com"
+            if not "/channels/" in raw_text.replace(" ", "").lower():
+                return "discord.com"
         if "discordappcom" in compact:
             if not (any(x in raw_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"])):
                 return "discordapp.com"
@@ -470,7 +471,7 @@ class AutoModeration(commands.Cog):
         if message.content:
                 
                 # защита от засирания чата 
-                if priority > 0:
+                if priority > 1:
                 
                     if await is_spam_block(message.content):
 
