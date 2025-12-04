@@ -1,5 +1,7 @@
 import re
 
+from collections import Counter
+
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 EMPTY_SPAM_LINE_RE = re.compile(r"^[\s\`\u200B-\u200F\uFEFF]{0,}$")
 
@@ -15,17 +17,15 @@ async def is_spam_block(message: str) -> bool:
         return True
 
     # Один символ занимает > 65% сообщения
+
     if len(message) > 50:  # смысл есть только для длинных сообщений
-        freq = {}
-        for ch in message:
-            freq[ch] = freq.get(ch, 0) + 1
-        dominant = max(freq.values())
+        freq = Counter(message)
+        dominant = max(freq.values()) if freq else 0
         if dominant / len(message) >= 0.65:
             return True
 
-    # Один символ встречается очень много раз (>200)
-    for ch, cnt in freq.items():
-        if cnt >= 200:
+        # Один символ встречается очень много раз (>200)
+        if any(cnt >= 200 for cnt in freq.values()):
             return True
 
     # Кавычки
