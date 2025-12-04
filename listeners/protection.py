@@ -49,6 +49,9 @@ class AutoModeration(commands.Cog):
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
 
+        if priority == 0:
+            return
+
         # модерация активности
 
         if message.activity is not None:
