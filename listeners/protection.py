@@ -101,7 +101,7 @@ class AutoModeration(commands.Cog):
                         return
                 
                 
-                elif priority > 1:
+                if priority > 1:
                 
                     # защита от засирания чата 
 
