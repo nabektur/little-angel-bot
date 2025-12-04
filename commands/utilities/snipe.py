@@ -46,13 +46,13 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
         sniped_embed.add_field(name="Стикеры:", value=sr, inline=False)
     if s.components:
         cr = ""
-        for component in s.components:
-            if isinstance(component, discord.Button):
-                opis = f"{component.emoji or component.label}"
-                if component.label and component.emoji:
-                    opis += f"{component.label}"
-                cr += f"\nКнопка ({opis})"
-        sniped_embed.add_field(name="Компоненты:", value=cr, inline=False)
+
+        for row in s.components:
+            for component in row.children:
+                opis = component.emoji or component.label or component.custom_id or "Без имени"
+                cr += f"\nКомпонент: {component.type} ({opis})"
+
+        sniped_embed.add_field(name="Компоненты:", value=cr or "Нет компонентов", inline=False)
     sniped_embed.add_field(name="Позиция:", value=f"{index + 1} / {rpos}", inline=False)
     if not view:
         view = snipe_archive(bot, timeout=300, channel_id=channel.id, author_id=ci.user.id)
