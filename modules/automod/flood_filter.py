@@ -75,10 +75,16 @@ async def append_cached_messages(member: discord.Member, message: discord.Messag
         if message.reference.resolved:
             ref = message.reference.resolved
             if isinstance(ref, discord.Message):
-                if ref.content:
-                    message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
+                message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
             elif isinstance(ref, discord.DeletedReferencedMessage):
                 message_content += f"\n\n[Ответ на удалённое сообщение]: {ref.id}"
+
+    if message.activity:
+        message_content += (
+            "\n\n[Активность:]"
+            f"\nТип: {message.activity.get('type')}"
+            f"\nParty ID: {message.activity.get('party_id')}"
+        )
 
     messages = await get_cached_messages_and_append(member, append_message_content=message_content, append_message=message)
 
