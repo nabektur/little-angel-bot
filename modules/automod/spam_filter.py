@@ -5,7 +5,7 @@ EMPTY_SPAM_LINE_RE = re.compile(r"^[\s\`\u200B-\u200F\uFEFF]{0,}$")
 
 async def is_spam_block(message: str) -> bool:
     """
-    anti-spam for empty blocks, symbol flooding, code spam, invisible chars.
+    пустые строки, код-блоки, мусорные символы.
     """
 
     # --- Символьно-спамовая проверка ---
