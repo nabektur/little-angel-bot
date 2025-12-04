@@ -1,3 +1,5 @@
+import json
+import asyncio
 import discord
 
 from aiocache import SimpleMemoryCache
@@ -6,7 +8,12 @@ from datetime import timedelta
 from classes.bot           import LittleAngelBot
 from modules.configuration import config
 
-hit_cache = SimpleMemoryCache()
+hit_cache                  = SimpleMemoryCache()
+message_send_cache_channel = SimpleMemoryCache()
+message_send_cache_log     = SimpleMemoryCache()
+
+send_lock_for_channel = asyncio.Lock()
+send_lock_for_log     = asyncio.Lock()
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
     try:
@@ -15,19 +22,35 @@ async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: 
         pass
 
 async def safe_send_to_channel(channel: discord.abc.Messageable, *args, **kwargs):
-    try:
-        return await channel.send(*args, **kwargs)
-    except Exception:
-        return None
+    params = json.dumps({"args": args, "kwargs": kwargs}, default=str, sort_keys=True)
+
+    async with send_lock_for_channel:
+        hit = await message_send_cache_channel.get(params)
+        if hit:
+            return
+        await message_send_cache_channel.set(params, True, ttl=20)
+
+        try:
+            return await channel.send(*args, **kwargs)
+        except Exception:
+            return None
 
 async def safe_send_to_log(bot: LittleAngelBot, *args, **kwargs):
-    try:
-        channel: discord.TextChannel = bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
-        if not channel:
-            channel: discord.TextChannel = await bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
-        return await channel.send(*args, **kwargs)
-    except Exception:
-        return None
+    params = json.dumps({"args": args, "kwargs": kwargs}, default=str, sort_keys=True)
+
+    async with send_lock_for_log:
+        hit = await message_send_cache_log.get(params)
+        if hit:
+            return
+        await message_send_cache_log.set(params, True, ttl=20)
+
+        try:
+            channel: discord.TextChannel = bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+            if not channel:
+                channel: discord.TextChannel = await bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+            return await channel.send(*args, **kwargs)
+        except Exception:
+            return None
 
 async def safe_delete(msg: discord.Message):
     try: 
@@ -68,8 +91,7 @@ async def handle_violation(
 
     # LOG EMBED
     log_desc = (
-        f"{'Удалено сообщение от' if is_soft else 'Участнику выдан мут'} "
-        f"{user.mention} (`@{user}`)\n"
+        f"{'Удалено сообщение от ' + user.mention + ' (`@'+ str(user) + '`) ' if is_soft else 'Участнику ' + user.mention + ' (`@'+ str(user) + '`) был выдан мут на 1 час'} "
         f"Причина: {reason_text}\n\n"
         f"{extra_info}"
     )

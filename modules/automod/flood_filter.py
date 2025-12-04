@@ -240,7 +240,7 @@ async def flood_and_messages_check(member: discord.Member, channel: discord.Text
         messages_ids_for_purge = set(messages_ids_for_purge)
 
         for channel in channels_for_purge:
-            await channel.purge(check=lambda m: m.id in messages_ids_for_purge, reason="Флуд от нового участника", limit=100)
+            await channel.purge(check=lambda m: m.id in messages_ids_for_purge, reason="Флуд от нового участника", limit=100, bulk=True)
             await asyncio.sleep(0.5)
 
     return is_flood
