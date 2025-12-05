@@ -120,7 +120,7 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
     message_content, message_list = await append_cached_messages(bot, member, message)
 
     # --- Подготовка окон ---
-    guaranteed_slice = message_list[-GUARANTEED_WINDOW:]
+    guaranteed_slice = message_list[-(GUARANTEED_WINDOW + 20):]
     alternating_slice = message_list[-ALTERNATING_WINDOW:]
 
     result = {
