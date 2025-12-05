@@ -60,9 +60,9 @@ async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
         escape_markdown=True
     )
 
-    fake_ctx = Context(prefix="", bot=bot, message=message)
+    ctx = await bot.get_context(message)
 
-    cleaned = await cleaner.convert(fake_ctx, message.content)
+    cleaned = await cleaner.convert(ctx, message.content)
     return cleaned
 
 async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> str:
