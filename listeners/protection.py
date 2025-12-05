@@ -83,7 +83,7 @@ class AutoModeration(commands.Cog):
 
                     # детект флуда
 
-                    is_flood = await flood_and_messages_check(message.author, message.channel, message)
+                    is_flood = await flood_and_messages_check(self.bot, message.author, message.channel, message)
 
                     if is_flood:
 

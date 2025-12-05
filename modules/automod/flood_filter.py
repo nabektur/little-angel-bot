@@ -3,27 +3,31 @@ import logging
 import discord
 import asyncio
 
-from rapidfuzz import fuzz, process
-from aiocache  import SimpleMemoryCache
-from cache     import AsyncTTL
+from discord.ext.commands import clean_content, Context
+
+from rapidfuzz            import fuzz, process
+from aiocache             import SimpleMemoryCache
+from cache                import AsyncTTL
+
+from classes.bot          import LittleAngelBot
 
 messages_from_new_members_cache = SimpleMemoryCache()
 
 locks = {}
 
 # Settings
-MAX_CACHE_MESSAGES = 50
+MAX_CACHE_MESSAGES = 60
 GUARANTEED_WINDOW = 6       # количество сообщений для гарантированного флуда
-ALTERNATING_WINDOW = 15     # количество сообщений для засчитывания флуда как чередование
+ALTERNATING_WINDOW = 60     # количество сообщений для засчитывания флуда как чередование
 FUZZY_THRESHOLD = 80        # порог нечёткого сравнения в процентах
 MIN_CLUSTERS_FOR_ALTERNATING = 3
-MIN_CLUSTER_SIZE = 2
+MIN_CLUSTER_SIZE = 3
 
-@AsyncTTL(time_to_live=600)
+@AsyncTTL(time_to_live=2400)
 async def get_lock(user_id):
     return asyncio.Lock()
 
-@AsyncTTL(time_to_live=600)
+@AsyncTTL(time_to_live=2400)
 async def fuzzy_compare(str1: str, str2: str) -> int:
     try:
         score = fuzz.ratio(str1, str2)
@@ -44,14 +48,31 @@ async def get_cached_messages_and_append(member: discord.Member, append_message_
                 "channel_id": append_message.channel.id
             })
 
-            await messages_from_new_members_cache.set(member.id, messages, ttl=300)
+            await messages_from_new_members_cache.set(member.id, messages, ttl=1200)
 
 
     return messages
 
-async def append_cached_messages(member: discord.Member, message: discord.Message) -> str:
+async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
+    cleaner = clean_content(
+        fix_channel_mentions=True,
+        use_nicknames=True,
+        escape_markdown=True
+    )
 
-    message_content = message.content or ""
+    fake_ctx = Context(prefix="", bot=bot, message=message)
+
+    cleaned = await cleaner.convert(fake_ctx, message.content)
+    return cleaned
+
+async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> str:
+
+    message_content = ""
+
+    if message.content:
+        cleaned = await clean_message_text(bot, message)
+        if cleaned:
+            message_content += cleaned
 
     if message.stickers:
         message_content += "\n\n[Стикеры:]"
@@ -90,17 +111,17 @@ async def append_cached_messages(member: discord.Member, message: discord.Messag
 
     return message_content, messages
 
-async def detect_flood(member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, list]:
+async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, list]:
     """
     Возвращает булевое значение: True — если обнаружен флуд, False — если нет.
     """
 
     # Сохранение сообщения в кэш + получение полного текста
-    message_content, message_list = await append_cached_messages(member, message)
+    message_content, message_list = await append_cached_messages(bot, member, message)
 
     # --- Подготовка окон ---
     guaranteed_slice = message_list[-GUARANTEED_WINDOW:]
-    alternating_slice = message_list[-ALTERNATING_WINDOW:] if len(message_list) >= 2 else message_list
+    alternating_slice = message_list[-ALTERNATING_WINDOW:]
 
     result = {
         "detected": False,
@@ -117,7 +138,7 @@ async def detect_flood(member: discord.Member, channel: discord.TextChannel, mes
 
     # --- Проверка гарантированного флуда ---
     # Нужны как минимум 6 сообщений, чтобы определить повтор
-    if len(guaranteed_slice) >= GUARANTEED_WINDOW:
+    if len(guaranteed_slice) >= 6:
 
         guaranteed_clusters = []
 
@@ -214,14 +235,17 @@ async def detect_flood(member: discord.Member, channel: discord.TextChannel, mes
         result["alternating_flood"] = True
         result["detected"] = True
 
-        logging.info(f"[FloodFilter] Чередующийся флуд обнаружен для участника {member.id} на сервере {channel.guild.id} в канале {channel.id}")
+        logging.info(
+            f"[FloodFilter] Чередующийся флуд обнаружен для участника "
+            f"{member.id} на сервере {channel.guild.id} в канале {channel.id}"
+        )
 
         return True, message_list
     
     return False, message_list
 
-async def flood_and_messages_check(member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> bool:
-    is_flood, messages = await detect_flood(member, channel, message)
+async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> bool:
+    is_flood, messages = await detect_flood(bot, member, channel, message)
 
     if is_flood:
 
