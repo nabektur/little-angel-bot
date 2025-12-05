@@ -2,9 +2,11 @@ import typing
 import logging
 import discord
 import asyncio
+import traceback
 
 from discord.ext.commands import clean_content, Context
 
+from collections          import defaultdict
 from rapidfuzz            import fuzz, process
 from aiocache             import SimpleMemoryCache
 from cache                import AsyncTTL
@@ -13,7 +15,8 @@ from classes.bot          import LittleAngelBot
 
 messages_from_new_members_cache = SimpleMemoryCache()
 
-locks = {}
+locks            = {}
+_PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
 # Settings
 MAX_CACHE_MESSAGES = 60
@@ -244,32 +247,67 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
     
     return False, message_list
 
+async def delete_messages_safe(
+    channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel, discord.StageChannel],
+    message_ids: set[int],
+    reason: str = "Автоматическая очистка"
+):
+    """
+    Безопасное удаление группы сообщений:
+    - Пытается удалить с помощью bulk delete
+    - Если не получилось - удаляет по одному, управляя скоростью
+    """
+
+    if not message_ids:
+        return
+
+    # --- основной безопасный purge ---
+    async with _PURGE_SEMAPHORE:
+        try:
+            await channel.purge(
+                check=lambda m: m.id in message_ids,
+                bulk=True,
+                limit=200,
+                reason=reason
+            )
+            return
+        except discord.HTTPException:
+            # попадает в rate-limit, fallback
+            pass
+
+    # --- fallback: удаляет поштучно ---
+    for msg_id in message_ids:
+        try:
+            msg = await channel.fetch_message(msg_id)
+        except discord.NotFound:
+            continue
+
+        try:
+            await msg.delete(reason=reason)
+        except discord.HTTPException:
+            # ловит ошибку 429 - ждёт и пробует дальше
+            await asyncio.sleep(2)
+        finally:
+            # минимальная задержка между удалениями
+            await asyncio.sleep(0.25)
+
 async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> bool:
     is_flood, messages = await detect_flood(bot, member, channel, message)
 
     if is_flood:
-
-        channels_for_purge = []
-        messages_ids_for_purge = []
         
-        for message in messages:
+        try:
+            messages_by_channel = defaultdict(set)
 
-            if message["channel_id"] not in channels_for_purge:
+            for msg in messages:
+                messages_by_channel[msg["channel_id"]].add(msg["id"])
 
-                channel = member.guild.get_channel(message["channel_id"])
-                if not channel:
-                    try:
-                        channel = await member.guild.fetch_channel(message["channel_id"])
-                    except Exception:
-                        continue
-            
-                channels_for_purge.append(channel)
+            for channel_id, ids in messages_by_channel.items():
+                channel = member.guild.get_channel(channel_id) or await member.guild.fetch_channel(channel_id)
+                asyncio.create_task(delete_messages_safe(channel, ids, reason="Флуд от нового участника"))
 
-            messages_ids_for_purge.append(message["id"])
-
-        messages_ids_for_purge = set(messages_ids_for_purge)
-
-        for channel in channels_for_purge:
-            asyncio.create_task(channel.purge(check=lambda m: m.id in messages_ids_for_purge, reason="Флуд от нового участника", limit=100, bulk=True))
+        except Exception:
+            logging.error(traceback.format_exc())
+            pass
 
     return is_flood
