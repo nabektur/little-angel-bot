@@ -19,12 +19,12 @@ locks            = {}
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
 # Settings
-MAX_CACHE_MESSAGES = 60
-GUARANTEED_WINDOW = 15       # количество сообщений для гарантированного флуда
-ALTERNATING_WINDOW = 60     # количество сообщений для засчитывания флуда как чередование
-FUZZY_THRESHOLD = 80        # порог нечёткого сравнения в процентах
-MIN_CLUSTERS_FOR_ALTERNATING = 2
-MIN_CLUSTER_SIZE = 15
+MAX_CACHE_MESSAGES = 60           # максимальное количество сообщений в кэше
+GUARANTEED_WINDOW = 15            # количество сообщений для гарантированного флуда
+ALTERNATING_WINDOW = 60           # окно анализа для чередования
+FUZZY_THRESHOLD = 80              # порог нечёткого сравнения в процентах
+MIN_CLUSTERS_FOR_ALTERNATING = 2  # количество кластеров для засчитывания флуда как чередование
+MIN_CLUSTER_SIZE = 15             # количество сообщений в кластере для засчитывания флуда как чередование
 
 @AsyncTTL(time_to_live=2400)
 async def get_lock(user_id: int) -> asyncio.Lock:
