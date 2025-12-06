@@ -27,7 +27,7 @@ MIN_CLUSTERS_FOR_ALTERNATING = 2
 MIN_CLUSTER_SIZE = 5
 
 @AsyncTTL(time_to_live=2400)
-async def get_lock(user_id: int):
+async def get_lock(user_id: int) -> asyncio.Lock:
     return asyncio.Lock()
 
 @AsyncTTL(time_to_live=2400)
