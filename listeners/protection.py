@@ -124,7 +124,7 @@ class AutoModeration(commands.Cog):
 
                         extra = (
                             f"Совпадение:\n```\n{matched}\n```\n"
-                            f"Первые 300 символов:\n```\n{preview}\n```"
+                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
                         )
 
                         await handle_violation(
@@ -180,7 +180,7 @@ class AutoModeration(commands.Cog):
                     extra = (
                         f"Совпадение:\n```\n{matched}\n```\n"
                         f"Информация о файле:\n```\n{file_info}```\n"
-                        f"Первые 300 символов:\n```\n{preview}\n```"
+                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
                     )
 
                     await handle_violation(
