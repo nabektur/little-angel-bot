@@ -129,7 +129,6 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
     result = {
         "detected": False,
         "guaranteed_flood": False,
-        "primary_match_count": 0,
         "alternating_flood": False,
         "alternating_clusters_count": 0,
         "details": {
@@ -140,12 +139,12 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
     }
 
     # --- Проверка гарантированного флуда ---
-    # Нужны как минимум 6 сообщений, чтобы определить повтор
+    # Нужно как минимум GUARANTEED_WINDOW сообщений, чтобы определить повтор
     if len(guaranteed_slice) >= GUARANTEED_WINDOW:
 
         guaranteed_clusters = []
 
-        # Кластеризация последних 6 сообщений
+        # Кластеризация указанного количества сообщений
         for i, msg in enumerate(guaranteed_slice):
             cur = (msg["content"] or "").strip()
             if not cur:
@@ -178,7 +177,7 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
                     "indices": [i]
                 })
 
-        # Если есть кластер из 6 сообщений - гарантированный флуд
+        # Если есть кластер из указанного количества сообщений - гарантированный флуд
         for cl in guaranteed_clusters:
             if cl["count"] >= GUARANTEED_WINDOW:
                 result["detected"] = True
@@ -244,6 +243,12 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
         )
 
         return True, message_list
+    
+    logging.info(
+        f"[FloodFilter] Флуд не был обнаружен для участника "
+        f"{member.id} на сервере {channel.guild.id} в канале {channel.id}\n"
+        "\n".join(result)
+    )
     
     return False, message_list
 
