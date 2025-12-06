@@ -139,8 +139,7 @@ class AutoModeration(commands.Cog):
                         return
 
         # модерация вложенных файлов
-
-        if message.attachments and priority > 0:
+        if priority > 0 and message.attachments:
 
             for attachment in message.attachments:
 
