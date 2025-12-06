@@ -65,7 +65,7 @@ class AutoModeration(commands.Cog):
                     message,
                     reason_title="Флуд",
                     reason_text="флуд",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300]}\n```",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
                     timeout_reason="Флуд",
                     force_harsh=True
                 )

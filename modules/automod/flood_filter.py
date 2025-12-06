@@ -283,7 +283,7 @@ async def delete_messages_safe(
             # минимальная задержка между удалениями
             await asyncio.sleep(0.25)
 
-async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> bool:
+async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, str]:
     is_flood, messages, message_content = await detect_flood(bot, member, channel, message)
 
     if is_flood:
