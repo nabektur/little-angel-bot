@@ -110,11 +110,13 @@ async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, me
             f"\nParty ID: {message.activity.get('party_id')}"
         )
 
+    message_content = message_content.strip()
+
     messages = await get_cached_messages_and_append(member, append_message_content=message_content, append_message=message)
 
     return message_content, messages
 
-async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, list]:
+async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, list, str]:
     """
     Возвращает булевое значение: True — если обнаружен флуд, False — если нет.
     """
@@ -182,11 +184,7 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
             if cl["count"] >= GUARANTEED_WINDOW:
                 result["detected"] = True
                 result["guaranteed_flood"] = True
-                logging.info(
-                    f"[FloodFilter] Гарантированный флуд обнаружен для участника "
-                    f"{member.id} на сервере {channel.guild.id} в канале {channel.id}"
-                )
-                return True, message_list
+                return True, message_list, message_content
 
     # --- Проверка на чередование / повторяющиеся кластеры (не гарантированный флуд) ---
     # Создаёт кластеры: каждый новый текст сравнивается с существующими прототипами кластера.
@@ -237,23 +235,9 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
         result["alternating_flood"] = True
         result["detected"] = True
 
-        logging.info(
-            f"[FloodFilter] Чередующийся флуд обнаружен для участника "
-            f"{member.id} на сервере {channel.guild.id} в канале {channel.id}"
-        )
-
-        return True, message_list
+        return True, message_list, message_content
     
-    logging.info(
-        f"\n--------"
-        f"[FloodFilter] Флуд не был обнаружен для участника "
-        f"{member.id} на сервере {channel.guild.id} в канале {channel.id}\n"
-        f"кластеры: {result['details'].get('clusters')}\n"
-        f"Сообщения: {message_list}\n"
-        f"--------\n\n"
-    )
-    
-    return False, message_list
+    return False, message_list, message_content
 
 async def delete_messages_safe(
     channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel, discord.StageChannel],
@@ -300,7 +284,7 @@ async def delete_messages_safe(
             await asyncio.sleep(0.25)
 
 async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> bool:
-    is_flood, messages = await detect_flood(bot, member, channel, message)
+    is_flood, messages, message_content = await detect_flood(bot, member, channel, message)
 
     if is_flood:
         
@@ -318,4 +302,4 @@ async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, 
             logging.error(traceback.format_exc())
             pass
 
-    return is_flood
+    return is_flood, message_content

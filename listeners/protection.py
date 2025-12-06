@@ -56,7 +56,7 @@ class AutoModeration(commands.Cog):
         if priority > 2:
 
             # детект флуда
-            is_flood = await flood_and_messages_check(self.bot, message.author, message.channel, message)
+            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message.channel, message)
 
             if is_flood:
 
@@ -65,6 +65,7 @@ class AutoModeration(commands.Cog):
                     message,
                     reason_title="Флуд",
                     reason_text="флуд",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300]}\n```",
                     timeout_reason="Флуд",
                     force_harsh=True
                 )
