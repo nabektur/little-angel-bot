@@ -20,11 +20,11 @@ _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
 # Settings
 MAX_CACHE_MESSAGES = 60
-GUARANTEED_WINDOW = 6       # количество сообщений для гарантированного флуда
+GUARANTEED_WINDOW = 15       # количество сообщений для гарантированного флуда
 ALTERNATING_WINDOW = 60     # количество сообщений для засчитывания флуда как чередование
 FUZZY_THRESHOLD = 80        # порог нечёткого сравнения в процентах
 MIN_CLUSTERS_FOR_ALTERNATING = 2
-MIN_CLUSTER_SIZE = 5
+MIN_CLUSTER_SIZE = 15
 
 @AsyncTTL(time_to_live=2400)
 async def get_lock(user_id: int) -> asyncio.Lock:
@@ -141,7 +141,7 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
 
     # --- Проверка гарантированного флуда ---
     # Нужны как минимум 6 сообщений, чтобы определить повтор
-    if len(guaranteed_slice) >= 6:
+    if len(guaranteed_slice) >= GUARANTEED_WINDOW:
 
         guaranteed_clusters = []
 
