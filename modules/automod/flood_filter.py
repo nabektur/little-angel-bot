@@ -23,8 +23,8 @@ MAX_CACHE_MESSAGES = 60
 GUARANTEED_WINDOW = 6       # количество сообщений для гарантированного флуда
 ALTERNATING_WINDOW = 60     # количество сообщений для засчитывания флуда как чередование
 FUZZY_THRESHOLD = 80        # порог нечёткого сравнения в процентах
-MIN_CLUSTERS_FOR_ALTERNATING = 3
-MIN_CLUSTER_SIZE = 3
+MIN_CLUSTERS_FOR_ALTERNATING = 2
+MIN_CLUSTER_SIZE = 5
 
 @AsyncTTL(time_to_live=2400)
 async def get_lock(user_id):
