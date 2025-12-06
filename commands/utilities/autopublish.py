@@ -1,17 +1,12 @@
-import typing
 import discord
-import asyncio
 
-from datetime                  import timedelta, datetime, timezone
-from apscheduler.triggers.date import DateTrigger
+from discord               import app_commands
+from discord.ext           import commands
 
-from discord import app_commands
-from discord.ext import commands
+from classes.bot           import LittleAngelBot
+from classes.database      import db
 
-from classes.bot       import LittleAngelBot
-from classes.database  import db
-
-from modules.configuration  import config
+from modules.configuration import config
 
 async def is_autopub(channel_id: int):
     return await db.fetchone("SELECT channel_id FROM autopublish WHERE channel_id = $1 LIMIT 1", channel_id) != None

@@ -4,12 +4,12 @@ import asyncio
 import logging
 import discord
 
-from discord.ext import commands
+from discord.ext           import commands
 
 from modules.configuration import config
 
-from classes.database  import db
-from classes.scheduler import scheduler
+from classes.database      import db
+from classes.scheduler     import scheduler
 
 _log = logging.getLogger(__name__)
 

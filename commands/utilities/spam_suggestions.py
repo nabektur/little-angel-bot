@@ -1,13 +1,13 @@
 import typing
 import discord
 
-from discord import app_commands
-from discord.ext import commands
+from discord               import app_commands
+from discord.ext           import commands
 
 from modules.configuration import config
 
-from classes.database import db
-from classes.bot      import LittleAngelBot
+from classes.database      import db
+from classes.bot           import LittleAngelBot
 
 class SuggestSpamView(discord.ui.View):
     def __init__(self, user_id: int, suggestion: str, spam_type: str):

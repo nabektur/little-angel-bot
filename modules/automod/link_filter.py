@@ -4,7 +4,7 @@ import unicodedata
 import urllib.parse
 
 from cache     import AsyncLRU
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
 

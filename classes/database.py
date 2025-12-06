@@ -1,8 +1,7 @@
-import os
 import asyncpg
 import typing
 
-from typing import Any, List, Optional
+from typing                import Any, List, Optional
 
 from modules.configuration import config
 

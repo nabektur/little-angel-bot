@@ -1,19 +1,15 @@
-import typing
 import discord
-import asyncio
 
 from datetime                  import timedelta, datetime, timezone
 from apscheduler.triggers.date import DateTrigger
 
-from discord import app_commands
-from discord.ext import commands
+from discord                   import app_commands
 
-from classes.bot       import LittleAngelBot
-from classes.database  import db
-from classes.scheduler import scheduler
+from classes.bot               import LittleAngelBot
+from classes.scheduler         import scheduler
 
-from modules.time_converter import Duration, verbose_timedelta
-from modules.configuration  import config
+from modules.time_converter    import Duration, verbose_timedelta
+from modules.configuration     import config
 
 async def delayed_delete_message(message_id: int, channel_id: int):
     from classes.bot import bot

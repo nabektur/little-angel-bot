@@ -1,14 +1,13 @@
-import secrets
 import typing
+import secrets
 import asyncio
 import discord
 import logging
-import aiohttp
 
-from datetime import datetime, timezone
+from datetime              import datetime, timezone
 
-from classes.database import db
-from classes.bot      import LittleAngelBot
+from classes.database      import db
+from classes.bot           import LittleAngelBot
 
 from modules.configuration import config
 

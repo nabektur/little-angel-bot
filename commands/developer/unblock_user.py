@@ -1,9 +1,9 @@
 import discord
 
-from discord.ext import commands
+from discord.ext           import commands
 
-from classes.bot      import LittleAngelBot
-from classes.database import db
+from classes.bot           import LittleAngelBot
+from classes.database      import db
 
 from modules.configuration import config
 

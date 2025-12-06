@@ -1,9 +1,10 @@
+import discord
+
+from discord.ext           import tasks
+
 from modules.configuration import config
 
-import discord
-from discord.ext import tasks
-
-from classes.bot import LittleAngelBot
+from classes.bot           import LittleAngelBot
 
 @tasks.loop(hours=1)
 async def change_status_periodically(bot: LittleAngelBot):

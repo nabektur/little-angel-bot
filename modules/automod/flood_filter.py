@@ -4,10 +4,10 @@ import discord
 import asyncio
 import traceback
 
-from discord.ext.commands import clean_content, Context
+from discord.ext.commands import clean_content
 
 from collections          import defaultdict
-from rapidfuzz            import fuzz, process
+from rapidfuzz            import fuzz
 from aiocache             import SimpleMemoryCache
 from cache                import AsyncTTL
 
