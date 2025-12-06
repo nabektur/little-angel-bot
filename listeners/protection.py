@@ -204,7 +204,7 @@ class AutoModeration(commands.Cog):
         if channel.id not in config.PROTECTED_CHANNELS_IDS:
             return
 
-        # Ищем кто удалил канал
+        # Ищет кто удалил канал
         await asyncio.sleep(1)
 
         who_deleted: typing.List[typing.Union[discord.User, discord.Member]] = []
@@ -218,7 +218,7 @@ class AutoModeration(commands.Cog):
         except:
             pass
 
-        # Если удалил бот -> ищем кто добавил бота (в течение 3 дней)
+        # Если удалил бот -> ищет кто добавил бота (в течение 3 дней)
         resolved: typing.List[typing.Union[discord.User, discord.Member]] = []
 
         for user in who_deleted:
@@ -236,7 +236,7 @@ class AutoModeration(commands.Cog):
                 except:
                     pass
 
-        # Никого не нашли -> подозрение на краш
+        # Никого не нашёл -> предупреждение о подозрении на краш
         if not resolved:
             embed = discord.Embed(
                 title="Удаление защищённого канала",
@@ -252,7 +252,7 @@ class AutoModeration(commands.Cog):
 
             return await safe_send_to_log(self.bot, embed=embed)
 
-        # Находим всех + баним каждого
+        # Находит всех + банит каждого
         embeds = []
 
         for i, user in enumerate(resolved, 1):
