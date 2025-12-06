@@ -245,9 +245,12 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: dis
         return True, message_list
     
     logging.info(
+        f"\n--------"
         f"[FloodFilter] Флуд не был обнаружен для участника "
         f"{member.id} на сервере {channel.guild.id} в канале {channel.id}\n"
-        "\n".join(result)
+        f"кластеры: {result['details'].get('clusters')}\n"
+        f"Сообщения: {message_list}\n"
+        f"--------\n\n"
     )
     
     return False, message_list
