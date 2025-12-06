@@ -51,57 +51,52 @@ class AutoModeration(commands.Cog):
 
         if priority == 0:
             return
+            
+        # условия срабатывания
+        if priority > 2:
 
-        # модерация активности
+            # детект флуда
+            is_flood = await flood_and_messages_check(self.bot, message.author, message.channel, message)
 
-        if message.activity is not None:
-
-            # условия срабатывания
-            if priority > 1:
-
-                activity_info = (
-                    f"Тип: {message.activity.get('type')}\n"
-                    f"Party ID: {message.activity.get('party_id')}\n"
-                )
+            if is_flood:
 
                 await handle_violation(
                     self.bot,
                     message,
-                    reason_title="Реклама через активность",
-                    reason_text="реклама через Discord Activity",
-                    extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                    timeout_reason="Реклама через активность"
+                    reason_title="Флуд",
+                    reason_text="флуд",
+                    timeout_reason="Флуд",
+                    force_harsh=True
                 )
 
+                await messages_from_new_members_cache.delete(message.author.id)
+
                 return
-                
         
-        # модерация сообщений
-        if message.content:
+        # условия срабатывания
+        if priority > 1:
                 
-                if priority > 2:
+                # модерация активности
+                if message.activity is not None:
 
-                    # детект флуда
+                    activity_info = (
+                        f"Тип: {message.activity.get('type')}\n"
+                        f"Party ID: {message.activity.get('party_id')}\n"
+                    )
 
-                    is_flood = await flood_and_messages_check(self.bot, message.author, message.channel, message)
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама через активность",
+                        reason_text="реклама через Discord Activity",
+                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                        timeout_reason="Реклама через активность"
+                    )
 
-                    if is_flood:
-
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Флуд",
-                            reason_text="флуд",
-                            timeout_reason="Флуд",
-                            force_harsh=True
-                        )
-
-                        await messages_from_new_members_cache.delete(message.author.id)
-
-                        return
+                    return
                 
-                
-                if priority > 1:
+                # модерация сообщений
+                if message.content:
                 
                     # защита от засирания чата 
 
