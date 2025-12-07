@@ -88,6 +88,14 @@ class AutoModeration(commands.Cog):
 
 
     @commands.Cog.listener()
+    async def on_message_edit(self, message_before: discord.Message, message_after: discord.Message):
+        if message_before.content == message_after.content:
+            return
+
+        await self.on_message(message_after)
+
+
+    @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
 
         # базовые проверки
