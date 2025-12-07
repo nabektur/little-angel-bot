@@ -117,11 +117,12 @@ async def handle_violation(
     )
 
     if detected_channel and not isinstance(detected_channel, discord.ForumChannel):
-        await safe_send_to_channel(
-            detected_channel,
-            content=user.mention,
-            embed=mention_embed
-        )
+        if not (isinstance(detected_object, discord.Message) and detected_object.is_system()):
+            await safe_send_to_channel(
+                detected_channel,
+                content=user.mention,
+                embed=mention_embed
+            )
 
     if isinstance(detected_object, discord.Message):
         await safe_delete(detected_object)
