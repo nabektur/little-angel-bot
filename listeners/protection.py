@@ -13,7 +13,7 @@ from modules.automod.flood_filter     import flood_and_messages_check, messages_
 from modules.automod.spam_filter      import is_spam_block
 from modules.automod.link_filter      import detect_links
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
-from modules.automod.thread_filter    import flood_and_threads_check, update_thread_system_message
+from modules.automod.thread_filter    import flood_and_threads_check
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -107,9 +107,6 @@ class AutoModeration(commands.Cog):
             return
         if message.author.bot:
             return
-        
-        if message.type == discord.MessageType.thread_created:
-            await update_thread_system_message(message.author, message)
         
         # расстановка приоритетов
         priority: int = 2

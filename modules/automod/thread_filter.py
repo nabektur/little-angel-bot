@@ -20,21 +20,6 @@ MAX_THREADS = 7  # максимальное количество веток в �
 async def get_lock(user_id: int) -> asyncio.Lock:
     return asyncio.Lock()
 
-async def update_thread_system_message(member: discord.Member, system_message: discord.Message) -> None:
-    logging.info(f"Updating thread: {system_message.content} | {system_message.id} | {member.id} | {member.guild.id}")
-    async with await get_lock(member.id):
-        threads = await threads_from_new_members_cache.get(member.id) or []
-
-        threads = threads[-MAX_THREADS:]
-
-        for thread in threads:
-            logging.info(f"Updating thread: {thread.get('name')} | {system_message.content}")
-            if thread["name"] == system_message.content:
-                logging.info(f"Updated thread: {thread.get('name')} | {system_message.content}")
-                thread["system_message_id"] = system_message.id
-
-        await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
-
 async def get_cached_threads_and_append(member: discord.Member, append_thread: discord.Thread) -> list:
     async with await get_lock(member.id):
         threads = await threads_from_new_members_cache.get(member.id) or []
@@ -43,9 +28,7 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
 
         if append_thread:
             threads.append({
-                "id": append_thread.id,
-                "name": append_thread.name,
-                "system_message_id": None
+                "id": append_thread.id
             })
 
             await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
@@ -75,7 +58,6 @@ async def analyze_thread(member: discord.Member, thread: discord.Thread) -> typi
 
 async def delete_thread_safe(
     thread: discord.Thread,
-    system_message_id: int = None,
     reason: str = "Автоматическая очистка"
 ):
     """
@@ -85,10 +67,10 @@ async def delete_thread_safe(
     # --- основной безопасный delete ---
     async with _DELETE_SEMAPHORE:
 
-        if system_message_id and thread.parent and not isinstance(thread.parent, discord.ForumChannel):
+        if thread.parent and not isinstance(thread.parent, discord.ForumChannel):
             try:
                 await thread.parent.delete_messages(
-                    [discord.Object(id=system_message_id)],
+                    [discord.Object(id=thread.starter_message)],
                     reason=reason
                 )
             except (discord.HTTPException, discord.NotFound):
@@ -116,10 +98,8 @@ async def flood_and_threads_check(member: discord.Member, thread: discord.Thread
                 th = member.guild.get_thread(th_dict["id"]) or await member.guild.fetch_channel(th_dict["id"])
                 if not isinstance(th, discord.Thread):
                     continue
-
-                logging.info(f"Deleting thread: {th.name} | {th.id} | {th_dict}")
                 
-                asyncio.create_task(delete_thread_safe(th, th_dict.get("system_message_id"), reason="Реклама в ветке" if matched else "Флуд ветками от нового участника"))
+                asyncio.create_task(delete_thread_safe(th, reason="Реклама в ветке" if matched else "Флуд ветками от нового участника"))
 
             except Exception:
                 logging.error(traceback.format_exc())
