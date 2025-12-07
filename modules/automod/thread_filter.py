@@ -113,6 +113,8 @@ async def flood_and_threads_check(member: discord.Member, thread: discord.Thread
                 th = member.guild.get_thread(th_dict["id"]) or await member.guild.fetch_channel(th_dict["id"])
                 if not isinstance(th, discord.Thread):
                     continue
+
+                logging.info(f"Deleting thread: {th.name} | {th.id} | {th_dict}")
                 
                 asyncio.create_task(delete_thread_safe(th, th_dict.get("system_message_id"), reason="Реклама в ветке" if matched else "Флуд ветками от нового участника"))
 
