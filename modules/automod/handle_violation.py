@@ -64,6 +64,9 @@ async def handle_violation(
 
     is_soft = hits <= 2 and not force_harsh
 
+    if isinstance(detected_object, discord.Message) and detected_object.is_system():
+        is_soft = True
+
     punishment = (
         "Наказание не применяется, за исключением удаления сообщения"
         if is_soft else
