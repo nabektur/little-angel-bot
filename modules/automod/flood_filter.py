@@ -15,7 +15,6 @@ from classes.bot          import LittleAngelBot
 
 messages_from_new_members_cache = SimpleMemoryCache()
 
-locks            = {}
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
 # Settings
@@ -303,8 +302,13 @@ async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, 
                 messages_by_channel[msg["channel_id"]].add(msg["id"])
 
             for channel_id, ids in messages_by_channel.items():
-                channel = member.guild.get_channel(channel_id) or await member.guild.fetch_channel(channel_id)
-                asyncio.create_task(delete_messages_safe(channel, ids, reason="Флуд от нового участника"))
+                try:
+                    channel = member.guild.get_channel(channel_id) or await member.guild.fetch_channel(channel_id)
+                    asyncio.create_task(delete_messages_safe(channel, ids, reason="Флуд от нового участника"))
+
+                except Exception:
+                    logging.error(traceback.format_exc())
+                    pass
 
         except Exception:
             logging.error(traceback.format_exc())

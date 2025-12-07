@@ -12,10 +12,75 @@ from modules.automod.flood_filter     import flood_and_messages_check, messages_
 from modules.automod.spam_filter      import is_spam_block
 from modules.automod.link_filter      import detect_links
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
+from modules.automod.thread_filter    import flood_and_threads_check
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_thread_create(self, thread: discord.Thread):
+
+        # базовые проверки
+        if not thread.owner:
+            return
+        if thread.owner == self.bot.user:
+            return
+        if thread.owner.bot:
+            return
+        if thread.guild.id != config.GUILD_ID:
+            return
+        
+        # расстановка приоритетов
+        priority: int = 2
+
+        if thread.permissions_for(thread.owner).manage_messages:
+            priority = 0
+        else:
+            now = datetime.now(timezone.utc)
+
+            if thread.owner.joined_at:
+                difference_between_join_and_now = now - thread.owner.joined_at
+
+                if difference_between_join_and_now > timedelta(weeks=2):
+                    priority = 1
+                elif difference_between_join_and_now < timedelta(days=2):
+                    priority = 3
+
+        if priority == 0:
+            return
+        
+        # условия срабатывания
+        if priority > 1:
+            need_to_prune, matched, thread_name = await flood_and_threads_check(thread.owner, thread)
+
+            if need_to_prune:
+
+                if not matched:
+                    await handle_violation(
+                        self.bot,
+                        thread,
+                        reason_title="Флуд ветками",
+                        reason_text="флуд путём создания веток",
+                        timeout_reason="Флуд ветками",
+                        force_harsh=True
+                    )
+
+                else:
+                    extra = (
+                        f"Совпадение:\n```\n{matched}\n```\n"
+                        f"Название ветки:\n```\n{thread_name}\n```"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        thread,
+                        reason_title="Реклама в названии ветки",
+                        reason_text="реклама путём создания веток",
+                        extra_info=extra,
+                        timeout_reason="Реклама в названии ветки",
+                        force_harsh=True
+                    )
 
 
     @commands.Cog.listener()

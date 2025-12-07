@@ -1,3 +1,4 @@
+import typing
 import discord
 
 from aiocache              import SimpleMemoryCache
@@ -43,15 +44,18 @@ async def safe_timeout(member: discord.Member, duration: timedelta, reason: str)
 
 async def handle_violation(
     bot: LittleAngelBot,
-    message: discord.Message,
+    detected_object: typing.Union[discord.Message, discord.Thread],
     reason_title: str,
     reason_text: str,
     extra_info: str = "",
     timeout_reason: str = None,
     force_harsh: bool = False,
 ):
-    user = message.author
-    guild = message.guild
+    if isinstance(detected_object, discord.Message):
+        user = detected_object.author
+    else:
+        user = detected_object.owner
+    guild = detected_object.guild
 
     # hit-cache
     hits = await hit_cache.get(user.id) or 0
@@ -67,6 +71,9 @@ async def handle_violation(
     )
 
     # LOG EMBED
+
+    detected_channel = detected_object.parent if isinstance(detected_object, discord.Thread) else detected_object.channel
+
     log_desc = (
         f"{'Удалено сообщение от ' + user.mention + ' (`@'+ str(user) + '`) ' if is_soft else 'Участнику ' + user.mention + ' (`@'+ str(user) + '`) был выдан мут на 1 час'} "
         f"Причина: {reason_text}\n\n"
@@ -83,7 +90,7 @@ async def handle_violation(
     log_embed.set_thumbnail(url=user.display_avatar.url)
     log_embed.add_field(
         name="Канал:",
-        value=f"{message.channel.mention} (`#{message.channel.name}`)",
+        value=f"{detected_channel.mention} (`#{detected_channel.name}`)",
         inline=False
     )
 
@@ -109,13 +116,15 @@ async def handle_violation(
             else "Если ты считаешь, что это ошибка, обратись к модераторам"
     )
 
-    await safe_send_to_channel(
-        message.channel,
-        content=user.mention,
-        embed=mention_embed
-    )
+    if detected_channel and not isinstance(detected_channel, discord.ForumChannel):
+        await safe_send_to_channel(
+            detected_channel,
+            content=user.mention,
+            embed=mention_embed
+        )
 
-    await safe_delete(message)
+    if isinstance(detected_object, discord.Message):
+        await safe_delete(detected_object)
 
     # выдаёт мут
     if not is_soft and timeout_reason:
