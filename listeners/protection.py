@@ -52,6 +52,8 @@ class AutoModeration(commands.Cog):
         
         # условия срабатывания
         if priority > 1:
+
+            # модерация создания веток
             need_to_prune, matched, thread_name = await flood_and_threads_check(thread.owner, thread)
 
             if need_to_prune:
