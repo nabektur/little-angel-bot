@@ -200,10 +200,12 @@ class AutoModeration(commands.Cog):
             # модерация опросов
             if message.poll:
 
-                poll = message.poll
-                poll_content = f'[Опрос:]\nВопрос: "{poll.question}"'
                 poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
-                poll_content += f"\nОпции: {poll_options}"
+                poll_content = (
+                    "\n\n[Опрос:]"
+                    f'\nВопрос: "{message.poll.question}"'
+                    f"\nОпции: {poll_options}"
+                )
 
                 matched = await detect_links(poll_content)
 
