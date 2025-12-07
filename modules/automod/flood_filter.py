@@ -110,6 +110,14 @@ async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, me
             f"\nParty ID: {message.activity.get('party_id')}"
         )
 
+    if message.poll:
+        poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
+        message_content += (
+            "\n\n[Опрос:]"
+            f'\nВопрос: "{message.poll.question}"'
+            f"\nОпции: {poll_options}"
+        )
+
     message_content = message_content.strip()
 
     messages = await get_cached_messages_and_append(member, append_message_content=message_content, append_message=message)

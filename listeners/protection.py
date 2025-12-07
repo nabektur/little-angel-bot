@@ -138,61 +138,94 @@ class AutoModeration(commands.Cog):
 
                         return
 
-        # модерация вложенных файлов
-        if priority > 0 and message.attachments:
+        # условия срабатывания
+        if priority > 0:
 
-            for attachment in message.attachments:
+            # модерация вложенных файлов
+            if message.attachments:
 
-                if not attachment.content_type:
-                    continue
+                for attachment in message.attachments:
 
-                if not any(ct in attachment.content_type for ct in ["text", "json", "xml", "csv", "html", "htm", "md", "yaml", "yml", "ini", "log", "multipart", "text/plain", "text/html", "text/markdown", "text/xml", "text/csv", "text/yaml", "text/yml", "text/ini", "text/log"]):
-                    continue
+                    if not attachment.content_type:
+                        continue
 
-                # ограничение по размеру
-                # if attachment.size > MAX_FILE_SIZE_BYTES:
-                #     continue
+                    if not any(ct in attachment.content_type for ct in ["text", "json", "xml", "csv", "html", "htm", "md", "yaml", "yml", "ini", "log", "multipart", "text/plain", "text/html", "text/markdown", "text/xml", "text/csv", "text/yaml", "text/yml", "text/ini", "text/log"]):
+                        continue
 
-                try:
-                    file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
-                except (asyncio.TimeoutError, discord.HTTPException):
-                    continue
+                    # ограничение по размеру
+                    # if attachment.size > MAX_FILE_SIZE_BYTES:
+                    #     continue
 
-                if file_bytes.count(b"\x00") > 100:
-                    continue  # бинарный файл
+                    try:
+                        file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
+                    except (asyncio.TimeoutError, discord.HTTPException):
+                        continue
 
-                content = file_bytes[:1_000_000].decode(errors='ignore')
+                    if file_bytes.count(b"\x00") > 100:
+                        continue  # бинарный файл
 
-                matched = await detect_links(content)
+                    content = file_bytes[:1_000_000].decode(errors='ignore')
+
+                    matched = await detect_links(content)
+
+                    if matched:
+
+                        # первые 300 символов файла
+                        preview = content[:300].replace("`", "'")
+
+                        file_info = (
+                            f"Имя файла: {attachment.filename}\n"
+                            f"Размер: {attachment.size} байт\n"
+                            f"Тип: {attachment.content_type}\n"
+                        )
+
+                        extra = (
+                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Информация о файле:\n```\n{file_info}```\n"
+                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                        )
+
+                        await handle_violation(
+                            self.bot,
+                            message,
+                            reason_title="Реклама внутри файла",
+                            reason_text="реклама в прикреплённом файле",
+                            extra_info=extra,
+                            timeout_reason="Реклама в файле",
+                            force_harsh=True
+                        )
+
+                        return
+                    
+            # модерация опросов
+            if message.poll:
+
+                poll = message.poll
+                poll_content = f'[Опрос:]\nВопрос: "{poll.question}"'
+                poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
+                poll_content += f"\nОпции: {poll_options}"
+
+                matched = await detect_links(poll_content)
 
                 if matched:
 
-                    # первые 300 символов файла
-                    preview = content[:300].replace("`", "'")
-
-                    file_info = (
-                        f"Имя файла: {attachment.filename}\n"
-                        f"Размер: {attachment.size} байт\n"
-                        f"Тип: {attachment.content_type}\n"
-                    )
-
                     extra = (
                         f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Информация о файле:\n```\n{file_info}```\n"
-                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                        f"Информация об опросе:\n```\n{poll_content}```\n"
                     )
 
                     await handle_violation(
                         self.bot,
                         message,
-                        reason_title="Реклама внутри файла",
-                        reason_text="реклама в прикреплённом файле",
+                        reason_title="Реклама внутри опроса",
+                        reason_text="реклама в прикреплённом опросе",
                         extra_info=extra,
-                        timeout_reason="Реклама в файле",
+                        timeout_reason="Реклама в опросе",
                         force_harsh=True
                     )
 
                     return
+
                 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
