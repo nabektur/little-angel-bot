@@ -67,12 +67,21 @@ async def delete_thread_safe(
     # --- основной безопасный delete ---
     async with _DELETE_SEMAPHORE:
 
-        if thread.parent and not isinstance(thread.parent, discord.ForumChannel):
+        if thread.starter_message:
+            try:
+                await thread.starter_message.delete()
+                logging.info(f"Deleted starter message: {thread.starter_message.id}")
+            except (discord.HTTPException, discord.NotFound):
+                # попадает в rate-limit, попадает в not found, fallback
+                pass
+
+        elif thread.parent and not isinstance(thread.parent, discord.ForumChannel):
             try:
                 await thread.parent.delete_messages(
-                    [discord.Object(id=thread.starter_message)],
+                    [discord.Object(id=thread.id)],
                     reason=reason
                 )
+                logging.info(f"Deleted starter message: {thread.id}")
             except (discord.HTTPException, discord.NotFound):
                 # попадает в rate-limit, попадает в not found, fallback
                 pass
