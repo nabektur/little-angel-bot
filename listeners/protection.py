@@ -58,21 +58,22 @@ class AutoModeration(commands.Cog):
 
             if need_to_prune:
 
+                extra = f"Название ветки:\n```\n#{thread_name}```"
+
                 if not matched:
                     await handle_violation(
                         self.bot,
                         thread,
                         reason_title="Флуд ветками",
                         reason_text="флуд путём создания веток",
+                        extra_info=extra,
                         timeout_reason="Флуд ветками",
                         force_harsh=True
                     )
 
                 else:
-                    extra = (
-                        f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Название ветки:\n```\n{thread_name}\n```"
-                    )
+
+                    extra = f"Совпадение:\n```\n{matched}\n```\n{extra}"
 
                     await handle_violation(
                         self.bot,
