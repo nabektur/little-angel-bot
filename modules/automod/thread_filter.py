@@ -21,13 +21,16 @@ async def get_lock(user_id: int) -> asyncio.Lock:
     return asyncio.Lock()
 
 async def update_thread_system_message(member: discord.Member, system_message: discord.Message) -> None:
+    logging.info(f"Updating thread: {system_message.content} | {system_message.id} | {member.id} | {member.guild.id}")
     async with await get_lock(member.id):
         threads = await threads_from_new_members_cache.get(member.id) or []
 
         threads = threads[-MAX_THREADS:]
 
         for thread in threads:
+            logging.info(f"Updating thread: {thread.get('name')} | {system_message.content}")
             if thread["name"] == system_message.content:
+                logging.info(f"Updated thread: {thread.get('name')} | {system_message.content}")
                 thread["system_message_id"] = system_message.id
 
         await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
