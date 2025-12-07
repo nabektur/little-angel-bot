@@ -22,13 +22,13 @@ class AutoModeration(commands.Cog):
     async def on_thread_create(self, thread: discord.Thread):
 
         # базовые проверки
+        if thread.guild.id != config.GUILD_ID:
+            return
         if not thread.owner:
             return
         if thread.owner == self.bot.user:
             return
         if thread.owner.bot:
-            return
-        if thread.guild.id != config.GUILD_ID:
             return
         
         # расстановка приоритетов
@@ -87,13 +87,13 @@ class AutoModeration(commands.Cog):
     async def on_message(self, message: discord.Message):
 
         # базовые проверки
-        if message.author == self.bot.user:
-            return
-        if message.author.bot:
-            return
         if not message.guild:
             return
         if message.guild.id != config.GUILD_ID:
+            return
+        if message.author == self.bot.user:
+            return
+        if message.author.bot:
             return
         
         # расстановка приоритетов
