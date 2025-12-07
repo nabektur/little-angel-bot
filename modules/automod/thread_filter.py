@@ -85,7 +85,8 @@ async def delete_thread_safe(
         if system_message_id and thread.parent and not isinstance(thread.parent, discord.ForumChannel):
             try:
                 await thread.parent.delete_messages(
-                    [discord.Object(id=system_message_id)]
+                    [discord.Object(id=system_message_id)],
+                    reason=reason
                 )
             except (discord.HTTPException, discord.NotFound):
                 # попадает в rate-limit, попадает в not found, fallback
