@@ -17,7 +17,7 @@ async def delayed_delete_message(message_id: int, channel_id: int):
     channel = bot.get_channel(channel_id)
     await channel.delete_messages(
         [
-            discord.abc.Snowflake(id=message_id)
+            discord.Object(message_id)
         ]
     )
 
