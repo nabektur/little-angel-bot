@@ -13,7 +13,7 @@ from modules.automod.flood_filter     import flood_and_messages_check, messages_
 from modules.automod.spam_filter      import is_spam_block
 from modules.automod.link_filter      import detect_links
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
-from modules.automod.thread_filter    import flood_and_threads_check
+from modules.automod.thread_filter    import flood_and_threads_check, threads_from_new_members_cache
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -85,6 +85,10 @@ class AutoModeration(commands.Cog):
                         timeout_reason="Реклама в названии ветки",
                         force_harsh=True
                     )
+
+                await threads_from_new_members_cache.delete(thread.owner.id)
+
+                return
 
 
     @commands.Cog.listener()
