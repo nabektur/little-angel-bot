@@ -20,6 +20,18 @@ MAX_THREADS = 7  # максимальное количество веток в �
 async def get_lock(user_id: int) -> asyncio.Lock:
     return asyncio.Lock()
 
+async def update_thread_system_message(member: discord.Member, system_message: discord.Message) -> None:
+    async with await get_lock(member.id):
+        threads = await threads_from_new_members_cache.get(member.id) or []
+
+        threads = threads[-MAX_THREADS:]
+
+        for thread in threads:
+            if thread["name"] == system_message.content:
+                thread["system_message_id"] = system_message.id
+
+        await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
+
 async def get_cached_threads_and_append(member: discord.Member, append_thread: discord.Thread) -> list:
     async with await get_lock(member.id):
         threads = await threads_from_new_members_cache.get(member.id) or []
@@ -28,7 +40,9 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
 
         if append_thread:
             threads.append({
-                "id": append_thread.id
+                "id": append_thread.id,
+                "name": append_thread.name,
+                "system_message_id": None
             })
 
             await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
@@ -58,6 +72,7 @@ async def analyze_thread(member: discord.Member, thread: discord.Thread) -> typi
 
 async def delete_thread_safe(
     thread: discord.Thread,
+    system_message_id: int = None,
     reason: str = "Автоматическая очистка"
 ):
     """
@@ -66,6 +81,16 @@ async def delete_thread_safe(
 
     # --- основной безопасный delete ---
     async with _DELETE_SEMAPHORE:
+
+        if system_message_id and thread.parent and not isinstance(thread.parent, discord.ForumChannel):
+            try:
+                await thread.parent.delete_messages(
+                    [discord.abc.Snowflake(system_message_id)]
+                )
+            except (discord.HTTPException, discord.NotFound):
+                # попадает в rate-limit, попадает в not found, fallback
+                pass
+
         try:
             await thread.delete(
                 reason=reason
@@ -88,7 +113,7 @@ async def flood_and_threads_check(member: discord.Member, thread: discord.Thread
                 if not isinstance(th, discord.Thread):
                     continue
                 
-                asyncio.create_task(delete_thread_safe(th, reason="Реклама в ветке" if matched else "Флуд ветками от нового участника"))
+                asyncio.create_task(delete_thread_safe(th, th_dict.get("system_message_id"), reason="Реклама в ветке" if matched else "Флуд ветками от нового участника"))
 
             except Exception:
                 logging.error(traceback.format_exc())
