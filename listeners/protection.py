@@ -1,6 +1,7 @@
 import typing
-import discord
+import logging
 import asyncio
+import discord
 
 from discord.ext                      import commands
 from datetime                         import timedelta, datetime, timezone
@@ -98,6 +99,9 @@ class AutoModeration(commands.Cog):
             return
         if message.author.bot:
             return
+        
+        if message.is_system():
+            logging.info(f"System message: {message.content} | {message.type} | {message.system_content}")
         
         # расстановка приоритетов
         priority: int = 2
