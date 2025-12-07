@@ -70,7 +70,6 @@ async def delete_thread_safe(
         if thread.starter_message:
             try:
                 await thread.starter_message.delete()
-                logging.info(f"Deleted starter message: {thread.starter_message.id}")
             except (discord.HTTPException, discord.NotFound):
                 # попадает в rate-limit, попадает в not found, fallback
                 pass
@@ -81,7 +80,6 @@ async def delete_thread_safe(
                     [discord.Object(id=thread.id)],
                     reason=reason
                 )
-                logging.info(f"Deleted starter message: {thread.id}")
             except (discord.HTTPException, discord.NotFound):
                 # попадает в rate-limit, попадает в not found, fallback
                 pass
