@@ -276,13 +276,16 @@ async def delete_messages_safe(
 
     # --- fallback: удаляет поштучно ---
     for msg_id in message_ids:
-        try:
-            msg = await channel.fetch_message(msg_id)
-        except discord.NotFound:
-            continue
 
         try:
-            await msg.delete(reason=reason)
+            await channel.delete_messages(
+                [
+                    discord.Object(id=msg_id)
+                ]
+            )
+        except discord.NotFound:
+            # попадает в not found - пропускает
+            continue
         except discord.HTTPException:
             # ловит ошибку 429 - ждёт и пробует дальше
             await asyncio.sleep(2)

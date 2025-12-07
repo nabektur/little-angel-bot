@@ -17,8 +17,11 @@ async def delayed_delete_message(message_id: int, channel_id: int):
     from classes.bot import bot
 
     channel = bot.get_channel(channel_id)
-    message = await channel.fetch_message(message_id)
-    await message.delete()
+    await channel.delete_messages(
+        [
+            discord.Object(id=message_id)
+        ]
+    )
 
 class AutoRemove(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
