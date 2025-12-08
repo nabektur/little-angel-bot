@@ -38,7 +38,7 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
 
 async def analyze_thread(member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, list, typing.Optional[str]]:
     """
-    Возвращает булевое значение: True — если обнаружен флуд, False — если нет.
+    Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
     """
 
     # Сохранение ветки в кэш + получение полного списка веток
