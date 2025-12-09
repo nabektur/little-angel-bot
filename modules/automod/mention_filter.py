@@ -32,6 +32,9 @@ async def get_cached_mentions_and_append(member: discord.Member, message: discor
 
         if message:
 
+            # Удаляем предыдущее сообщение с таким же id
+            messages = [m for m in messages if m.get("id") != message.id]
+
             if "@everyone" in message.content:
                 mentions["@everyone"] = mentions.get("@everyone", 0) + 1
 

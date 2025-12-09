@@ -44,6 +44,10 @@ async def get_cached_messages_and_append(member: discord.Member, append_message_
         messages = messages[-MAX_CACHE_MESSAGES:]  # ограничение кэша до MAX_CACHE_MESSAGES
 
         if append_message_content:
+
+            # Удаляем предыдущее сообщение с таким же id
+            messages = [m for m in messages if m.get("id") != append_message.id]
+
             messages.append({
                 "content": append_message_content,
                 "id": append_message.id,
