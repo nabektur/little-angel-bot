@@ -14,6 +14,7 @@ from modules.automod.spam_filter      import is_spam_block
 from modules.automod.link_filter      import detect_links
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
 from modules.automod.thread_filter    import flood_and_threads_check, threads_from_new_members_cache
+from modules.automod.mention_filter   import check_mention_abuse, mentions_from_new_members_cache
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -136,8 +137,27 @@ class AutoModeration(commands.Cog):
         # условия срабатывания
         if priority > 2:
 
+            # детект злоупотребления упоминаниями
+            is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
+
+            if is_mention_abuse:
+
+                await handle_violation(
+                    self.bot,
+                    message,
+                    reason_title="Злоупотребление упоминаниями",
+                    reason_text="злоупотребление упоминаниями",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Злоупотребление упоминаниями от нового участника",
+                    force_harsh=True
+                )
+
+                await mentions_from_new_members_cache.delete(message.author.id)
+
+                return
+
             # детект флуда
-            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message.channel, message)
+            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
 
             if is_flood:
 
@@ -147,7 +167,7 @@ class AutoModeration(commands.Cog):
                     reason_title="Флуд",
                     reason_text="флуд",
                     extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
-                    timeout_reason="Флуд",
+                    timeout_reason="Флуд от нового участника",
                     force_harsh=True
                 )
 

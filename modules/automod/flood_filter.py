@@ -94,13 +94,13 @@ async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, me
             if embed.description:
                 message_content += f"\nОписание: {embed.description}"
 
-    if message.reference:
-        if message.reference.resolved:
-            ref = message.reference.resolved
-            if isinstance(ref, discord.Message):
-                message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
-            elif isinstance(ref, discord.DeletedReferencedMessage):
-                message_content += f"\n\n[Ответ на удалённое сообщение]: {ref.id}"
+    # if message.reference:
+    #     if message.reference.resolved:
+    #         ref = message.reference.resolved
+    #         if isinstance(ref, discord.Message):
+    #             message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
+    #         elif isinstance(ref, discord.DeletedReferencedMessage):
+    #             message_content += f"\n\n[Ответ на удалённое сообщение]: {ref.id}"
 
     if message.activity:
         message_content += (
@@ -123,7 +123,7 @@ async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, me
 
     return message_content, messages
 
-async def detect_flood(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, list, str]:
+async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> typing.Tuple[bool, list, str]:
     """
     Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
     """
@@ -293,8 +293,8 @@ async def delete_messages_safe(
             # минимальная задержка между удалениями
             await asyncio.sleep(0.25)
 
-async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, channel: discord.TextChannel, message: discord.Message) -> typing.Tuple[bool, str]:
-    is_flood, messages, message_content = await detect_flood(bot, member, channel, message)
+async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> typing.Tuple[bool, str]:
+    is_flood, messages, message_content = await detect_flood(bot, member, message)
 
     if is_flood:
         
