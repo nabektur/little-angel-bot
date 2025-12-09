@@ -45,7 +45,7 @@ async def get_cached_messages_and_append(member: discord.Member, append_message_
 
         if append_message_content:
 
-            # Удаляем предыдущее сообщение с таким же id
+            # Удаляет предыдущее сообщение с таким же id
             messages = [m for m in messages if m.get("id") != append_message.id]
 
             messages.append({
