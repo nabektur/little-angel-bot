@@ -137,24 +137,25 @@ class AutoModeration(commands.Cog):
         # условия срабатывания
         if priority > 2:
 
-            # детект злоупотребления упоминаниями
-            is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
+            if message.content:
+                # детект злоупотребления упоминаниями
+                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
 
-            if is_mention_abuse:
+                if is_mention_abuse:
 
-                await handle_violation(
-                    self.bot,
-                    message,
-                    reason_title="Злоупотребление упоминаниями",
-                    reason_text="злоупотребление упоминаниями",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
-                    timeout_reason="Злоупотребление упоминаниями от нового участника",
-                    force_harsh=True
-                )
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Злоупотребление упоминаниями",
+                        reason_text="злоупотребление упоминаниями",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Злоупотребление упоминаниями от нового участника",
+                        force_harsh=True
+                    )
 
-                await mentions_from_new_members_cache.delete(message.author.id)
+                    await mentions_from_new_members_cache.delete(message.author.id)
 
-                return
+                    return
 
             # детект флуда
             is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)

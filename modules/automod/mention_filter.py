@@ -41,11 +41,11 @@ async def get_cached_mentions_and_append(member: discord.Member, message: discor
             if "@here" in message.content:
                 mentions["@here"] = mentions.get("@here", 0) + 1
 
-            for mention in message.raw_mentions:
-                mentions[mention] = mentions.get(mention, 0) + 1
+            for user in message.mentions:
+                mentions[user.id] = mentions.get(user.id, 0) + 1
 
-            for role in message.raw_role_mentions:
-                mentions[role] = mentions.get(role, 0) + 1
+            for role in message.role_mentions:
+                mentions[role.id] = mentions.get(role.id, 0) + 1
 
             messages.append(
                 {
