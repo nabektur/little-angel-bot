@@ -75,6 +75,8 @@ async def detect_mention_abuse(member: discord.Member, message: discord.Message)
 
     max_count = max(mentions.values()) if mentions else 0
 
+    logging.debug(f"mentions: {mentions}, max_count: {max_count}")
+
     # Проверка на одинаковые id
     if max_count >= MAX_SIMILLAR_MENTIONS:
         return True, messages
