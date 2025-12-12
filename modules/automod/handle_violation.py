@@ -36,7 +36,7 @@ async def safe_delete(msg: discord.Message):
     except Exception:
         pass
 
-async def safe_timeout(member: discord.Member, duration: timedelta, reason: str):
+async def safe_timeout(member: discord.Member, duration: timedelta, reason: str = None):
     try:
         await member.timeout(duration, reason=reason)
     except Exception:
@@ -131,6 +131,6 @@ async def handle_violation(
         await safe_delete(detected_object)
 
     # выдаёт мут
-    if not is_soft and timeout_reason:
+    if not is_soft:
         await safe_timeout(user, timedelta(hours=1), timeout_reason)
         await hit_cache.delete(user.id)
