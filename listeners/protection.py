@@ -70,7 +70,7 @@ class AutoModeration(commands.Cog):
                         reason_text="флуд путём создания веток",
                         extra_info=extra,
                         timeout_reason="Флуд ветками",
-                        force_harsh=True
+                        force_ban=True
                     )
 
                 else:
@@ -84,7 +84,7 @@ class AutoModeration(commands.Cog):
                         reason_text="реклама путём создания веток",
                         extra_info=extra,
                         timeout_reason="Реклама в названии ветки",
-                        force_harsh=True
+                        force_ban=True
                     )
 
                 await threads_from_new_members_cache.delete(thread.owner.id)
@@ -150,7 +150,7 @@ class AutoModeration(commands.Cog):
                         reason_text="злоупотребление упоминаниями",
                         extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
                         timeout_reason="Злоупотребление упоминаниями от нового участника",
-                        force_harsh=True
+                        force_mute=True
                     )
 
                     await mentions_from_new_members_cache.delete(message.author.id)
@@ -169,7 +169,7 @@ class AutoModeration(commands.Cog):
                     reason_text="флуд",
                     extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
                     timeout_reason="Флуд от нового участника",
-                    force_harsh=True
+                    force_mute=True
                 )
 
                 await messages_from_new_members_cache.delete(message.author.id)
@@ -294,7 +294,7 @@ class AutoModeration(commands.Cog):
                             reason_text="реклама в прикреплённом файле",
                             extra_info=extra,
                             timeout_reason="Реклама в файле",
-                            force_harsh=True
+                            force_ban=True
                         )
 
                         return
@@ -325,7 +325,7 @@ class AutoModeration(commands.Cog):
                         reason_text="реклама в прикреплённом опросе",
                         extra_info=extra,
                         timeout_reason="Реклама в опросе",
-                        force_harsh=True
+                        force_ban=True
                     )
 
                     return
