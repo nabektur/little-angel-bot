@@ -88,7 +88,7 @@ async def handle_violation(
         action_text = f"Участнику {user.mention} `@{user}` был выдан мут на 1 час"
 
     log_desc = (
-        f"{action_text} "
+        f"{action_text}\n"
         f"Причина: {reason_text}\n\n"
         f"{extra_info}"
     )
@@ -133,6 +133,10 @@ async def handle_violation(
             )
         )
         
+        await safe_send_to_channel(
+            user,
+            embed=mention_embed
+        )
         await safe_send_to_channel(
             detected_channel,
             content=user.mention,
