@@ -70,6 +70,9 @@ async def handle_violation(
 
     is_soft = hits <= 2 and not force_mute and not force_ban
 
+    detected_channel = detected_object.parent if isinstance(detected_object, discord.Thread) else detected_object.channel
+
+    # LOG EMBED
     if force_ban:
         punishment = "Тебе выдан бан"
         action_text = f"Участнику {user.mention} `@{user}` был выдан бан"
@@ -80,9 +83,6 @@ async def handle_violation(
         punishment = "Тебе выдан мут на 1 час"
         action_text = f"Участнику {user.mention} `@{user}` был выдан мут на 1 час"
 
-    detected_channel = detected_object.parent if isinstance(detected_object, discord.Thread) else detected_object.channel
-
-    # LOG EMBED
     log_desc = (
         f"{action_text}\n"
         f"Причина: {reason_text}\n\n"
