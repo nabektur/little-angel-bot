@@ -133,7 +133,7 @@ async def handle_violation(
         embed=mention_embed
     )
 
-    if detected_channel and not isinstance(detected_channel, discord.ForumChannel):
+    if not isinstance(detected_channel, discord.ForumChannel):
         await safe_send_to_channel(
             detected_channel,
             content=user.mention,
