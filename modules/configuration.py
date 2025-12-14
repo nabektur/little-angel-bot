@@ -2,6 +2,7 @@ import sys
 import typing
 import dotenv
 import logging
+import logging.handlers
 
 from pydantic          import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -97,3 +98,10 @@ def setup_logging():
     return stdout_handler
 
 stdout_handler = setup_logging()
+backup_handler = logging.handlers.TimedRotatingFileHandler(filename='logs/tmp.log', when='D', interval=1, backupCount=10, encoding='utf-8', delay=False)
+
+logging.basicConfig(
+    level=logging.INFO, 
+    format='[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s',
+    handlers=[stdout_handler, backup_handler]
+)
