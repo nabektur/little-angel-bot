@@ -1,6 +1,7 @@
 import typing
 import discord
 import asyncio
+import logging
 
 from datetime               import timedelta, datetime, timezone
 
@@ -75,8 +76,9 @@ class Spam(commands.Cog):
         if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = $1 LIMIT 1", interaction.guild.id):
             await interaction.response.defer()
             channel_id = int((await db.fetchone("DELETE FROM spams WHERE guild_id = $1 RETURNING channel_id;", interaction.guild.id))[0])
+            logging.info(f"База данных ответила: {channel_id}")
             await interaction.followup.send(embed=discord.Embed(description='☑️ Спам остановлен!', color=config.LITTLE_ANGEL_COLOR))
-            if not channel_id == interaction.channel:
+            if channel_id != interaction.channel:
                 channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
                 await channel.send(embed=discord.Embed(description=f'☑️ Спам остановлен по команде {interaction.user.mention}!', color=config.LITTLE_ANGEL_COLOR))
         else:
