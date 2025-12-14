@@ -18,7 +18,7 @@ class Spam(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
         
-    async def spam_activate(self, interaction: discord.Interaction, type: str, method: str, channel: discord.abc.GuildChannel, duration: typing.Optional[datetime], mention: str):
+    async def spam_activate(self, interaction: discord.Interaction, type: str, method: str, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel], duration: typing.Optional[datetime], mention: str):
         if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = $1 LIMIT 1", interaction.guild.id):
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён на сервере! (максимум 1 процесс на сервере)", color=0xff0000), ephemeral=True)
         channel_permissions = channel.permissions_for(interaction.guild.me)
