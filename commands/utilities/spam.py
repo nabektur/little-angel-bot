@@ -46,6 +46,8 @@ class Spam(commands.Cog):
                 return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
         if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1 LIMIT 1", channel.id):
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён в данном канале!", color=0xff0000), ephemeral=True)
+        if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = $1 LIMIT 1", interaction.guild.id):
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён на сервере! (максимум 1 процесс на сервере)", color=0xff0000), ephemeral=True)
         else:
             await interaction.response.defer()
             if duration:
@@ -59,7 +61,7 @@ class Spam(commands.Cog):
                     await channel.send(embed=discord.Embed(description=f'☑️ Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)!', color=config.LITTLE_ANGEL_COLOR))
                 else:
                     await channel.send(embed=discord.Embed(description=f'☑️ Спам активирован по команде {interaction.user.mention}!', color=config.LITTLE_ANGEL_COLOR))
-            await db.execute("INSERT INTO spams (type, method, channel_id, ments, timestamp) VALUES($1, $2, $3, $4, $5) ON CONFLICT (channel_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, mention, f"{int(duration.timestamp())}" if duration else None)
+            await db.execute("INSERT INTO spams (type, method, channel_id, guild_id, ments, timestamp) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT (guild_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, channel_id = EXCLUDED.channel_id, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, interaction.guild.id, mention, f"{int(duration.timestamp())}" if duration else None)
             asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
 
     spam_group = app_commands.Group(
@@ -71,14 +73,13 @@ class Spam(commands.Cog):
         
     @spam_group.command(name="остановить", description="Останавливает спам в канале")
     @app_commands.describe(channel='Выберите канал для спама')
-    async def spam_stop_command(self, interaction: discord.Interaction, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]=None):
-        if not channel:
-            channel = interaction.channel
-        if await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1 LIMIT 1", channel.id):
+    async def spam_stop_command(self, interaction: discord.Interaction):
+        if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = $1 LIMIT 1", interaction.guild.id):
             await interaction.response.defer()
-            await db.execute("DELETE FROM spams WHERE channel_id = $1;", channel.id)
+            channel_id = int((await db.fetchone("DELETE FROM spams WHERE guild_id = $1 RETURNING channel_id;", interaction.guild.id))[0])
             await interaction.followup.send(embed=discord.Embed(description='☑️ Спам остановлен!', color=config.LITTLE_ANGEL_COLOR))
-            if not channel == interaction.channel:
+            if not channel_id == interaction.channel:
+                channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
                 await channel.send(embed=discord.Embed(description=f'☑️ Спам остановлен по команде {interaction.user.mention}!', color=config.LITTLE_ANGEL_COLOR))
         else:
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам не включён в данном канале!", color=0xff0000), ephemeral=True)

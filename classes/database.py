@@ -14,7 +14,7 @@ class Database:
 
     async def start(self):
         await self.connect()
-        await self.execute("CREATE TABLE IF NOT EXISTS spams (type varchar, method varchar, channel_id bigint PRIMARY KEY, ments varchar, timestamp varchar);")
+        await self.execute("CREATE TABLE IF NOT EXISTS spams (type varchar, method varchar, channel_id bigint PRIMARY KEY, guild_id bigint UNIQUE, ments varchar, timestamp varchar);")
         await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_ordinary (text varchar PRIMARY KEY);")
         await self.execute("CREATE TABLE IF NOT EXISTS spamtexts_nsfw (text varchar PRIMARY KEY);")
         await self.execute("CREATE TABLE IF NOT EXISTS blocked_users (user_id bigint PRIMARY KEY, blocked_at TIMESTAMP DEFAULT NOW(), reason varchar);")
