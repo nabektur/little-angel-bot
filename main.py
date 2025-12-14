@@ -32,6 +32,8 @@ def main():
             
         _log.info("Бот остановлен")
 
+    sys.exit(0)
+
 if __name__ == '__main__':
     # Запуск
     main()

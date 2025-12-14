@@ -37,12 +37,12 @@ class LittleAngelBot(commands.AutoShardedBot):
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, lambda _sig=sig: asyncio.create_task(self.close()))
 
-        from modules.keep_alive         import keep_alive
+        # from modules.keep_alive         import keep_alive
         from modules.spam_runner        import sync_spam_from_database
         from modules.status_update      import change_status_periodically
         from modules.extension_loader   import load_all_extensions
 
-        keep_alive()
+        # keep_alive()
 
         await db.start()
         await sync_spam_from_database(self)
