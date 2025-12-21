@@ -247,6 +247,9 @@ async def detect_links(raw_text: str):
                 if not "invite" in compact:
                     continue  # это не ссылка-приглашение
 
+            if "/channels/" in raw_text.replace(" ", "").lower():
+                continue  # это не ссылка-приглашение
+
             # ловим только ссылки
             return f"Похоже на ссылку приглашения в Discord сервер ({cand})"
 
