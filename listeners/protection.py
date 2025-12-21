@@ -36,7 +36,7 @@ class AutoModeration(commands.Cog):
         # расстановка приоритетов
         priority: int = 2
 
-        if thread.permissions_for(thread.owner).manage_messages:
+        if thread.owner.guild_permissions.manage_messages:
             priority = 0
         else:
             now = datetime.now(timezone.utc)
@@ -116,7 +116,7 @@ class AutoModeration(commands.Cog):
         # расстановка приоритетов
         priority: int = 2
 
-        if message.channel.permissions_for(message.author).manage_messages:
+        if message.author.guild_permissions.manage_messages:
             priority = 0
         elif message.channel.id in config.ADS_CHANNELS_IDS:
             priority = 0
