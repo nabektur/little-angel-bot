@@ -83,9 +83,19 @@ def setup_logging():
     stdout_handler.setFormatter(
         logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s')
     )
+
+    backup_handler = logging.handlers.TimedRotatingFileHandler(
+        filename='logs/tmp.log', 
+        when='D', 
+        interval=1, 
+        backupCount=10, 
+        encoding='utf-8', 
+        delay=False
+    )
     
     root_logger.setLevel(config.LOGGING_LEVEL)
     root_logger.addHandler(stdout_handler)
+    root_logger.addHandler(backup_handler)
     
     logging.getLogger('discord').setLevel(logging.ERROR)
     logging.getLogger('discord.client').setLevel(logging.ERROR)
@@ -94,14 +104,5 @@ def setup_logging():
     logging.getLogger('discord.webhook.async_').setLevel(logging.ERROR)
     
     # logging.getLogger('apscheduler').setLevel(logging.WARNING)
-    
-    return stdout_handler
 
-stdout_handler = setup_logging()
-backup_handler = logging.handlers.TimedRotatingFileHandler(filename='logs/tmp.log', when='D', interval=1, backupCount=10, encoding='utf-8', delay=False)
-
-logging.basicConfig(
-    level=logging.INFO, 
-    format='[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s',
-    handlers=[stdout_handler, backup_handler]
-)
+setup_logging()
