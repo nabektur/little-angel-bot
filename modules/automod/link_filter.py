@@ -1,13 +1,11 @@
 import re
 import unicodedata
-
 import urllib.parse
 
 from cache     import AsyncLRU
 from rapidfuzz import fuzz
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
-
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 
 # emoji-букв -> ASCII
@@ -22,12 +20,28 @@ REGIONAL_INDICATOR_MAP = {
     for code in range(0x1F1E6, 0x1F1FF + 1)
 }
 
-# Кириллица -> латиница
+# Кириллица -> латиница (расширенная версия)
 HOMOGLYPHS = {
-    "а": "a", "е": "e", "о": "o", "р": "p",
-    "с": "c", "х": "x", "у": "y", "к": "k",
-    "м": "m", "т": "t", "в": "b", "н": "h",
-    "д": "d", "г": "g", "б": "b",
+    "а": "a", "А": "a",
+    "е": "e", "Е": "e", "ё": "e", "Ё": "e",
+    "о": "o", "О": "o",
+    "р": "p", "Р": "p",
+    "с": "c", "С": "c",
+    "х": "x", "Х": "x",
+    "у": "y", "У": "y",
+    "к": "k", "К": "k",
+    "м": "m", "М": "m",
+    "т": "t", "Т": "t",
+    "в": "b", "В": "b",
+    "н": "h", "Н": "h",
+    "д": "d", "Д": "d",
+    "г": "g", "Г": "g",
+    "б": "b", "Б": "b",
+    "і": "i", "І": "i",
+    # Цифры и символы
+    "0": "o",
+    "1": "l",
+    "3": "e",
 }
 
 ENCLOSED_ALPHANUM_MAP = {
@@ -37,14 +51,12 @@ ENCLOSED_ALPHANUM_MAP = {
     "🄿": "p","🅀": "q","🅁": "r","🅂": "s","🅃": "t",
     "🅄": "u","🅅": "v","🅆": "w","🅇": "x","🅈": "y",
     "🅉": "z",
-
     "🅐": "a","🅑": "b","🅒": "c","🅓": "d","🅔": "e",
     "🅕": "f","🅖": "g","🅗": "h","🅘": "i","🅙": "j",
     "🅚": "k","🅛": "l","🅜": "m","🅝": "n","🅞": "o",
     "🅟": "p","🅠": "q","🅡": "r","🅢": "s","🅣": "t",
     "🅤": "u","🅥": "v","🅦": "w","🅧": "x","🅨": "y",
     "🅩": "z",
-
     "🆊": "j","🆋": "k","🆌": "l","🆍": "m","🆎": "ab",
     "🆏": "k","🆐": "p","🆑": "cl","🆒": "cool",
     "🆓": "free","🆔": "id","🆕": "new","🆖": "ng",
@@ -60,50 +72,34 @@ ENCLOSED_ALPHANUM_MAP = {
 FANCY_MAP = {
     **{chr(i): chr(i - 0xFEE0).lower() for i in range(0xFF21, 0xFF3B)},
     **{chr(i): chr(i - 0xFEE0).lower() for i in range(0xFF41, 0xFF5B)},
-
     **{chr(0x1D400 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D41A + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D434 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D44E + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D468 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D482 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D49C + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,7,11,12,17,18]},
     **{chr(0x1D4B6 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D4D0 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D4EA + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D504 + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,18,23]},
     **{chr(0x1D51E + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D538 + i): chr(ord('a') + i) for i in range(26) if i not in [1,4,17]},
     **{chr(0x1D552 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D5A0 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D5BA + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D5D4 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D5EE + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D608 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D622 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D63C + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D656 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1D670 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x1D68A + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x24B6 + i): chr(ord('a') + i) for i in range(26)},
     **{chr(0x24D0 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1F150 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1F130 + i): chr(ord('a') + i) for i in range(26)},
-
     **{chr(0x1F170 + i): chr(ord('a') + i) for i in range(26)},
 }
 
@@ -111,23 +107,18 @@ _COMBINED_MAP = {}
 _COMBINED_MAP.update(EMOJI_ASCII_MAP)
 _COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
 _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
-# HOMOGLYPHS - у нас маппинг кириллицы->латиницы, добавляем напрямую
 _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
 
 async def _char_to_ascii(ch: str) -> str:
-
     if VARIATION_SELECTOR_RE.match(ch):
         return ""
-
     if ZERO_WIDTH_RE.match(ch):
         return ""
-
     if ch in _COMBINED_MAP:
         return _COMBINED_MAP[ch]
 
     code = ord(ch)
-
     if 0x1F1E6 <= code <= 0x1F1FF:
         return chr(ord("a") + (code - 0x1F1E6))
 
@@ -150,21 +141,17 @@ async def _char_to_ascii(ch: str) -> str:
 
     if name:
         nm = name.upper().split()
-        # одиночная буква где-то внутри имени
         for token in nm:
             if len(token) == 1 and 'A' <= token <= 'Z':
                 return token.lower()
 
     return " "
-    
 
 async def normalize_and_compact(raw_text: str) -> str:
-
     try:
         text = urllib.parse.unquote(raw_text)
     except Exception:
         text = raw_text
-
 
     text = unicodedata.normalize("NFKC", text)
 
@@ -183,74 +170,98 @@ async def looks_like_discord(word: str, threshold=70):
     score = fuzz.partial_ratio("discord", word)
     return score >= threshold
 
+def extract_markdown_links(text: str):
+    """Извлекает URL из markdown-разметки [текст](url)"""
+    return re.findall(r'\[([^\]]+)\]\(([^\)]+)\)', text)
+
 def extract_possible_domains(text: str):
+    """Извлекает возможные домены из текста"""
     text = text.replace(" ", "")
     candidates = []
 
-    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,4})", text)
+    # Стандартные домены
+    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})", text)
     for a, b in dom1:
         candidates.append(a + "." + b)
 
-    dom2 = re.findall(r"([a-zA-Z0-9]+)(gg|com|app)", text)
+    # Без точки (discordgg)
+    dom2 = re.findall(r"([a-zA-Z0-9]+)(gg|com|app|net|org|io|xyz|me|ru|lv|gg)", text)
     for a, b in dom2:
         candidates.append(a + b)
 
     return candidates
 
+
+
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
+    """
+    Детектит подозрительные ссылки в тексте
+    Возвращает описание найденной ссылки или None
+    """
+    
+    # Шаг 1: Извлекаем ссылки из markdown
+    markdown_links = extract_markdown_links(raw_text)
+    all_urls_to_check = [raw_text]
+    
+    for link_text, url in markdown_links:
+        all_urls_to_check.append(url)
+        all_urls_to_check.append(link_text)
+    
+    # Шаг 2: Проверяем каждый фрагмент
+    for text_fragment in all_urls_to_check:
+        result = await _check_single_fragment(text_fragment, raw_text)
+        if result:
+            return result
+    
+    return None
 
-    # функция нормализации
-    compact = await normalize_and_compact(raw_text)
-
+async def _check_single_fragment(text_fragment: str, original_text: str):
+    """Проверяет один фрагмент текста на наличие ссылок"""
+    
+    # Нормализуем текст
+    compact = await normalize_and_compact(text_fragment)
+    text_lower = text_fragment.replace(" ", "").lower()
+    
     # --- Discord ---
-
     if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
         if "discordgg" in compact:
             return "discord.gg"
         if "discordcom" in compact:
-            if not "/channels/" in raw_text.replace(" ", "").lower():
+            if "/channels/" not in text_lower:
                 return "discord.com"
         if "discordappcom" in compact:
-            if not (any(x in raw_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"])):
+            if not any(x in original_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"]):
                 return "discordapp.com"
             elif "invite" in compact:
                 return "discordapp.com"
-
     
     # --- Telegram ---
-
     if "telegramme" in compact or "telegramorg" in compact:
         return "telegram.me" if "telegramme" in compact else "telegram.org"
-    if "t.me" in raw_text.replace(" ", "").lower():
+    if "t.me" in text_lower or "tme" in compact:
         return "t.me"
-    if re.search(r"(telegram\.me|telegram\.org)", raw_text.replace(" ", "").lower()):
-        m = re.search(r"(telegram\.me|telegram\.org)", raw_text.replace(" ", "").lower())
+    if re.search(r"(telegram\.me|telegram\.org)", text_lower):
+        m = re.search(r"(telegram\.me|telegram\.org)", text_lower)
         return m.group(1)
     
-    # --- доменные структуры ---
+    # --- Доменные структуры ---
     candidates = extract_possible_domains(compact)
-
+    
     for cand in candidates:
-
-        # отделяем левую часть домена
         left = cand.split(".")[0].replace("gg","").replace("com","").replace("app","")
-
-        # проверяем, похожа ли левая часть на discord
+        
         if await looks_like_discord(left):
-
-            # игнорируем слово discord (не ссылка)
             if left == "discord":
                 continue
-
+            
             if any(x in cand for x in ["imagesext1discordapp", "mediadiscordapp", "cdndiscordapp"]):
-                if not "invite" in compact:
-                    continue  # это не ссылка-приглашение
-
-            if "/channels/" in raw_text.replace(" ", "").lower():
-                continue  # это не ссылка-приглашение
-
-            # ловим только ссылки
+                if "invite" not in compact:
+                    continue
+            
+            if "/channels/" in text_lower:
+                continue
+            
             return f"Похоже на ссылку приглашения в Discord сервер ({cand})"
-
+    
     return None
