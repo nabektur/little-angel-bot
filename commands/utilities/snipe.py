@@ -205,9 +205,12 @@ class Snipe(commands.Cog):
         for message in messages:
             if not message.is_system():
                 try:
-                    files = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
-                except:
-                    files = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+                    try:
+                        files = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
+                    except:
+                        files = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
+                except discord.NotFound:
+                    files = []
                 existing.append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': files})
 
         await snipe_cache.set(channel_id, existing, ttl=3600)

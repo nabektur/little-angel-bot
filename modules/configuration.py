@@ -92,6 +92,9 @@ def setup_logging():
         encoding='utf-8', 
         delay=False
     )
+    backup_handler.setFormatter(
+        logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s')
+    )
     
     root_logger.setLevel(config.LOGGING_LEVEL)
     root_logger.addHandler(stdout_handler)
