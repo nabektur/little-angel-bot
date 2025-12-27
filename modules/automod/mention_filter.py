@@ -47,7 +47,7 @@ async def get_cached_mentions_and_append(member: discord.Member, message: discor
                     replied_message_author_id = message.reference.resolved.author.id
             
             for user in message.mentions:
-                if user.id != replied_message_author_id:
+                if user.id != replied_message_author_id and not user.bot:
                     mentions[user.id] = mentions.get(user.id, 0) + 1
             
             for role in message.role_mentions:
