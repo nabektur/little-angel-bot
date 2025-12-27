@@ -240,7 +240,8 @@ async def _check_single_fragment(text_fragment: str, original_text: str):
     if "telegramme" in compact or "telegramorg" in compact:
         return "telegram.me" if "telegramme" in compact else "telegram.org"
     if "t.me" in text_lower or "tme" in compact:
-        return "t.me"
+        if any(x in text_lower for x in ["/", "."]):
+            return "t.me"
     if re.search(r"(telegram\.me|telegram\.org)", text_lower):
         m = re.search(r"(telegram\.me|telegram\.org)", text_lower)
         return m.group(1)
