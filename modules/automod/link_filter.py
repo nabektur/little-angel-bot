@@ -166,7 +166,7 @@ async def normalize_and_compact(raw_text: str) -> str:
 
 async def looks_like_discord(word: str, threshold=85):
     """Повышен порог с 70 до 85 для уменьшения ложных срабатываний"""
-    if len(word) < 6:  # Увеличен минимум с 5 до 6
+    if len(word) < 6:
         return False
     score = fuzz.partial_ratio("discord", word)
     return score >= threshold
@@ -175,23 +175,65 @@ def extract_markdown_links(text: str):
     """Извлекает URL из markdown-разметки [текст](url)"""
     return re.findall(r'\[([^\]]+)\]\(([^\)]+)\)', text)
 
-def has_url_markers(text: str) -> bool:
-    """Проверяет наличие явных маркеров URL (http, //, точка с доменом)"""
-    text_lower = text.lower()
+def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
+    """
+    Проверяет, находится ли совпадение в естественном контексте слова.
+    Возвращает True, если это часть обычного предложения.
+    """
+    # Берем контекст вокруг совпадения
+    start = max(0, match_pos - 20)
+    end = min(len(text), match_pos + match_len + 20)
+    context = text[start:end].lower()
     
-    # Явные протоколы
-    if "http://" in text_lower or "https://" in text_lower:
-        return True
+    # Признаки естественного текста
+    natural_indicators = [
+        # Русские слова рядом
+        r'[а-яё]{3,}',
+        # Знаки препинания
+        r'[,;:!?]',
+        # Типичные русские предлоги/союзы
+        r'\b(и|в|на|с|что|как|это|для|от|по|но|а|или)\b',
+    ]
     
-    # Двойной слэш без пробелов вокруг
-    if re.search(r'\S//\S', text):
-        return True
-    
-    # Домен с точкой и известным TLD
-    if re.search(r'\w+\.(com|gg|net|org|app|io|me|xyz|ru|lv)\b', text_lower):
-        return True
+    for pattern in natural_indicators:
+        if re.search(pattern, context):
+            return True
     
     return False
+
+def extract_spaced_patterns(text: str, compact: str):
+    """
+    Ищет намеренно разнесенные паттерны вида 't . m e' или 'd i s c o r d . g g'
+    """
+    findings = []
+    
+    # Паттерны для поиска с учетом пробелов и разделителей
+    patterns = [
+        # t.me с разделителями
+        (r't[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}m[\s\.\-_•]{0,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+', "t.me"),
+        (r't[\s\.\-_•]{1,3}m[\s\.\-_•]{1,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+', "t.me"),
+        
+        # discord.gg с разделителями
+        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g', "discord.gg"),
+        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g', "discord.gg"),
+        
+        # discordapp с разделителями  
+        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}p[\s\.\-_•]{0,2}p', "discordapp.com"),
+        
+        # telegram с разделителями
+        (r't[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}l[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}g[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}m[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}(me|org)', "telegram"),
+    ]
+    
+    text_lower = text.lower()
+    
+    for pattern, label in patterns:
+        matches = re.finditer(pattern, text_lower)
+        for match in matches:
+            # Проверяем контекст
+            if not is_natural_word_context(text, match.start(), len(match.group())):
+                findings.append((label, match.group()))
+    
+    return findings
 
 def extract_possible_domains(text: str):
     """Извлекает возможные домены из текста"""
@@ -203,13 +245,10 @@ def extract_possible_domains(text: str):
     for a, b in dom1:
         candidates.append(a + "." + b)
 
-    # Склеенные домены (только если есть явные маркеры URL)
-    if has_url_markers(text):
-        dom2 = re.findall(r"([a-zA-Z0-9]{5,})(gg|com|app|net)", text_no_spaces)
-        for a, b in dom2:
-            # Проверяем, что это не часть обычного слова
-            if len(a) > 10:  # Слишком длинное слово подозрительно
-                candidates.append(a + b)
+    # Склеенные домены - более осторожный подход
+    dom2 = re.findall(r"([a-zA-Z0-9]{6,})(gg|com|app)\b", text_no_spaces)
+    for a, b in dom2:
+        candidates.append(a + b)
 
     return candidates
 
@@ -220,9 +259,18 @@ async def detect_links(raw_text: str):
     Возвращает описание найденной ссылки или None
     """
     
-    # Быстрая проверка: если текст короткий и без URL-маркеров, пропускаем
-    if len(raw_text) < 10 and not has_url_markers(raw_text):
+    # Пропускаем очень короткие сообщения без явных признаков
+    if len(raw_text) < 8:
         return None
+    
+    # Нормализуем текст
+    compact = await normalize_and_compact(raw_text)
+    
+    # Сначала проверяем разнесенные паттерны (они приоритетнее)
+    spaced_findings = extract_spaced_patterns(raw_text, compact)
+    if spaced_findings:
+        label, matched = spaced_findings[0]
+        return f"{label} (замаскированная ссылка: {matched})"
     
     # Шаг 1: Извлекаем ссылки из markdown
     markdown_links = extract_markdown_links(raw_text)
@@ -234,17 +282,19 @@ async def detect_links(raw_text: str):
     
     # Шаг 2: Проверяем каждый фрагмент
     for text_fragment in all_urls_to_check:
-        result = await _check_single_fragment(text_fragment, raw_text)
+        result = await _check_single_fragment(text_fragment, raw_text, compact)
         if result:
             return result
     
     return None
 
-async def _check_single_fragment(text_fragment: str, original_text: str):
+async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
     """Проверяет один фрагмент текста на наличие ссылок"""
     
-    # Нормализуем текст
-    compact = await normalize_and_compact(text_fragment)
+    # Если compact не передан, вычисляем
+    if not compact:
+        compact = await normalize_and_compact(text_fragment)
+    
     text_lower = text_fragment.replace(" ", "").lower()
     
     # Пропускаем слишком короткие фрагменты
@@ -253,37 +303,44 @@ async def _check_single_fragment(text_fragment: str, original_text: str):
     
     # --- Discord ---
     # Явные домены
-    if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
-        if "discordgg" in compact:
-            return "discord.gg"
-        if "discordcom" in compact:
-            if "/channels/" not in text_lower:
-                return "discord.com"
-        if "discordappcom" in compact:
-            if not any(x in original_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"]):
-                return "discordapp.com"
-            elif "invite" in compact:
-                return "discordapp.com"
+    if "discordgg" in compact:
+        # Проверяем, что это не часть обычного русского текста
+        match_pos = text_fragment.lower().find("discord")
+        if match_pos != -1:
+            if is_natural_word_context(text_fragment, match_pos, 7):
+                return None
+        return "discord.gg"
+    
+    if "discordcom" in compact:
+        if "/channels/" not in text_lower:
+            match_pos = text_fragment.lower().find("discord")
+            if match_pos != -1:
+                if is_natural_word_context(text_fragment, match_pos, 7):
+                    return None
+            return "discord.com"
+    
+    if "discordappcom" in compact:
+        if not any(x in original_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"]):
+            return "discordapp.com"
+        elif "invite" in compact:
+            return "discordapp.com"
     
     # --- Telegram ---
-    # Проверяем только если есть явные признаки ссылки
-    if has_url_markers(text_fragment):
-        if "telegramme" in compact or "telegramorg" in compact:
-            return "telegram.me" if "telegramme" in compact else "telegram.org"
-        
-        # t.me только если есть слэш или точка рядом
-        if re.search(r't\.me/\w+', text_lower) or re.search(r't\.me\s', text_lower):
-            return "t.me"
-        
-        if re.search(r"(telegram\.me|telegram\.org)/", text_lower):
-            m = re.search(r"(telegram\.me|telegram\.org)", text_lower)
-            return m.group(1)
+    if "telegramme" in compact or "telegramorg" in compact:
+        return "telegram.me" if "telegramme" in compact else "telegram.org"
+    
+    # t.me - проверяем с учетом контекста
+    if "tme" in compact:
+        # Ищем позицию в оригинальном тексте
+        tme_patterns = [r't\.me/', r't\s*\.\s*me/', r'tme/']
+        for pattern in tme_patterns:
+            if re.search(pattern, text_lower):
+                # Проверяем контекст
+                match = re.search(pattern, text_lower)
+                if match and not is_natural_word_context(text_fragment, match.start(), len(match.group())):
+                    return "t.me"
     
     # --- Доменные структуры ---
-    # Проверяем только если есть явные признаки URL
-    if not has_url_markers(text_fragment):
-        return None
-    
     candidates = extract_possible_domains(compact)
     
     for cand in candidates:
@@ -306,6 +363,12 @@ async def _check_single_fragment(text_fragment: str, original_text: str):
             # Исключаем внутренние ссылки
             if "/channels/" in text_lower:
                 continue
+            
+            # Проверяем контекст
+            match_pos = text_fragment.lower().find(left)
+            if match_pos != -1:
+                if is_natural_word_context(text_fragment, match_pos, len(left)):
+                    continue
             
             return f"Похоже на ссылку приглашения в Discord сервер ({cand})"
     
