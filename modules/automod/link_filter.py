@@ -164,8 +164,9 @@ async def normalize_and_compact(raw_text: str) -> str:
     compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
     return compact
 
-async def looks_like_discord(word: str, threshold=70):
-    if len(word) < 5:
+async def looks_like_discord(word: str, threshold=85):
+    """Повышен порог с 70 до 85 для уменьшения ложных срабатываний"""
+    if len(word) < 6:  # Увеличен минимум с 5 до 6
         return False
     score = fuzz.partial_ratio("discord", word)
     return score >= threshold
@@ -174,24 +175,43 @@ def extract_markdown_links(text: str):
     """Извлекает URL из markdown-разметки [текст](url)"""
     return re.findall(r'\[([^\]]+)\]\(([^\)]+)\)', text)
 
+def has_url_markers(text: str) -> bool:
+    """Проверяет наличие явных маркеров URL (http, //, точка с доменом)"""
+    text_lower = text.lower()
+    
+    # Явные протоколы
+    if "http://" in text_lower or "https://" in text_lower:
+        return True
+    
+    # Двойной слэш без пробелов вокруг
+    if re.search(r'\S//\S', text):
+        return True
+    
+    # Домен с точкой и известным TLD
+    if re.search(r'\w+\.(com|gg|net|org|app|io|me|xyz|ru|lv)\b', text_lower):
+        return True
+    
+    return False
+
 def extract_possible_domains(text: str):
     """Извлекает возможные домены из текста"""
-    text = text.replace(" ", "")
+    text_no_spaces = text.replace(" ", "")
     candidates = []
 
-    # Стандартные домены
-    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})", text)
+    # Стандартные домены с точкой
+    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})\b", text_no_spaces)
     for a, b in dom1:
         candidates.append(a + "." + b)
 
-    # Без точки (discordgg)
-    dom2 = re.findall(r"([a-zA-Z0-9]+)(gg|com|app|net|org|io|xyz|me|ru|lv|gg)", text)
-    for a, b in dom2:
-        candidates.append(a + b)
+    # Склеенные домены (только если есть явные маркеры URL)
+    if has_url_markers(text):
+        dom2 = re.findall(r"([a-zA-Z0-9]{5,})(gg|com|app|net)", text_no_spaces)
+        for a, b in dom2:
+            # Проверяем, что это не часть обычного слова
+            if len(a) > 10:  # Слишком длинное слово подозрительно
+                candidates.append(a + b)
 
     return candidates
-
-
 
 @AsyncLRU(maxsize=5000)
 async def detect_links(raw_text: str):
@@ -199,6 +219,10 @@ async def detect_links(raw_text: str):
     Детектит подозрительные ссылки в тексте
     Возвращает описание найденной ссылки или None
     """
+    
+    # Быстрая проверка: если текст короткий и без URL-маркеров, пропускаем
+    if len(raw_text) < 10 and not has_url_markers(raw_text):
+        return None
     
     # Шаг 1: Извлекаем ссылки из markdown
     markdown_links = extract_markdown_links(raw_text)
@@ -223,7 +247,12 @@ async def _check_single_fragment(text_fragment: str, original_text: str):
     compact = await normalize_and_compact(text_fragment)
     text_lower = text_fragment.replace(" ", "").lower()
     
+    # Пропускаем слишком короткие фрагменты
+    if len(compact) < 5:
+        return None
+    
     # --- Discord ---
+    # Явные домены
     if "discordgg" in compact or "discordcom" in compact or "discordappcom" in compact:
         if "discordgg" in compact:
             return "discord.gg"
@@ -237,29 +266,44 @@ async def _check_single_fragment(text_fragment: str, original_text: str):
                 return "discordapp.com"
     
     # --- Telegram ---
-    if "telegramme" in compact or "telegramorg" in compact:
-        return "telegram.me" if "telegramme" in compact else "telegram.org"
-    if "t.me" in text_lower or "tme" in compact:
-        if any(x in text_lower for x in ["/", "."]):
+    # Проверяем только если есть явные признаки ссылки
+    if has_url_markers(text_fragment):
+        if "telegramme" in compact or "telegramorg" in compact:
+            return "telegram.me" if "telegramme" in compact else "telegram.org"
+        
+        # t.me только если есть слэш или точка рядом
+        if re.search(r't\.me/\w+', text_lower) or re.search(r't\.me\s', text_lower):
             return "t.me"
-    if re.search(r"(telegram\.me|telegram\.org)", text_lower):
-        m = re.search(r"(telegram\.me|telegram\.org)", text_lower)
-        return m.group(1)
+        
+        if re.search(r"(telegram\.me|telegram\.org)/", text_lower):
+            m = re.search(r"(telegram\.me|telegram\.org)", text_lower)
+            return m.group(1)
     
     # --- Доменные структуры ---
+    # Проверяем только если есть явные признаки URL
+    if not has_url_markers(text_fragment):
+        return None
+    
     candidates = extract_possible_domains(compact)
     
     for cand in candidates:
+        # Пропускаем короткие кандидаты
+        if len(cand) < 8:
+            continue
+            
         left = cand.split(".")[0].replace("gg","").replace("com","").replace("app","")
         
         if await looks_like_discord(left):
+            # Исключаем обычное слово "discord"
             if left == "discord":
                 continue
             
+            # Исключаем CDN
             if any(x in cand for x in ["imagesext1discordapp", "mediadiscordapp", "cdndiscordapp"]):
                 if "invite" not in compact:
                     continue
             
+            # Исключаем внутренние ссылки
             if "/channels/" in text_lower:
                 continue
             
