@@ -56,10 +56,12 @@ class AutoRemove(commands.Cog):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
         if duration > timedelta(days=30) or duration < timedelta(seconds=3):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
+        
         duration_datetime = datetime.now(timezone.utc) + duration
-        scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[message_id, channel.id])
+
         await interaction.response.send_message(embed=discord.Embed(title="☑️ Принято!", color=config.LITTLE_ANGEL_COLOR, description=f"Бот удалит указанное сообщение через {verbose_timedelta(duration)} (<t:{int(duration_datetime.timestamp())}:R>)\n\n**[Ссылка на сообщение]({message.jump_url})**"), ephemeral=True)
 
+        scheduler.add_job(delayed_delete_message, trigger=DateTrigger(run_date=duration_datetime), args=[message_id, channel.id])
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(AutoRemove(bot))
