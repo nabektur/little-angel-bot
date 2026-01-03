@@ -21,7 +21,6 @@ MAX_STORED_MESSAGES = 200       # сколько последних сообще
 
 
 async def get_cached_mentions_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
-    lock_manager.start_cleanup()
     async with lock_manager.lock(member.id):
 
         mentions: dict = await mentions_from_new_members_cache.get(member.id) or {}

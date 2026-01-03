@@ -18,7 +18,6 @@ MAX_THREADS  = 7  # максимальное количество веток в 
 lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
 async def get_cached_threads_and_append(member: discord.Member, append_thread: discord.Thread) -> list:
-    lock_manager.start_cleanup()
     async with lock_manager.lock(member.id):
         threads = await threads_from_new_members_cache.get(member.id) or []
 

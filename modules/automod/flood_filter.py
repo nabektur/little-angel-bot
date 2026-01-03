@@ -36,7 +36,6 @@ async def fuzzy_compare(str1: str, str2: str) -> int:
     return score
 
 async def get_cached_messages_and_append(member: discord.Member, append_message_content: str = None, append_message: discord.Message = None) -> list:
-    lock_manager.start_cleanup()
     async with lock_manager.lock(member.id):
         messages = await messages_from_new_members_cache.get(member.id) or []
 

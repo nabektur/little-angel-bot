@@ -1,24 +1,29 @@
 import asyncio
+import threading
 import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 from contextlib import asynccontextmanager
 
 class LockManagerWithIdleTTL:
     def __init__(self, idle_ttl: int = 3600):
+        self._start_lock = threading.Lock()
+        self._cleanup_started = False
         self._locks: Dict[int, Tuple[asyncio.Lock, float]] = {}
         self._creation_lock = asyncio.Lock()
         self._idle_ttl = idle_ttl
-        self._cleanup_task = None
-    
+        self._cleanup_task: Optional[asyncio.Task] = None
+
     def start_cleanup(self):
         """Запуск фоновой задачи очистки"""
-        if self._cleanup_task is None:
-            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+        with self._start_lock:
+            if not self._cleanup_started:
+                self._cleanup_started = True
+                self._cleanup_task = asyncio.create_task(self._cleanup_loop())
     
     async def _cleanup_loop(self):
-        """Периодическая очистка неиспользуемых asyncio.Lock"""
+        """Периодическая очистка неиспользуемых локов"""
         while True:
-            await asyncio.sleep(60)  # Проверка каждую минуту
+            await asyncio.sleep(60)
             now = time.time()
             async with self._creation_lock:
                 expired = [
@@ -30,6 +35,10 @@ class LockManagerWithIdleTTL:
     
     async def get_lock(self, user_id: int) -> asyncio.Lock:
         """Получить лок и обновить время последнего использования"""
+
+        if not self._cleanup_started:
+            self.start_cleanup()
+
         now = time.time()
         
         # Быстрая проверка без блокировки

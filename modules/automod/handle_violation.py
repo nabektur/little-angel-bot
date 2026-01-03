@@ -14,7 +14,6 @@ sent_messages_cache = SimpleMemoryCache()
 lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
 async def check_message_sent_recently(user_id: int, message_content: str) -> bool:
-    lock_manager.start_cleanup()
     async with lock_manager.lock(user_id):
         last_sent_cache: typing.List = await sent_messages_cache.get(user_id)
         for cached_message_content in last_sent_cache or []:
