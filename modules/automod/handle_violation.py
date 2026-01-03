@@ -10,9 +10,10 @@ from classes.bot           import LittleAngelBot
 from modules.configuration import config
 from modules.lock_manager  import LockManagerWithIdleTTL
 
-hit_cache = SimpleMemoryCache()
+hit_cache           = SimpleMemoryCache()
 sent_messages_cache = SimpleMemoryCache()
-lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
+lock_manager_for_hits     = LockManagerWithIdleTTL(idle_ttl=3600)
+lock_manager_for_messages = LockManagerWithIdleTTL(idle_ttl=2400)
 
 def generate_message_hash(message_content: str) -> str:
     """Генерирует хэш для идентификации типа нарушения"""
@@ -20,7 +21,7 @@ def generate_message_hash(message_content: str) -> str:
 
 async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
     """Проверяет, отправлялось ли недавно такое же сообщение в отношении данного пользователя"""
-    async with lock_manager.lock(user_id):
+    async with lock_manager_for_messages.lock(user_id):
         last_sent_cache: typing.List = await sent_messages_cache.get(user_id)
         
         # Инициализация списка
@@ -97,7 +98,7 @@ async def handle_violation(
         return
 
     # hit-cache
-    async with lock_manager.lock(user.id):
+    async with lock_manager_for_hits.lock(user.id):
         hits = await hit_cache.get(user.id) or 0
         hits += 1
         await hit_cache.set(user.id, hits, ttl=3600)
