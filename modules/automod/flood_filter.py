@@ -27,7 +27,7 @@ FUZZY_THRESHOLD = 80              # порог нечёткого сравнен
 MIN_CLUSTERS_FOR_ALTERNATING = 2  # количество кластеров для засчитывания флуда как чередование
 MIN_CLUSTER_SIZE = 15             # количество сообщений в кластере для засчитывания флуда как чередование
 
-@AsyncTTL(time_to_live=2400)
+@AsyncTTL(time_to_live=1600, maxsize=20000)
 async def fuzzy_compare(str1: str, str2: str) -> int:
     try:
         score = fuzz.ratio(str1, str2)

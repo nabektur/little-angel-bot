@@ -1,10 +1,12 @@
 import re
 
 from collections import Counter
+from cache       import AsyncTTL
 
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 EMPTY_SPAM_LINE_RE = re.compile(r"^[\s\`\u200B-\u200F\uFEFF]{0,}$")
 
+@AsyncTTL(time_to_live=600, maxsize=20000)
 async def is_spam_block(message: str) -> bool:
     """
     пустые строки, код-блоки, мусорные символы.

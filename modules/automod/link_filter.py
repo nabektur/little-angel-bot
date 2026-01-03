@@ -2,7 +2,7 @@ import re
 import unicodedata
 import urllib.parse
 
-from cache     import AsyncLRU
+from cache     import AsyncTTL
 from rapidfuzz import fuzz
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
@@ -252,7 +252,7 @@ def extract_possible_domains(text: str):
 
     return candidates
 
-@AsyncLRU(maxsize=5000)
+@AsyncTTL(time_to_live=600, maxsize=20000)
 async def detect_links(raw_text: str):
     """
     Детектит подозрительные ссылки в тексте
@@ -287,6 +287,7 @@ async def detect_links(raw_text: str):
             return result
     
     return None
+
 
 async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
     """Проверяет один фрагмент текста на наличие ссылок"""
