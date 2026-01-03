@@ -36,7 +36,7 @@ async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
         if len(last_sent_cache) > 10:  # Хранит только последние 10 типов нарушений
             last_sent_cache = last_sent_cache[-10:]
         
-        await sent_messages_cache.set(user_id, last_sent_cache, ttl=300)  # 5 минут вместо 5 секунд
+        await sent_messages_cache.set(user_id, last_sent_cache, ttl=60)  # автоочистка через минуту
         return False
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
