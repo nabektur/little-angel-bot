@@ -182,7 +182,7 @@ async def handle_violation(
         )
 
     if isinstance(detected_object, discord.Message) and not force_ban:
-        await safe_delete(detected_object)
+        asyncio.create_task(safe_delete(detected_object))
 
     # выдаёт бан
     if force_ban:
