@@ -97,9 +97,10 @@ async def handle_violation(
         return
 
     # hit-cache
-    hits = await hit_cache.get(user.id) or 0
-    hits += 1
-    await hit_cache.set(user.id, hits, ttl=3600)
+    async with lock_manager.lock(user.id):
+        hits = await hit_cache.get(user.id) or 0
+        hits += 1
+        await hit_cache.set(user.id, hits, ttl=3600)
 
     is_soft = hits <= 2 and not force_mute and not force_ban
     # Хэш для идентификации типа нарушения
