@@ -56,7 +56,10 @@ class ExecuteCode(commands.Cog):
                 color=0xff0000, 
                 description=f"```py\n{error}```"
             ))
-            
+
+    # @run.error
+    # async def run_error(self, ctx: commands.Context, error):
+    #     await ctx.reply(embed=discord.Embed(title="❌ Произошла ошибка!", color=0xff0000, description=f"```py\n{error}```"))
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(ExecuteCode(bot))
