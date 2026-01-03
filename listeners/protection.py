@@ -212,6 +212,7 @@ class AutoModeration(commands.Cog):
                             message,
                             reason_title="Спам / засорение чата",
                             reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                            extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message.content[:300].replace('`', '')}\n```",
                             timeout_reason="Спам / засорение чата"
                         )
 

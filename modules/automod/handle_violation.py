@@ -109,7 +109,7 @@ async def handle_violation(
     mention_desc = (
         f"Причина срабатывания: {reason_text}\n"
         f"{punishment}\n\n"
-        f"{extra_info}\n"
+        # f"{extra_info}\n"
         f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
     )
 
