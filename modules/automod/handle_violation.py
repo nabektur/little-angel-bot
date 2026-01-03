@@ -1,6 +1,7 @@
 import typing
 import asyncio
 import discord
+import hashlib
 
 from aiocache              import SimpleMemoryCache
 from datetime              import timedelta
@@ -13,13 +14,29 @@ hit_cache = SimpleMemoryCache()
 sent_messages_cache = SimpleMemoryCache()
 lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
-async def check_message_sent_recently(user_id: int, message_content: str) -> bool:
+def generate_message_hash(reason_title: str, reason_text: str) -> str:
+    """Генерирует хэш для идентификации типа нарушения"""
+    content = f"{reason_title}:{reason_text}"
+    return hashlib.md5(content.encode()).hexdigest()[:16]
+
+async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
+    """Проверяет, отправлялось ли недавно такое же сообщение в отношении данного пользователя"""
     async with lock_manager.lock(user_id):
         last_sent_cache: typing.List = await sent_messages_cache.get(user_id)
-        for cached_message_content in last_sent_cache or []:
-            if cached_message_content == message_content:
-                return True
-        await sent_messages_cache.set(user_id, last_sent_cache + [message_content], ttl=5)
+        
+        # Инициализация списка
+        if last_sent_cache is None:
+            last_sent_cache = []
+        
+        if message_hash in last_sent_cache:
+            return True
+        
+        # Добавляет новый хэш и ограничивает размер списка
+        last_sent_cache.append(message_hash)
+        if len(last_sent_cache) > 10:  # Хранит только последние 10 типов нарушений
+            last_sent_cache = last_sent_cache[-10:]
+        
+        await sent_messages_cache.set(user_id, last_sent_cache, ttl=300)  # 5 минут вместо 5 секунд
         return False
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
@@ -28,16 +45,16 @@ async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: 
     except Exception:
         pass
 
-async def safe_send_to_channel(channel: discord.abc.Messageable, *args, user_id: int = None, message_content: str = None, **kwargs):
-    if user_id and message_content and await check_message_sent_recently(user_id, message_content):
+async def safe_send_to_channel(channel: discord.abc.Messageable, *args, user_id: int = None, message_hash: str = None, **kwargs):
+    if user_id and message_hash and await check_message_sent_recently(user_id, message_hash):
         return None
     try:
         return await channel.send(*args, **kwargs)
     except Exception:
         return None
 
-async def safe_send_to_log(bot: LittleAngelBot, *args, user_id: int = None, message_content: str = None, **kwargs):
-    if user_id and message_content and await check_message_sent_recently(user_id, message_content):
+async def safe_send_to_log(bot: LittleAngelBot, *args, user_id: int = None, message_hash: str = None, **kwargs):
+    if user_id and message_hash and await check_message_sent_recently(user_id, message_hash):
         return None
     try:
         channel: discord.TextChannel = bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
@@ -86,7 +103,8 @@ async def handle_violation(
     await hit_cache.set(user.id, hits, ttl=3600)
 
     is_soft = hits <= 2 and not force_mute and not force_ban
-
+    # Хэш для идентификации типа нарушения
+    message_hash = generate_message_hash(reason_title, reason_text)
     detected_channel = detected_object.parent if isinstance(detected_object, discord.Thread) else detected_object.channel
 
     # LOG EMBED
@@ -120,7 +138,7 @@ async def handle_violation(
         inline=False
     )
 
-    await safe_send_to_log(bot, embed=log_embed)
+    await safe_send_to_log(bot, embed=log_embed, user_id=user.id, message_hash=message_hash)
 
     # MENTION EMBED
     mention_desc = (
@@ -147,14 +165,18 @@ async def handle_violation(
 
     await safe_send_to_channel(
         user,
-        embed=mention_embed
+        embed=mention_embed,
+        user_id=user.id,
+        message_hash=message_hash
     )
 
     if not isinstance(detected_channel, discord.ForumChannel):
         await safe_send_to_channel(
             detected_channel,
             content=user.mention,
-            embed=mention_embed
+            embed=mention_embed,
+            user_id=user.id,
+            message_hash=message_hash
         )
 
     if isinstance(detected_object, discord.Message) and not force_ban:
