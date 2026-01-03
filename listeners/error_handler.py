@@ -11,7 +11,7 @@ class ErrorHandler(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_error(self, error_event, *args, **kwargs):
+    async def on_error(self, error_event: str, *args, **kwargs):
         logging.error(f"Ошибка в событии {error_event}:\n{traceback.format_exc()}")
 
     @commands.Cog.listener()
