@@ -27,39 +27,33 @@ class ExecuteCode(commands.Cog):
     @commands.command(name="run", description="Запустить команду", guild=discord.Object(id=config.GUILD_ID))
     @commands.is_owner()
     async def run(self, ctx: commands.Context, *, cmd: str):
-        try:
-            fn_name = "_eval_expr"
-            cmd = cmd.strip("` ")
-            cmd = "\n".join(f"    {i}" for i in cmd.splitlines())
-            body = f"async def {fn_name}():\n{cmd}"
-            parsed = ast.parse(body)
-            body = parsed.body[0].body
-            insert_returns(body)
-            env = {
-                'bot': self.bot,
-                'discord': discord,
-                'commands': commands,
-                'ctx': ctx,
-                '__import__': __import__,
-                'db': db,
-                'config': config
-            }
-            exec(compile(parsed, filename="<ast>", mode="exec"), env)
-            await eval(f"{fn_name}()", env)
-            await ctx.reply(embed=discord.Embed(
-                description="☑️ Команда выполнена!", 
-                color=config.LITTLE_ANGEL_COLOR
-            ))
-        except Exception as error:
-            await ctx.reply(embed=discord.Embed(
-                title="❌ Произошла ошибка!", 
-                color=0xff0000, 
-                description=f"```py\n{error}```"
-            ))
+        fn_name = "_eval_expr"
+        cmd = cmd.strip("` ")
+        cmd = "\n".join(f"    {i}" for i in cmd.splitlines())
+        body = f"async def {fn_name}():\n{cmd}"
+        parsed = ast.parse(body)
+        body = parsed.body[0].body
+        insert_returns(body)
+        env = {
+            'bot': self.bot,
+            'discord': discord,
+            'commands': commands,
+            'ctx': ctx,
+            '__import__': __import__,
+            'db': db,
+            'config': config
+        }
+        exec(compile(parsed, filename="<ast>", mode="exec"), env)
+        await eval(f"{fn_name}()", env)
+        await ctx.reply(embed=discord.Embed(
+            description="☑️ Команда выполнена!", 
+            color=config.LITTLE_ANGEL_COLOR
+        ))
 
-    # @run.error
-    # async def run_error(self, ctx: commands.Context, error):
-    #     await ctx.reply(embed=discord.Embed(title="❌ Произошла ошибка!", color=0xff0000, description=f"```py\n{error}```"))
+    @run.error
+    async def run_error(self, ctx: commands.Context, error):
+        await ctx.reply(embed=discord.Embed(title="❌ Произошла ошибка!", color=0xff0000, description=f"```py\n{error}```"))
+        error.handled = True
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(ExecuteCode(bot))
