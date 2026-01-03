@@ -182,21 +182,23 @@ class AutoModeration(commands.Cog):
                 # модерация активности
                 if message.activity is not None:
 
-                    activity_info = (
-                        f"Тип: {message.activity.get('type')}\n"
-                        f"Party ID: {message.activity.get('party_id')}\n"
-                    )
+                    if message.activity.get('type') == 3:
 
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Реклама через активность",
-                        reason_text="реклама через Discord Activity",
-                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность"
-                    )
+                        activity_info = (
+                            f"Тип: {message.activity.get('type')}\n"
+                            f"Party ID: {message.activity.get('party_id')}\n"
+                        )
 
-                    return
+                        await handle_violation(
+                            self.bot,
+                            message,
+                            reason_title="Реклама через активность",
+                            reason_text="реклама через Discord Activity",
+                            extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                            timeout_reason="Реклама через активность"
+                        )
+
+                        return
                 
                 # модерация сообщений
                 if message.content:
