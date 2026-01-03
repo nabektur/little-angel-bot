@@ -1,4 +1,5 @@
 import typing
+import asyncio
 import discord
 
 from aiocache              import SimpleMemoryCache
@@ -6,8 +7,21 @@ from datetime              import timedelta
 
 from classes.bot           import LittleAngelBot
 from modules.configuration import config
+from modules.lock_manager  import LockManagerWithIdleTTL
 
 hit_cache = SimpleMemoryCache()
+sent_messages_cache = SimpleMemoryCache()
+lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
+
+async def check_message_sent_recently(user_id: int, message_content: str) -> bool:
+    lock_manager.start_cleanup()
+    async with lock_manager.lock(user_id):
+        last_sent_cache: typing.List = await sent_messages_cache.get(user_id)
+        for cached_message_content in last_sent_cache or []:
+            if cached_message_content == message_content:
+                return True
+        await sent_messages_cache.set(user_id, last_sent_cache + [message_content], ttl=5)
+        return False
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
     try:
@@ -15,13 +29,17 @@ async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: 
     except Exception:
         pass
 
-async def safe_send_to_channel(channel: discord.abc.Messageable, *args, **kwargs):
+async def safe_send_to_channel(channel: discord.abc.Messageable, *args, user_id: int = None, message_content: str = None, **kwargs):
+    if user_id and message_content and await check_message_sent_recently(user_id, message_content):
+        return None
     try:
         return await channel.send(*args, **kwargs)
     except Exception:
         return None
 
-async def safe_send_to_log(bot: LittleAngelBot, *args, **kwargs):
+async def safe_send_to_log(bot: LittleAngelBot, *args, user_id: int = None, message_content: str = None, **kwargs):
+    if user_id and message_content and await check_message_sent_recently(user_id, message_content):
+        return None
     try:
         channel: discord.TextChannel = bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
         if not channel:

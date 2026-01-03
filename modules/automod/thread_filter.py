@@ -5,23 +5,21 @@ import asyncio
 import traceback
 
 from aiocache                    import SimpleMemoryCache
-from cache                       import AsyncTTL
 
 from modules.automod.link_filter import detect_links
+from modules.lock_manager        import LockManagerWithIdleTTL
 
 threads_from_new_members_cache = SimpleMemoryCache()
 
 _DELETE_SEMAPHORE = asyncio.Semaphore(1)
+lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
 # Settings
 MAX_THREADS = 7  # максимальное количество веток в кэше
 
-@AsyncTTL(time_to_live=2400)
-async def get_lock(user_id: int) -> asyncio.Lock:
-    return asyncio.Lock()
-
 async def get_cached_threads_and_append(member: discord.Member, append_thread: discord.Thread) -> list:
-    async with await get_lock(member.id):
+    lock_manager.start_cleanup()
+    async with lock_manager.lock(member.id):
         threads = await threads_from_new_members_cache.get(member.id) or []
 
         threads = threads[-MAX_THREADS:]

@@ -4,12 +4,13 @@ import discord
 import asyncio
 import traceback
 
-
 from collections import defaultdict
 from aiocache    import SimpleMemoryCache
-from cache       import AsyncTTL
+
+from modules.lock_manager import LockManagerWithIdleTTL
 
 mentions_from_new_members_cache = SimpleMemoryCache()
+lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
@@ -19,13 +20,9 @@ MAX_DIFFERENT_MENTIONS = 5      # максимум уникальных упом
 MAX_STORED_MESSAGES = 200       # сколько последних сообщений хранить в кэше
 
 
-@AsyncTTL(time_to_live=2400)
-async def get_lock(user_id: int) -> asyncio.Lock:
-    return asyncio.Lock()
-
-
 async def get_cached_mentions_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
-    async with await get_lock(member.id):
+    lock_manager.start_cleanup()
+    async with lock_manager.lock(member.id):
 
         mentions: dict = await mentions_from_new_members_cache.get(member.id) or {}
         messages = mentions.setdefault("messages", [])

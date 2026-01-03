@@ -12,10 +12,12 @@ from aiocache             import SimpleMemoryCache
 from cache                import AsyncTTL
 
 from classes.bot          import LittleAngelBot
+from modules.lock_manager import LockManagerWithIdleTTL
 
 messages_from_new_members_cache = SimpleMemoryCache()
 
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
+lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
 
 # Settings
 MAX_CACHE_MESSAGES = 60           # максимальное количество сообщений в кэше
@@ -26,10 +28,6 @@ MIN_CLUSTERS_FOR_ALTERNATING = 2  # количество кластеров дл
 MIN_CLUSTER_SIZE = 15             # количество сообщений в кластере для засчитывания флуда как чередование
 
 @AsyncTTL(time_to_live=2400)
-async def get_lock(user_id: int) -> asyncio.Lock:
-    return asyncio.Lock()
-
-@AsyncTTL(time_to_live=2400)
 async def fuzzy_compare(str1: str, str2: str) -> int:
     try:
         score = fuzz.ratio(str1, str2)
@@ -38,7 +36,8 @@ async def fuzzy_compare(str1: str, str2: str) -> int:
     return score
 
 async def get_cached_messages_and_append(member: discord.Member, append_message_content: str = None, append_message: discord.Message = None) -> list:
-    async with await get_lock(member.id):
+    lock_manager.start_cleanup()
+    async with lock_manager.lock(member.id):
         messages = await messages_from_new_members_cache.get(member.id) or []
 
         messages = messages[-MAX_CACHE_MESSAGES:]  # ограничение кэша до MAX_CACHE_MESSAGES
