@@ -23,8 +23,8 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
     except:
         return await ci.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Произошло неожиданное изменение записей, вызовите команду, или нажмите кнопку ещё раз"), ephemeral=True)
     user_permissions_in_channel = channel.permissions_for(ci.user)
-    if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-        return await ci.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+    if not (user_permissions_in_channel.read_message_history and user_permissions_in_channel.read_messages):
+        return await ci.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать указанный канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
     await ci.response.defer()
     s: discord.Message = snipess['msg']
     prava = snipess['perms']
