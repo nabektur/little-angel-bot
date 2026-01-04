@@ -207,18 +207,25 @@ class AutoModeration(commands.Cog):
                         return
                 
                 # модерация сообщений
-                if message.content:
+                if message.content or message.embeds:
                 
-                    # защита от засирания чата 
+                    # защита от засирания чата
 
-                    if await is_spam_block(message.content):
+                    message_content = message.content if message.content else ""
+                    for embed in message.embeds:
+                        if embed.title:
+                            message_content += f"\nЗаголовок: {embed.title}"
+                        if embed.description:
+                            message_content += f"\nОписание: {embed.description}"
+
+                    if await is_spam_block(message_content):
 
                         await handle_violation(
                             self.bot,
                             message,
                             reason_title="Спам / засорение чата",
                             reason_text="засорение чата (пустые строки / мусор / код-блоки)",
-                            extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message.content[:300].replace('`', '')}\n```",
+                            extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
                             timeout_reason="Спам / засорение чата"
                         )
 
