@@ -264,7 +264,10 @@ class Snipe(commands.Cog):
             channel = interaction.channel
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
-        
+        user_permissions_in_channel = channel.permissions_for(interaction.user)
+        if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
+            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+
         snipe_existing_data: typing.List = await snipe_cache.get(channel.id)
         if not snipe_existing_data:
             raise KeyError()

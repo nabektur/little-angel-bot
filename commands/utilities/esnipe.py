@@ -1,5 +1,7 @@
 import typing
+import logging
 import discord
+import traceback
 
 from aiocache              import SimpleMemoryCache
 
@@ -42,6 +44,17 @@ class esnipe_archive(discord.ui.View):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
         
+        channel = self.bot.get_channel(self.channel_id)
+        if not channel:
+            try:
+                channel = await self.bot.fetch_channel(self.channel_id)
+            except Exception as e:
+                logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
+                return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+        user_permissions_in_channel = channel.permissions_for(interaction.user)
+        if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
+            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+
         esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
         if ipos < 0:
             ipos = len(esnipe_existing_data) - 1
@@ -71,6 +84,17 @@ class esnipe_archive(discord.ui.View):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
         
+        channel = self.bot.get_channel(self.channel_id)
+        if not channel:
+            try:
+                channel = await self.bot.fetch_channel(self.channel_id)
+            except Exception as e:
+                logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
+                return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+        user_permissions_in_channel = channel.permissions_for(interaction.user)
+        if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
+            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+
         esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
 
         if ipos >= len(esnipe_existing_data):
@@ -163,6 +187,11 @@ class ESnipe(commands.Cog):
             channel = interaction.channel
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
+        
+        user_permissions_in_channel = channel.permissions_for(interaction.user)
+        if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
+            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+
         esnipe_existing_data: typing.List = await esnipe_cache.get(channel.id)
         if not esnipe_existing_data:
             raise KeyError()
