@@ -111,12 +111,18 @@ class AutoModeration(commands.Cog):
         if message.author == self.bot.user:
             return
         if message.author.bot:
-            return
+            if not message.interaction_metadata:
+                return
+            if message.interaction_metadata.is_guild_integration():
+                return
+            message.author = message.interaction_metadata.user
         
         # расстановка приоритетов
         priority: int = 2
 
-        if message.author.guild_permissions.manage_messages:
+        if message.interaction_metadata:
+            priority = 3
+        elif message.author.guild_permissions.manage_messages:
             priority = 0
         elif message.channel.id in config.ADS_CHANNELS_IDS:
             priority = 0
