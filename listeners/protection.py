@@ -1,13 +1,12 @@
-import json
+import time
 import typing
 import logging
 import asyncio
 import discord
 
-from io                               import BytesIO
-
-from discord.ext                      import commands
+from discord.ext                      import commands, tasks
 from datetime                         import timedelta, datetime, timezone
+from collections                      import defaultdict, deque
 
 from modules.configuration            import config
 from classes.bot                      import LittleAngelBot
@@ -22,6 +21,48 @@ from modules.automod.mention_filter   import check_mention_abuse, mentions_from_
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot
+
+        self._channel_activity = defaultdict(lambda: deque())
+        self._channel_locks    = defaultdict(asyncio.Lock)
+
+        self.WINDOW    = 10     # секунд
+        self.MSG_LIMIT = 20     # сообщений
+        self.SLOWMODE  = 3      # секунд
+
+        self._slowmode_task.start()
+
+    @tasks.loop(seconds=5)
+    async def _slowmode_task(self):
+        now = time.time()
+
+        for channel_id, times in list(self._channel_activity.items()):
+            channel = self.bot.get_channel(channel_id)
+            if not channel or not isinstance(channel, discord.TextChannel):
+                continue
+
+            async with self._channel_locks[channel_id]:
+                # чистим старые сообщения
+                while times and now - times[0] > self.WINDOW:
+                    times.popleft()
+
+                count = len(times)
+
+                # логика
+                target_delay = 0
+                if count >= 40:
+                    target_delay = 30
+                elif count >= 30:
+                    target_delay = 15
+                elif count >= self.MSG_LIMIT:
+                    target_delay = self.SLOWMODE
+
+                if channel.slowmode_delay != target_delay:
+                    try:
+                        await channel.edit(slowmode_delay=target_delay)
+                    except discord.Forbidden:
+                        pass
+                    except discord.HTTPException:
+                        pass
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
@@ -142,7 +183,123 @@ class AutoModeration(commands.Cog):
 
         if priority == 0:
             return
+                
+        # условия срабатывания
+        if priority > 2:
 
+            if message.content:
+                # детект злоупотребления упоминаниями
+                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
+
+                if is_mention_abuse:
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Злоупотребление упоминаниями",
+                        reason_text="злоупотребление упоминаниями",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Злоупотребление упоминаниями от нового участника",
+                        force_mute=True
+                    )
+
+                    await mentions_from_new_members_cache.delete(message.author.id)
+
+                    return
+
+            # детект флуда
+            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
+
+            if is_flood:
+
+                await handle_violation(
+                    self.bot,
+                    message,
+                    reason_title="Флуд",
+                    reason_text="флуд",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Флуд от нового участника",
+                    force_mute=True
+                )
+
+                await messages_from_new_members_cache.delete(message.author.id)
+
+                return
+                
+        # условия срабатывания
+        if priority > 1:
+                
+            # модерация активности
+            if message.activity is not None:
+
+                if message.activity.get('type') == 3:
+
+                    activity_info = (
+                        f"Тип: {message.activity.get('type')}\n"
+                        f"Party ID: {message.activity.get('party_id')}\n"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама через активность",
+                        reason_text="реклама через Discord Activity",
+                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                        timeout_reason="Реклама через активность"
+                    )
+
+                    return
+            
+            # модерация сообщений
+            if message.content or message.embeds:
+            
+                # защита от засирания чата
+
+                message_content = message.content if message.content else ""
+                for embed in message.embeds:
+                    if embed.title:
+                        message_content += f"\nЗаголовок: {embed.title}"
+                    if embed.description:
+                        message_content += f"\nОписание: {embed.description}"
+
+                if await is_spam_block(message_content):
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Спам / засорение чата",
+                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Спам / засорение чата"
+                    )
+
+                    return
+
+                # детект рекламы
+
+                matched = await detect_links(message.content)
+
+                if matched:
+
+                    # первые 300 символов сообщения
+                    preview = message.content[:300].replace("`", "'")
+
+                    extra = (
+                        f"Совпадение:\n```\n{matched}\n```\n"
+                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама в сообщении",
+                        reason_text="реклама в тексте сообщения",
+                        extra_info=extra,
+                        timeout_reason="Реклама в сообщении"
+                    )
+
+                    return
+                
         # условия срабатывания
         if priority > 0:
 
@@ -236,121 +393,18 @@ class AutoModeration(commands.Cog):
 
                     return
                 
-        # условия срабатывания
-        if priority > 1:
-                
-            # модерация активности
-            if message.activity is not None:
+            # ===== Авто slow mode (нагрузка на канал) =====
+            if isinstance(message.channel, discord.TextChannel):
+                now = time.time()
+                channel_id = message.channel.id
 
-                if message.activity.get('type') == 3:
+                async with self._channel_locks[channel_id]:
+                    times = self._channel_activity[channel_id]
+                    times.append(now)
 
-                    activity_info = (
-                        f"Тип: {message.activity.get('type')}\n"
-                        f"Party ID: {message.activity.get('party_id')}\n"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Реклама через активность",
-                        reason_text="реклама через Discord Activity",
-                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность"
-                    )
-
-                    return
-            
-            # модерация сообщений
-            if message.content or message.embeds:
-            
-                # защита от засирания чата
-
-                message_content = message.content if message.content else ""
-                for embed in message.embeds:
-                    if embed.title:
-                        message_content += f"\nЗаголовок: {embed.title}"
-                    if embed.description:
-                        message_content += f"\nОписание: {embed.description}"
-
-                if await is_spam_block(message_content):
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Спам / засорение чата",
-                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Спам / засорение чата"
-                    )
-
-                    return
-
-                # детект рекламы
-
-                matched = await detect_links(message.content)
-
-                if matched:
-
-                    # первые 300 символов сообщения
-                    preview = message.content[:300].replace("`", "'")
-
-                    extra = (
-                        f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Реклама в сообщении",
-                        reason_text="реклама в тексте сообщения",
-                        extra_info=extra,
-                        timeout_reason="Реклама в сообщении"
-                    )
-
-                    return
-            
-        # условия срабатывания
-        if priority > 2:
-
-            if message.content:
-                # детект злоупотребления упоминаниями
-                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
-
-                if is_mention_abuse:
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Злоупотребление упоминаниями",
-                        reason_text="злоупотребление упоминаниями",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Злоупотребление упоминаниями от нового участника",
-                        force_mute=True
-                    )
-
-                    await mentions_from_new_members_cache.delete(message.author.id)
-
-                    return
-
-            # детект флуда
-            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
-
-            if is_flood:
-
-                await handle_violation(
-                    self.bot,
-                    message,
-                    reason_title="Флуд",
-                    reason_text="флуд",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
-                    timeout_reason="Флуд от нового участника",
-                    force_mute=True
-                )
-
-                await messages_from_new_members_cache.delete(message.author.id)
-
-                return
+                    # лёгкая чистка, основная в таске
+                    while times and now - times[0] > self.WINDOW:
+                        times.popleft()
 
                 
     @commands.Cog.listener()
