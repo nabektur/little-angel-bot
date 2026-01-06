@@ -252,12 +252,24 @@ def extract_possible_domains(text: str):
 
     return candidates
 
+EXPLICIT_URL_PATTERNS = [
+    (re.compile(r'https?://discord\.gg/\w+', re.IGNORECASE), 'discord.gg (явная ссылка)'),
+    (re.compile(r'https?://discord\.com/invite/\w+', re.IGNORECASE), 'discord.com/invite (явная ссылка)'),
+    (re.compile(r'https?://discordapp\.com/invite/\w+', re.IGNORECASE), 'discordapp.com/invite (явная ссылка)'),
+    (re.compile(r'https?://t\.me/\w+', re.IGNORECASE), 't.me (явная ссылка)'),
+]
+
 @AsyncTTL(time_to_live=600, maxsize=20000)
 async def detect_links(raw_text: str):
     """
     Детектит подозрительные ссылки в тексте
     Возвращает описание найденной ссылки или None
     """
+
+    # Проверка явных HTTP/HTTPS ссылок
+    for pattern, label in EXPLICIT_URL_PATTERNS:
+        if pattern.search(raw_text):
+            return label
     
     # Пропускаем очень короткие сообщения без явных признаков
     if len(raw_text) < 8:
