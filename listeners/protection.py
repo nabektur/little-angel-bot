@@ -258,56 +258,6 @@ class AutoModeration(commands.Cog):
                     )
 
                     return
-                
-            # модерация изображений
-            if message.attachments:
-
-                attachment_list: typing.List[bytes] = []
-
-                for attachment in message.attachments:
-
-                    if not attachment.content_type:
-                        continue
-
-                    if not any(ct in attachment.content_type for ct in ["image", "png", "jpeg", "jpg", "bmp", "gif", "webp", "tiff"]):
-                        continue
-
-                    # ограничение по размеру
-                    # if attachment.size > MAX_FILE_SIZE_BYTES:
-                    #     continue
-
-                    try:
-                        file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
-                    except (asyncio.TimeoutError, discord.HTTPException):
-                        continue
-
-                    logging.info(f"Прочитаны байты вложения {attachment.filename}, размер: {len(file_bytes)} байт.")
-
-                    attachment_list.append(file_bytes)
-
-                if attachment_list:
-
-                    logging.info(f"Запуск модерации изображений для сообщения {message.id} пользователя {message.author.id} с {len(attachment_list)} вложениями.")
-
-                    from modules.automod.image_filter import media_message_checker
-                    results = await media_message_checker.check_message_with_media(message.content, attachment_list)
-
-                    extra = json.dumps(results, ensure_ascii=False, indent=4) if results else str(results)
-
-                    logging.info(f"Результаты модерации изображений для сообщения {message.id} пользователя {message.author.id}:\n{extra}")
-
-                    if results:
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Нежелательное изображение",
-                            reason_text="нежелательное изображение в сообщении",
-                            extra_info=extra,
-                            timeout_reason="Нежелательное изображение",
-                            force_mute=True
-                        )
-
-                    return
             
 
         # условия срабатывания
