@@ -22,7 +22,7 @@ lock_manager_for_guild    = LockManagerWithIdleTTL(idle_ttl=7200)
 
 INVITE_LOCKDOWN_DURATION = 2 * 60 * 60      # 2 часа
 INVITE_LOCKDOWN_COOLDOWN = 45 * 60          # 45 минут
-VIOLATION_WINDOW         = 10 * 60          # 10 минут
+VIOLATION_WINDOW         = 5 * 60           # 5 минут
 VIOLATION_LIMIT          = 10               # 10 нарушений в VILOATION_WINDOW минут
 
 async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
