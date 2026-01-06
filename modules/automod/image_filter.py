@@ -1,4 +1,5 @@
 import re
+import logging
 import asyncio
 from io          import BytesIO
 from typing      import Optional, List, Dict
@@ -160,6 +161,8 @@ class ImageScamDetector:
         try:
             # Извлекаем текст
             text = await self.extract_text_from_image(image_object)
+
+            logging.info(f"Извлечённый текст из изображения: {text}")
             
             # Пропускаем пустые изображения
             if len(text.strip()) < 10:

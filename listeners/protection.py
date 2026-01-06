@@ -288,10 +288,14 @@ class AutoModeration(commands.Cog):
 
                 if attachment_list:
 
+                    logging.info(f"Запуск модерации изображений для сообщения {message.id} пользователя {message.author.id} с {len(attachment_list)} вложениями.")
+
                     from modules.automod.image_filter import media_message_checker
                     results = await media_message_checker.check_message_with_media(message.content, attachment_list)
 
                     extra = json.dumps(results, ensure_ascii=False, indent=4)
+
+                    logging.info(f"Результаты модерации изображений для сообщения {message.id} пользователя {message.author.id}:\n{extra}")
 
                     await handle_violation(
                         self.bot,
