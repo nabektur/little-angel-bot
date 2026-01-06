@@ -269,6 +269,8 @@ class AutoModeration(commands.Cog):
                     if not attachment.content_type:
                         continue
 
+                    logging.info(f"Проверка вложения {attachment.filename} с типом {attachment.content_type} и размером {attachment.size} байт.")
+
                     if not any(ct in attachment.content_type for ct in ["image", "png", "jpeg", "jpg", "bmp", "gif", "webp", "tiff"]):
                         continue
 
