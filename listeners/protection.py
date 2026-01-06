@@ -31,11 +31,7 @@ class AutoModeration(commands.Cog):
             (15, 3, 120),   # >=15 сообщений → 3s,  hold 2 минуты
         ]
         self._slowmode_state = {}
-
-        self.SLOWMODE_HOLD = 300 # секунд
         self.WINDOW    = 10      # секунд
-        self.MSG_LIMIT = 10      # сообщений
-        self.SLOWMODE  = 3       # секунд
 
     @commands.Cog.listener()
     async def on_ready(self):
