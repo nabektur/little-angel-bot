@@ -262,7 +262,7 @@ class AutoModeration(commands.Cog):
             # модерация изображений
             if message.attachments:
 
-                attachment_list = []
+                attachment_list: typing.List[BytesIO] = []
 
                 for attachment in message.attachments:
 
@@ -308,6 +308,9 @@ class AutoModeration(commands.Cog):
                         timeout_reason="Нежелательное изображение",
                         force_mute=True
                     )
+
+                    for file_object in attachment_list:
+                        file_object.close()
             
 
         # условия срабатывания
