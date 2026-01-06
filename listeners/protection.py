@@ -166,8 +166,8 @@ class AutoModeration(commands.Cog):
                     except (asyncio.TimeoutError, discord.HTTPException):
                         continue
 
-                    if file_bytes.count(b"\x00") > 100:
-                        continue  # бинарный файл
+                    # if file_bytes.count(b"\x00") > 100:
+                    #     continue  # бинарный файл
 
                     content = file_bytes[:1_000_000].decode(errors='ignore')
 
