@@ -1,3 +1,4 @@
+import time
 import typing
 import asyncio
 import discord
@@ -10,10 +11,60 @@ from classes.bot           import LittleAngelBot
 from modules.configuration import config
 from modules.lock_manager  import LockManagerWithIdleTTL
 
-hit_cache           = SimpleMemoryCache()
-sent_messages_cache = SimpleMemoryCache()
+hit_cache             = SimpleMemoryCache()
+sent_messages_cache   = SimpleMemoryCache()
+violation_cache       = SimpleMemoryCache()  # guild_id -> List[timestamps]
+invite_lockdown_cache = SimpleMemoryCache()
+
 lock_manager_for_hits     = LockManagerWithIdleTTL(idle_ttl=3600)
 lock_manager_for_messages = LockManagerWithIdleTTL(idle_ttl=2400)
+lock_manager_for_guild    = LockManagerWithIdleTTL(idle_ttl=7200)
+
+INVITE_LOCKDOWN_DURATION = 2 * 60 * 60      # 2 часа
+INVITE_LOCKDOWN_COOLDOWN = 45 * 60          # 45 минут
+VIOLATION_WINDOW         = 10 * 60          # 10 минут
+VIOLATION_LIMIT          = 10               # 10 нарушений в VILOATION_WINDOW минут
+
+async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
+    now = time.time()
+
+    async with lock_manager_for_guild.lock(guild.id):
+        data = await invite_lockdown_cache.get(guild.id) or {}
+
+        lockdown_until = data.get("lockdown_until", 0)
+        cooldown_until = data.get("cooldown_until", 0)
+
+        # cooldown на продление
+        if now < cooldown_until:
+            return
+
+        # если локдаун уже активен — ПРОДЛЕВАЕМ
+        if now < lockdown_until:
+            lockdown_until += INVITE_LOCKDOWN_DURATION
+        else:
+            lockdown_until = now + INVITE_LOCKDOWN_DURATION
+
+            await safe_send_to_log(
+                bot,
+                content="🔒 **Включён локдаун приглашений и личных сообщений** на 2 часа вследствие всплеска нарушений"
+            )
+
+        disabled_until = discord.utils.utcnow() + timedelta(
+            seconds=(lockdown_until - now)
+        )
+
+        await guild.edit(invites_disabled_until=disabled_until, dms_disabled_until=disabled_until)
+
+        cooldown_until = now + INVITE_LOCKDOWN_COOLDOWN
+
+        await invite_lockdown_cache.set(
+            guild.id,
+            {
+                "lockdown_until": lockdown_until,
+                "cooldown_until": cooldown_until
+            },
+            ttl=INVITE_LOCKDOWN_DURATION + INVITE_LOCKDOWN_COOLDOWN
+        )
 
 def generate_message_hash(message_content: str) -> str:
     """Генерирует хэш для идентификации типа нарушения"""
@@ -86,11 +137,30 @@ async def handle_violation(
     force_mute: bool = False,
     force_ban: bool = False,
 ):
+
     if isinstance(detected_object, discord.Message):
         user = detected_object.author
     else:
         user = detected_object.owner
     guild = detected_object.guild
+
+    now = time.time()
+
+    async with lock_manager_for_guild.lock(guild.id):
+        violations = await violation_cache.get(guild.id) or []
+
+        # скользящее окно
+        violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
+        violations.append(now)
+
+        await violation_cache.set(
+            guild.id,
+            violations,
+            ttl=VIOLATION_WINDOW
+        )
+
+        if len(violations) >= VIOLATION_LIMIT:
+            asyncio.create_task(apply_invite_lockdown(bot, guild))
 
     # Игнорирует системные сообщения (не выдаёт мут, а лишь удаляет сообщение)
     if isinstance(detected_object, discord.Message) and detected_object.is_system():
