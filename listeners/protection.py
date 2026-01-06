@@ -25,7 +25,12 @@ class AutoModeration(commands.Cog):
         self._channel_activity = defaultdict(lambda: deque())
         self._channel_locks    = defaultdict(asyncio.Lock)
 
-        self._slowmode_since = {}
+        self.SLOWMODE_LEVELS = [
+            (40, 30, 600),  # >=40 сообщений → 30s, hold 10 минут
+            (30, 15, 300),  # >=30 сообщений → 15s, hold 5 минут
+            (15, 3, 120),   # >=15 сообщений → 3s,  hold 2 минуты
+        ]
+        self._slowmode_state = {}
 
         self.SLOWMODE_HOLD = 300 # секунд
         self.WINDOW    = 10      # секунд
@@ -47,52 +52,72 @@ class AutoModeration(commands.Cog):
                 continue
 
             async with self._channel_locks[channel_id]:
-                # чистка окна
+                # чистим окно активности
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
 
                 count = len(times)
-
-                # вычисляем желаемый slowmode
-                target_delay = 0
-                if count >= 40:
-                    target_delay = 30
-                elif count >= 30:
-                    target_delay = 15
-                elif count >= self.MSG_LIMIT:
-                    target_delay = self.SLOWMODE
-
                 current_delay = channel.slowmode_delay
-                last_enabled = self._slowmode_since.get(channel_id)
 
-                # === ЛОГИКА УДЕРЖАНИЯ ===
+                # определяем целевой delay
+                target_delay = 0
+                for limit, delay, _ in self.SLOWMODE_LEVELS:
+                    if count >= limit:
+                        target_delay = delay
+                        break
 
-                # включаем или усиливаем slowmode
-                if target_delay > 0:
-                    if current_delay != target_delay:
-                        try:
-                            await channel.edit(slowmode_delay=target_delay, reason="Автоматическое замедление в виду активности")
-                            self._slowmode_since[channel_id] = now
-                        except (discord.Forbidden, discord.HTTPException):
-                            pass
+                last_state = self._slowmode_state.get(channel_id)
 
-                # пытаемся выключить
-                elif current_delay > 0:
-                    # ещё не прошло минимальное время удержания
-                    if last_enabled and now - last_enabled < self.SLOWMODE_HOLD:
+                # усиление — сразу
+                if target_delay > current_delay:
+                    try:
+                        await channel.edit(slowmode_delay=target_delay, reason="Ужесточение замедления в виду увеличения активности")
+                        self._slowmode_state[channel_id] = (target_delay, now)
+                    except (discord.Forbidden, discord.HTTPException):
+                        pass
+                    continue
+
+                # ослабление — только после hold текущего уровня
+                if current_delay > target_delay and last_state:
+                    last_delay, since = last_state
+
+                    if last_delay != current_delay:
+                        self._slowmode_state[channel_id] = (current_delay, now)
                         continue
 
+                    hold_time = next(
+                        (h for _, d, h in self.SLOWMODE_LEVELS if d == last_delay),
+                        120
+                    )
+
+                    if now - since < hold_time:
+                        continue
+
+                    # находим следующий меньший уровень
+                    lower_levels = [
+                        d for _, d, _ in self.SLOWMODE_LEVELS
+                        if d < last_delay
+                    ]
+
+                    next_delay = max(
+                        (d for d in lower_levels if d >= target_delay),
+                        default=target_delay
+                    )
+
                     try:
-                        await channel.edit(slowmode_delay=0, reason="Сброс замедления в виду отсутствия активности")
-                        self._slowmode_since.pop(channel_id, None)
+                        await channel.edit(slowmode_delay=next_delay, reason="Смягчение замедления в виду уменьшения активности")
+                        if next_delay > 0:
+                            self._slowmode_state[channel_id] = (next_delay, now)
+                        else:
+                            self._slowmode_state.pop(channel_id, None)
                     except (discord.Forbidden, discord.HTTPException):
                         pass
 
-                # полная очистка, если канал стабилен
+                # === очистка ===
                 if not times and channel.slowmode_delay == 0:
                     self._channel_activity.pop(channel_id, None)
                     self._channel_locks.pop(channel_id, None)
-                    self._slowmode_since.pop(channel_id, None)
+                    self._slowmode_state.pop(channel_id, None)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
