@@ -283,11 +283,6 @@ class AutoModeration(commands.Cog):
 
                     logging.info(f"Прочитаны байты вложения {attachment.filename}, размер: {len(file_bytes)} байт.")
 
-                    if file_bytes.count(b"\x00") > 100:
-                        continue  # бинарный файл
-
-                    logging.info(f"Вложение {attachment.filename} прошло проверку на бинарность.")
-
                     attachment_list.append(BytesIO(file_bytes, name=attachment.filename))
 
                 if attachment_list:
