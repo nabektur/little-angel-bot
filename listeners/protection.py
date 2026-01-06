@@ -269,12 +269,8 @@ class AutoModeration(commands.Cog):
                     if not attachment.content_type:
                         continue
 
-                    logging.info(f"Проверка вложения {attachment.filename} с типом {attachment.content_type} и размером {attachment.size} байт.")
-
                     if not any(ct in attachment.content_type for ct in ["image", "png", "jpeg", "jpg", "bmp", "gif", "webp", "tiff"]):
                         continue
-
-                    logging.info(f"Вложение {attachment.filename} распознано как изображение для модерации.")
 
                     # ограничение по размеру
                     # if attachment.size > MAX_FILE_SIZE_BYTES:
@@ -285,8 +281,12 @@ class AutoModeration(commands.Cog):
                     except (asyncio.TimeoutError, discord.HTTPException):
                         continue
 
+                    logging.info(f"Прочитаны байты вложения {attachment.filename}, размер: {len(file_bytes)} байт.")
+
                     if file_bytes.count(b"\x00") > 100:
                         continue  # бинарный файл
+
+                    logging.info(f"Вложение {attachment.filename} прошло проверку на бинарность.")
 
                     attachment_list.append(BytesIO(file_bytes, name=attachment.filename))
 
