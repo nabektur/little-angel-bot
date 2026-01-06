@@ -295,6 +295,9 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     # Если compact не передан, вычисляем
     if not compact:
         compact = await normalize_and_compact(text_fragment)
+
+    if "tme" in compact and ("t.me" in text_fragment.lower()):
+        return "t.me"
     
     text_lower = text_fragment.replace(" ", "").lower()
     
