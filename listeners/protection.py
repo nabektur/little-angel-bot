@@ -140,6 +140,8 @@ class AutoModeration(commands.Cog):
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
 
+        logging.info(f"AutoMod priority for user {message.author} ({message.author.id}): {priority}")
+
         if priority == 0:
             return
 
@@ -152,6 +154,7 @@ class AutoModeration(commands.Cog):
                 for attachment in message.attachments:
 
                     if not attachment.content_type:
+                        logging.info(f"Skipping attachment without content type: {attachment.filename}")
                         continue
 
                     # Проверяет только текстовые файлы
@@ -176,11 +179,11 @@ class AutoModeration(commands.Cog):
 
                         matched = await detect_links(content)
 
-                        logging.debug(f"Checking attachment: {attachment.filename}, type: {attachment.content_type}")
+                        logging.info(f"Checking attachment: {attachment.filename}, type: {attachment.content_type}")
 
                         if matched:
 
-                            logging.debug(f"Detected attachment: {attachment.filename}, type: {attachment.content_type}")
+                            logging.info(f"Detected attachment: {attachment.filename}, type: {attachment.content_type}")
 
                             # первые 300 символов файла
                             preview = content[:300].replace("`", "'")
