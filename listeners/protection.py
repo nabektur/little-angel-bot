@@ -283,7 +283,10 @@ class AutoModeration(commands.Cog):
 
                     logging.info(f"Прочитаны байты вложения {attachment.filename}, размер: {len(file_bytes)} байт.")
 
-                    attachment_list.append(BytesIO(file_bytes, name=attachment.filename))
+                    file_object = BytesIO(file_bytes)
+                    file_object.name = attachment.filename
+
+                    attachment_list.append(file_object)
 
                 if attachment_list:
 
