@@ -184,9 +184,6 @@ class AutoModeration(commands.Cog):
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
 
-        if priority == 0:
-            return
-        
         # ===== Авто slow mode (нагрузка на канал) =====
         if isinstance(message.channel, discord.TextChannel):
             now = time.time()
@@ -199,6 +196,9 @@ class AutoModeration(commands.Cog):
                 # лёгкая чистка, основная в таске
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
+
+        if priority == 0:
+            return
                 
         # условия срабатывания
         if priority > 2:
