@@ -262,7 +262,7 @@ class AutoModeration(commands.Cog):
             # модерация изображений
             if message.attachments:
 
-                attachment_list: typing.List[BytesIO] = []
+                attachment_list: typing.List[bytes] = []
 
                 for attachment in message.attachments:
 
@@ -283,10 +283,7 @@ class AutoModeration(commands.Cog):
 
                     logging.info(f"Прочитаны байты вложения {attachment.filename}, размер: {len(file_bytes)} байт.")
 
-                    file_object = BytesIO(file_bytes)
-                    file_object.name = attachment.filename
-
-                    attachment_list.append(file_object)
+                    attachment_list.append(file_bytes)
 
                 if attachment_list:
 
@@ -309,9 +306,6 @@ class AutoModeration(commands.Cog):
                             timeout_reason="Нежелательное изображение",
                             force_mute=True
                         )
-
-                    for file_object in attachment_list:
-                        file_object.close()
 
                     return
             
