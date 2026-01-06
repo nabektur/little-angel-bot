@@ -29,7 +29,10 @@ class AutoModeration(commands.Cog):
         self.MSG_LIMIT = 20     # сообщений
         self.SLOWMODE  = 3      # секунд
 
-        self._slowmode_task.start()
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self._slowmode_task.is_running():
+            self._slowmode_task.start()
 
     @tasks.loop(seconds=5)
     async def _slowmode_task(self):
@@ -41,13 +44,11 @@ class AutoModeration(commands.Cog):
                 continue
 
             async with self._channel_locks[channel_id]:
-                # чистим старые сообщения
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
 
                 count = len(times)
 
-                # логика
                 target_delay = 0
                 if count >= 40:
                     target_delay = 30
@@ -59,10 +60,12 @@ class AutoModeration(commands.Cog):
                 if channel.slowmode_delay != target_delay:
                     try:
                         await channel.edit(slowmode_delay=target_delay)
-                    except discord.Forbidden:
+                    except (discord.Forbidden, discord.HTTPException):
                         pass
-                    except discord.HTTPException:
-                        pass
+
+                if not times:
+                    self._channel_activity.pop(channel_id, None)
+                    self._channel_locks.pop(channel_id, None)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
@@ -183,6 +186,19 @@ class AutoModeration(commands.Cog):
 
         if priority == 0:
             return
+        
+        # ===== Авто slow mode (нагрузка на канал) =====
+        if isinstance(message.channel, discord.TextChannel):
+            now = time.time()
+            channel_id = message.channel.id
+
+            async with self._channel_locks[channel_id]:
+                times = self._channel_activity[channel_id]
+                times.append(now)
+
+                # лёгкая чистка, основная в таске
+                while times and now - times[0] > self.WINDOW:
+                    times.popleft()
                 
         # условия срабатывания
         if priority > 2:
@@ -392,19 +408,6 @@ class AutoModeration(commands.Cog):
                     )
 
                     return
-                
-            # ===== Авто slow mode (нагрузка на канал) =====
-            if isinstance(message.channel, discord.TextChannel):
-                now = time.time()
-                channel_id = message.channel.id
-
-                async with self._channel_locks[channel_id]:
-                    times = self._channel_activity[channel_id]
-                    times.append(now)
-
-                    # лёгкая чистка, основная в таске
-                    while times and now - times[0] > self.WINDOW:
-                        times.popleft()
 
                 
     @commands.Cog.listener()
