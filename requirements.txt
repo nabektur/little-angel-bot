@@ -16,3 +16,6 @@ types-cachetools
 async-cache
 # markovify
 # aiosqlite
+easyocr
+pytesseract
+Pillow

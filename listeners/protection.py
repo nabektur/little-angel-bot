@@ -1,7 +1,10 @@
+import json
 import typing
 import logging
 import asyncio
 import discord
+
+from io                               import BytesIO
 
 from discord.ext                      import commands
 from datetime                         import timedelta, datetime, timezone
@@ -185,76 +188,121 @@ class AutoModeration(commands.Cog):
         # условия срабатывания
         if priority > 1:
                 
-                # модерация активности
-                if message.activity is not None:
+            # модерация активности
+            if message.activity is not None:
 
-                    if message.activity.get('type') == 3:
+                if message.activity.get('type') == 3:
 
-                        activity_info = (
-                            f"Тип: {message.activity.get('type')}\n"
-                            f"Party ID: {message.activity.get('party_id')}\n"
-                        )
+                    activity_info = (
+                        f"Тип: {message.activity.get('type')}\n"
+                        f"Party ID: {message.activity.get('party_id')}\n"
+                    )
 
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Реклама через активность",
-                            reason_text="реклама через Discord Activity",
-                            extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                            timeout_reason="Реклама через активность"
-                        )
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама через активность",
+                        reason_text="реклама через Discord Activity",
+                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                        timeout_reason="Реклама через активность"
+                    )
 
-                        return
+                    return
+            
+            # модерация сообщений
+            if message.content or message.embeds:
+            
+                # защита от засирания чата
+
+                message_content = message.content if message.content else ""
+                for embed in message.embeds:
+                    if embed.title:
+                        message_content += f"\nЗаголовок: {embed.title}"
+                    if embed.description:
+                        message_content += f"\nОписание: {embed.description}"
+
+                if await is_spam_block(message_content):
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Спам / засорение чата",
+                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Спам / засорение чата"
+                    )
+
+                    return
+
+                # детект рекламы
+
+                matched = await detect_links(message.content)
+
+                if matched:
+
+                    # первые 300 символов сообщения
+                    preview = message.content[:300].replace("`", "'")
+
+                    extra = (
+                        f"Совпадение:\n```\n{matched}\n```\n"
+                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама в сообщении",
+                        reason_text="реклама в тексте сообщения",
+                        extra_info=extra,
+                        timeout_reason="Реклама в сообщении"
+                    )
+
+                    return
                 
-                # модерация сообщений
-                if message.content or message.embeds:
-                
-                    # защита от засирания чата
+            # модерация изображений
+            if message.attachments:
 
-                    message_content = message.content if message.content else ""
-                    for embed in message.embeds:
-                        if embed.title:
-                            message_content += f"\nЗаголовок: {embed.title}"
-                        if embed.description:
-                            message_content += f"\nОписание: {embed.description}"
+                attachment_list = []
 
-                    if await is_spam_block(message_content):
+                for attachment in message.attachments:
 
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Спам / засорение чата",
-                            reason_text="засорение чата (пустые строки / мусор / код-блоки)",
-                            extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
-                            timeout_reason="Спам / засорение чата"
-                        )
+                    if not attachment.content_type:
+                        continue
 
-                        return
+                    if not any(ct in attachment.content_type for ct in ["image", "png", "jpeg", "jpg", "bmp", "gif", "webp", "tiff"]):
+                        continue
 
-                    # детект рекламы
+                    # ограничение по размеру
+                    # if attachment.size > MAX_FILE_SIZE_BYTES:
+                    #     continue
 
-                    matched = await detect_links(message.content)
+                    try:
+                        file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
+                    except (asyncio.TimeoutError, discord.HTTPException):
+                        continue
 
-                    if matched:
+                    if file_bytes.count(b"\x00") > 100:
+                        continue  # бинарный файл
 
-                        # первые 300 символов сообщения
-                        preview = message.content[:300].replace("`", "'")
+                    attachment_list.append(BytesIO(file_bytes, name=attachment.filename))
 
-                        extra = (
-                            f"Совпадение:\n```\n{matched}\n```\n"
-                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                        )
+                if attachment_list:
 
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Реклама в сообщении",
-                            reason_text="реклама в тексте сообщения",
-                            extra_info=extra,
-                            timeout_reason="Реклама в сообщении"
-                        )
+                    from modules.automod.image_filter import media_message_checker
+                    results = await media_message_checker.check_message_with_media(message.content, attachment_list)
 
-                        return
+                    extra = json.dumps(results, ensure_ascii=False, indent=4)
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Нежелательное изображение",
+                        reason_text="нежелательное изображение в сообщении",
+                        extra_info=extra,
+                        timeout_reason="Нежелательное изображение",
+                        force_mute=True
+                    )
+            
 
         # условия срабатывания
         if priority > 0:
