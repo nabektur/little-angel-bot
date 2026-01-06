@@ -71,7 +71,7 @@ class AutoModeration(commands.Cog):
                 if target_delay > 0:
                     if current_delay != target_delay:
                         try:
-                            await channel.edit(slowmode_delay=target_delay)
+                            await channel.edit(slowmode_delay=target_delay, reason="Автоматическое замедление в виду активности")
                             self._slowmode_since[channel_id] = now
                         except (discord.Forbidden, discord.HTTPException):
                             pass
@@ -83,7 +83,7 @@ class AutoModeration(commands.Cog):
                         continue
 
                     try:
-                        await channel.edit(slowmode_delay=0)
+                        await channel.edit(slowmode_delay=0, reason="Сброс замедления в виду отсутствия активности")
                         self._slowmode_since.pop(channel_id, None)
                     except (discord.Forbidden, discord.HTTPException):
                         pass
@@ -211,6 +211,9 @@ class AutoModeration(commands.Cog):
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
 
+        if priority == 0:
+            return
+
         # ===== Авто slow mode (нагрузка на канал) =====
         if isinstance(message.channel, discord.TextChannel):
             now = time.time()
@@ -223,9 +226,6 @@ class AutoModeration(commands.Cog):
                 # лёгкая чистка, основная в таске
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
-
-        if priority == 0:
-            return
                 
         # условия срабатывания
         if priority > 2:
