@@ -154,53 +154,60 @@ class AutoModeration(commands.Cog):
                     if not attachment.content_type:
                         continue
 
-                    if not any(ct in attachment.content_type for ct in ["text", "json", "xml", "csv", "html", "htm", "md", "yaml", "yml", "ini", "log", "multipart", "text/plain", "text/html", "text/markdown", "text/xml", "text/csv", "text/yaml", "text/yml", "text/ini", "text/log"]):
-                        continue
+                    # Проверяет только текстовые файлы
+                    if attachment.content_type and any(ct in attachment.content_type for ct in [
+                        "text/", "application/json", "application/xml", 
+                        "application/x-yaml", "application/yaml"
+                    ]):
 
-                    # ограничение по размеру
-                    # if attachment.size > MAX_FILE_SIZE_BYTES:
-                    #     continue
+                        # ограничение по размеру
+                        # if attachment.size > MAX_FILE_SIZE_BYTES:
+                        #     continue
 
-                    try:
-                        file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
-                    except (asyncio.TimeoutError, discord.HTTPException):
-                        continue
+                        try:
+                            file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
+                        except (asyncio.TimeoutError, discord.HTTPException):
+                            continue
 
-                    # if file_bytes.count(b"\x00") > 100:
-                    #     continue  # бинарный файл
+                        if file_bytes.count(b"\x00") > 100:
+                            continue  # бинарный файл
 
-                    content = file_bytes[:1_000_000].decode(errors='ignore')
+                        content = file_bytes[:1_000_000].decode(errors='ignore')
 
-                    matched = await detect_links(content)
+                        matched = await detect_links(content)
 
-                    if matched:
+                        logging.debug(f"Checking attachment: {attachment.filename}, type: {attachment.content_type}")
 
-                        # первые 300 символов файла
-                        preview = content[:300].replace("`", "'")
+                        if matched:
 
-                        file_info = (
-                            f"Имя файла: {attachment.filename}\n"
-                            f"Размер: {attachment.size} байт\n"
-                            f"Тип: {attachment.content_type}\n"
-                        )
+                            logging.debug(f"Detected attachment: {attachment.filename}, type: {attachment.content_type}")
 
-                        extra = (
-                            f"Совпадение:\n```\n{matched}\n```\n"
-                            f"Информация о файле:\n```\n{file_info}```\n"
-                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                        )
+                            # первые 300 символов файла
+                            preview = content[:300].replace("`", "'")
 
-                        await handle_violation(
-                            self.bot,
-                            message,
-                            reason_title="Реклама внутри файла",
-                            reason_text="реклама в прикреплённом файле",
-                            extra_info=extra,
-                            timeout_reason="Реклама в файле",
-                            force_ban=True
-                        )
+                            file_info = (
+                                f"Имя файла: {attachment.filename}\n"
+                                f"Размер: {attachment.size} байт\n"
+                                f"Тип: {attachment.content_type}\n"
+                            )
 
-                        return
+                            extra = (
+                                f"Совпадение:\n```\n{matched}\n```\n"
+                                f"Информация о файле:\n```\n{file_info}```\n"
+                                f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                            )
+
+                            await handle_violation(
+                                self.bot,
+                                message,
+                                reason_title="Реклама внутри файла",
+                                reason_text="реклама в прикреплённом файле",
+                                extra_info=extra,
+                                timeout_reason="Реклама в файле",
+                                force_ban=True
+                            )
+
+                            return
                     
             # модерация опросов
             if message.poll:
