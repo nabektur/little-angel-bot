@@ -295,22 +295,25 @@ class AutoModeration(commands.Cog):
                     from modules.automod.image_filter import media_message_checker
                     results = await media_message_checker.check_message_with_media(message.content, attachment_list)
 
-                    extra = json.dumps(results, ensure_ascii=False, indent=4)
+                    extra = json.dumps(results, ensure_ascii=False, indent=4) if results else str(results)
 
                     logging.info(f"Результаты модерации изображений для сообщения {message.id} пользователя {message.author.id}:\n{extra}")
 
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Нежелательное изображение",
-                        reason_text="нежелательное изображение в сообщении",
-                        extra_info=extra,
-                        timeout_reason="Нежелательное изображение",
-                        force_mute=True
-                    )
+                    if results:
+                        await handle_violation(
+                            self.bot,
+                            message,
+                            reason_title="Нежелательное изображение",
+                            reason_text="нежелательное изображение в сообщении",
+                            extra_info=extra,
+                            timeout_reason="Нежелательное изображение",
+                            force_mute=True
+                        )
 
                     for file_object in attachment_list:
                         file_object.close()
+
+                    return
             
 
         # условия срабатывания
