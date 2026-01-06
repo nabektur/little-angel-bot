@@ -142,123 +142,6 @@ class AutoModeration(commands.Cog):
 
         if priority == 0:
             return
-            
-        # условия срабатывания
-        if priority > 2:
-
-            if message.content:
-                # детект злоупотребления упоминаниями
-                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
-
-                if is_mention_abuse:
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Злоупотребление упоминаниями",
-                        reason_text="злоупотребление упоминаниями",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Злоупотребление упоминаниями от нового участника",
-                        force_mute=True
-                    )
-
-                    await mentions_from_new_members_cache.delete(message.author.id)
-
-                    return
-
-            # детект флуда
-            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
-
-            if is_flood:
-
-                await handle_violation(
-                    self.bot,
-                    message,
-                    reason_title="Флуд",
-                    reason_text="флуд",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
-                    timeout_reason="Флуд от нового участника",
-                    force_mute=True
-                )
-
-                await messages_from_new_members_cache.delete(message.author.id)
-
-                return
-        
-        # условия срабатывания
-        if priority > 1:
-                
-            # модерация активности
-            if message.activity is not None:
-
-                if message.activity.get('type') == 3:
-
-                    activity_info = (
-                        f"Тип: {message.activity.get('type')}\n"
-                        f"Party ID: {message.activity.get('party_id')}\n"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Реклама через активность",
-                        reason_text="реклама через Discord Activity",
-                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность"
-                    )
-
-                    return
-            
-            # модерация сообщений
-            if message.content or message.embeds:
-            
-                # защита от засирания чата
-
-                message_content = message.content if message.content else ""
-                for embed in message.embeds:
-                    if embed.title:
-                        message_content += f"\nЗаголовок: {embed.title}"
-                    if embed.description:
-                        message_content += f"\nОписание: {embed.description}"
-
-                if await is_spam_block(message_content):
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Спам / засорение чата",
-                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Спам / засорение чата"
-                    )
-
-                    return
-
-                # детект рекламы
-
-                matched = await detect_links(message.content)
-
-                if matched:
-
-                    # первые 300 символов сообщения
-                    preview = message.content[:300].replace("`", "'")
-
-                    extra = (
-                        f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        message,
-                        reason_title="Реклама в сообщении",
-                        reason_text="реклама в тексте сообщения",
-                        extra_info=extra,
-                        timeout_reason="Реклама в сообщении"
-                    )
-
-                    return
-            
 
         # условия срабатывания
         if priority > 0:
@@ -349,6 +232,122 @@ class AutoModeration(commands.Cog):
                     )
 
                     return
+                
+        # условия срабатывания
+        if priority > 1:
+                
+            # модерация активности
+            if message.activity is not None:
+
+                if message.activity.get('type') == 3:
+
+                    activity_info = (
+                        f"Тип: {message.activity.get('type')}\n"
+                        f"Party ID: {message.activity.get('party_id')}\n"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама через активность",
+                        reason_text="реклама через Discord Activity",
+                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                        timeout_reason="Реклама через активность"
+                    )
+
+                    return
+            
+            # модерация сообщений
+            if message.content or message.embeds:
+            
+                # защита от засирания чата
+
+                message_content = message.content if message.content else ""
+                for embed in message.embeds:
+                    if embed.title:
+                        message_content += f"\nЗаголовок: {embed.title}"
+                    if embed.description:
+                        message_content += f"\nОписание: {embed.description}"
+
+                if await is_spam_block(message_content):
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Спам / засорение чата",
+                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Спам / засорение чата"
+                    )
+
+                    return
+
+                # детект рекламы
+
+                matched = await detect_links(message.content)
+
+                if matched:
+
+                    # первые 300 символов сообщения
+                    preview = message.content[:300].replace("`", "'")
+
+                    extra = (
+                        f"Совпадение:\n```\n{matched}\n```\n"
+                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Реклама в сообщении",
+                        reason_text="реклама в тексте сообщения",
+                        extra_info=extra,
+                        timeout_reason="Реклама в сообщении"
+                    )
+
+                    return
+            
+        # условия срабатывания
+        if priority > 2:
+
+            if message.content:
+                # детект злоупотребления упоминаниями
+                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
+
+                if is_mention_abuse:
+
+                    await handle_violation(
+                        self.bot,
+                        message,
+                        reason_title="Злоупотребление упоминаниями",
+                        reason_text="злоупотребление упоминаниями",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Злоупотребление упоминаниями от нового участника",
+                        force_mute=True
+                    )
+
+                    await mentions_from_new_members_cache.delete(message.author.id)
+
+                    return
+
+            # детект флуда
+            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
+
+            if is_flood:
+
+                await handle_violation(
+                    self.bot,
+                    message,
+                    reason_title="Флуд",
+                    reason_text="флуд",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Флуд от нового участника",
+                    force_mute=True
+                )
+
+                await messages_from_new_members_cache.delete(message.author.id)
+
+                return
 
                 
     @commands.Cog.listener()
