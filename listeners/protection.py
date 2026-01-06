@@ -274,6 +274,8 @@ class AutoModeration(commands.Cog):
                     if not any(ct in attachment.content_type for ct in ["image", "png", "jpeg", "jpg", "bmp", "gif", "webp", "tiff"]):
                         continue
 
+                    logging.info(f"Вложение {attachment.filename} распознано как изображение для модерации.")
+
                     # ограничение по размеру
                     # if attachment.size > MAX_FILE_SIZE_BYTES:
                     #     continue
