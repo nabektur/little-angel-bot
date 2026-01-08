@@ -215,10 +215,10 @@ class AutoModeration(commands.Cog):
         # расстановка приоритетов
         priority: int = 2
 
-        if message.interaction_metadata:
-            priority = 3
-        elif message.author.guild_permissions.manage_messages:
+        if message.author.guild_permissions.manage_messages:
             priority = 0
+        elif message.interaction_metadata:
+            priority = 3
         elif message.channel.id in config.ADS_CHANNELS_IDS:
             priority = 0
         else:
