@@ -235,7 +235,6 @@ class AutoModeration(commands.Cog):
                 if difference_between_join_and_now > timedelta(weeks=2):
                     priority = 1
                 elif next((role for role in message.author.roles if role.id == config.OLD_MEMBER_ROLE_ID), None):
-                    logging.info(f'Участнику @{message.author} (ID {message.author.id}) назначен приоритет 1 из-за наличия роли "Давний посетитель"')
                     priority = 1
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
