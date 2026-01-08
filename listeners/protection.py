@@ -210,7 +210,12 @@ class AutoModeration(commands.Cog):
                 return
             if message.interaction_metadata.is_guild_integration():
                 return
-            message.author = message.interaction_metadata.user
+            message.author = message.guild.get_member(message.interaction_metadata.user.id)
+            if not message.author:
+                try:
+                    message.author = await message.guild.fetch_member(message.interaction_metadata.user.id)
+                except discord.NotFound:
+                    return
         
         # расстановка приоритетов
         priority: int = 2
