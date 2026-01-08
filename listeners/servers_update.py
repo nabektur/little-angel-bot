@@ -13,6 +13,9 @@ class ServersUpdate(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
+        if guild.id != config.GUILD_ID:
+            return await guild.leave()
+        
         success = False
         for channel in guild.text_channels:
             try:
