@@ -234,7 +234,7 @@ class AutoModeration(commands.Cog):
 
                 if difference_between_join_and_now > timedelta(weeks=2):
                     priority = 1
-                elif discord.Object(1438936721449422930) in message.author.roles:
+                elif discord.Object(id=1438936721449422930) in message.author._roles:
                     logging.info(f'Участнику @{message.author} (ID {message.author.id}) назначен приоритет 1 из-за наличия роли "Давний посетитель"')
                     priority = 1
                 elif difference_between_join_and_now < timedelta(days=2):
