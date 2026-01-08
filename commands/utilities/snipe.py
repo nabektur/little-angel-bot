@@ -1,5 +1,6 @@
 import io
 import typing
+import asyncio
 import discord
 
 from aiocache              import SimpleMemoryCache
@@ -212,7 +213,7 @@ class Snipe(commands.Cog):
                         files = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
                     except:
                         files = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
-                except discord.NotFound:
+                except (discord.NotFound, discord.HTTPException, asyncio.CancelledError, RuntimeError):
                     files = []
                 existing.append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': files})
 
@@ -241,7 +242,7 @@ class Snipe(commands.Cog):
                 sdict['files'] = [{'bytes': await a.read(use_cached=True), 'filename': a.filename} for a in message.attachments]
             except:
                 sdict['files'] = [{'bytes': await a.read(use_cached=False), 'filename': a.filename} for a in message.attachments]
-        except discord.NotFound:
+        except (discord.NotFound, discord.HTTPException, asyncio.CancelledError, RuntimeError):
             sdict['files'] = []
 
         try:
