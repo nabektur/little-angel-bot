@@ -1,17 +1,16 @@
-import sys
-import signal
 import asyncio
 import logging
+import signal
+import sys
+
 import discord
+from discord.ext import commands
 
-from discord.ext           import commands
-
+from classes.database import db
+from classes.scheduler import scheduler
 from modules.configuration import config
 
-from classes.database      import db
-from classes.scheduler     import scheduler
-
-_log = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 class LittleAngelBot(commands.AutoShardedBot):
 
@@ -48,7 +47,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         await sync_spam_from_database(self)
         scheduler.start()
 
-        _log.info("База данных и планировщик запущены")
+        LOGGER.info("База данных и планировщик запущены")
 
         change_status_periodically.start(self)
 
@@ -59,7 +58,7 @@ class LittleAngelBot(commands.AutoShardedBot):
         await db.close()
         await asyncio.to_thread(scheduler.shutdown, wait=True)
 
-        _log.info("База данных и планировщик остановлены")
+        LOGGER.info("База данных и планировщик остановлены")
 
         await super().close()
 

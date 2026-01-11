@@ -1,19 +1,17 @@
-import typing
-import discord
 import asyncio
+from datetime import timedelta, datetime, timezone
 import logging
+import typing
 
-from datetime               import timedelta, datetime, timezone
+import discord
+from discord import app_commands
+from discord.ext import commands
 
-from discord                import app_commands
-from discord.ext            import commands
-
-from classes.bot            import LittleAngelBot
-from classes.database       import db
-
+from classes.bot import LittleAngelBot
+from classes.database import db
+from modules.configuration import config
+from modules.spam_runner import run_spam
 from modules.time_converter import Duration, verbose_timedelta
-from modules.spam_runner    import run_spam
-from modules.configuration  import config
 
 class Spam(commands.Cog):
     def __init__(self, bot: LittleAngelBot):

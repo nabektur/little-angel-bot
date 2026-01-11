@@ -1,16 +1,13 @@
 import discord
+from discord import app_commands
+from discord.ext import commands
 
-from discord               import app_commands
-from discord.ext           import commands
-
-from classes.bot           import LittleAngelBot
-from classes.database      import db
-
+from classes.bot import LittleAngelBot
 from modules.configuration import config
+from classes.database import db
 
 async def is_autopub(channel_id: int):
     return await db.fetchone("SELECT channel_id FROM autopublish WHERE channel_id = $1 LIMIT 1", channel_id) != None
-
 
 class AutoPublish(commands.Cog):
     def __init__(self, bot: LittleAngelBot):

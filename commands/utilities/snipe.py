@@ -1,26 +1,23 @@
+import asyncio
 import io
 import typing
-import asyncio
+
+from aiocache import SimpleMemoryCache
+from datetime import datetime, timezone
 import discord
+from discord import app_commands
+from discord.ext import commands
 
-from aiocache              import SimpleMemoryCache
-
-from datetime              import datetime, timezone
-
-from discord               import app_commands
-from discord.ext           import commands
-
-from classes.bot           import LittleAngelBot
-
+from classes.bot import LittleAngelBot
 from modules.configuration import config
 
-snipe_cache = SimpleMemoryCache()
+SNIPE_CACHE = SimpleMemoryCache()
 
 async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.Union[discord.StageChannel, discord.TextChannel, discord.VoiceChannel, discord.Thread], index: int, view: discord.ui.View = None, method: str = None):
     user_permissions_in_channel = channel.permissions_for(ci.user)
     if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
         return await ci.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
-    snipe_existing_data: typing.List = await snipe_cache.get(channel.id)
+    snipe_existing_data: typing.List = await SNIPE_CACHE.get(channel.id)
     rpos = len(snipe_existing_data)
     try:
         snipess = snipe_existing_data[int(index)]
@@ -105,7 +102,7 @@ class snipe_archive(discord.ui.View):
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         ipos = None
         epos = 0
-        snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
+        snipe_existing_data: typing.List = await SNIPE_CACHE.get(self.channel_id)
         if len(interaction.message.embeds) > 1:
             epos = 1
         for field in interaction.message.embeds[epos].fields:
@@ -126,7 +123,7 @@ class snipe_archive(discord.ui.View):
     async def soon(self, interaction: discord.Interaction, button: discord.ui.Button):
         ipos = None
         epos = 0
-        snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
+        snipe_existing_data: typing.List = await SNIPE_CACHE.get(self.channel_id)
         if len(interaction.message.embeds) > 1:
             epos = 1
         for field in interaction.message.embeds[epos].fields:
@@ -156,11 +153,11 @@ class snipe_archive(discord.ui.View):
         if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
-            snipe_existing_data: typing.List = await snipe_cache.get(self.channel_id)
+            snipe_existing_data: typing.List = await SNIPE_CACHE.get(self.channel_id)
             snipess: typing.Dict = snipe_existing_data[position]
             if int(interaction.message.embeds[epos].author.url.replace("https://discord.com/users/", "")) == snipess['msg'].author.id:
                 snipe_existing_data.pop(position)
-                await snipe_cache.set(self.channel_id, snipe_existing_data, ttl=3600)
+                await SNIPE_CACHE.set(self.channel_id, snipe_existing_data, ttl=3600)
             else:
                 await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
                 return await interaction.followup.delete_message(interaction.message.id)
@@ -177,7 +174,7 @@ class snipe_archive(discord.ui.View):
         if not interaction.user.guild_permissions.manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
-            await snipe_cache.set(self.channel_id, [], ttl=3600)
+            await SNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
             pass
         emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
@@ -194,7 +191,7 @@ class Snipe(commands.Cog):
         now = int(datetime.now(timezone.utc).timestamp())
 
         channel_id = messages[0].channel.id
-        existing = await snipe_cache.get(channel_id) or []
+        existing = await SNIPE_CACHE.get(channel_id) or []
 
         deleted_user = False
         perms = False
@@ -217,7 +214,7 @@ class Snipe(commands.Cog):
                     files = []
                 existing.append({'msg': message, 'perms': perms, 'deleted_user': deleted_user, 'files': files})
 
-        await snipe_cache.set(channel_id, existing, ttl=3600)
+        await SNIPE_CACHE.set(channel_id, existing, ttl=3600)
 
 
     @commands.Cog.listener()
@@ -230,7 +227,7 @@ class Snipe(commands.Cog):
         now = int(datetime.now(timezone.utc).timestamp())
 
         channel_id = message.channel.id
-        existing = await snipe_cache.get(channel_id) or []
+        existing = await SNIPE_CACHE.get(channel_id) or []
 
         sdict = {
             'msg': message,
@@ -254,7 +251,7 @@ class Snipe(commands.Cog):
             pass
 
         existing.append(sdict)
-        await snipe_cache.set(channel_id, existing, ttl=3600)
+        await SNIPE_CACHE.set(channel_id, existing, ttl=3600)
 
 
     @app_commands.command(name="снайп", description="Показывает удалённые сообщения в канале")
@@ -269,7 +266,7 @@ class Snipe(commands.Cog):
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
 
-        snipe_existing_data: typing.List = await snipe_cache.get(channel.id)
+        snipe_existing_data: typing.List = await SNIPE_CACHE.get(channel.id)
         if not snipe_existing_data:
             raise KeyError()
 

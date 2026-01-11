@@ -1,10 +1,10 @@
-import os
 import logging
+import os
 import traceback
 
-_log = logging.getLogger(__name__)
-
 from classes.bot import LittleAngelBot
+
+LOGGER = logging.getLogger(__name__)
 
 async def load_all_extensions(bot: LittleAngelBot, base_folder="commands"):
     for root, dirs, files in os.walk(base_folder):
@@ -15,7 +15,7 @@ async def load_all_extensions(bot: LittleAngelBot, base_folder="commands"):
 
                 try:
                     await bot.load_extension(module)
-                    _log.info(f"☑️ Загружено расширение: {module}")
+                    LOGGER.info(f"☑️ Загружено расширение: {module}")
                 except Exception as e:
-                    _log.error(f"❌ Ошибка при загрузке {module}: {type(e).__name__}: {e}")
-                    _log.error(traceback.format_exc())
+                    LOGGER.error(f"❌ Ошибка при загрузке {module}: {type(e).__name__}: {e}")
+                    LOGGER.error(traceback.format_exc())

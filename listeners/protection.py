@@ -1,22 +1,21 @@
+import asyncio
+from collections import defaultdict, deque
+from datetime import datetime, timedelta, timezone
+import logging
 import time
 import typing
-import logging
-import asyncio
+
 import discord
+from discord.ext import commands, tasks
 
-from discord.ext                      import commands, tasks
-from datetime                         import timedelta, datetime, timezone
-from collections                      import defaultdict, deque
-
-from modules.configuration            import config
-from classes.bot                      import LittleAngelBot
-
-from modules.automod.flood_filter     import flood_and_messages_check, messages_from_new_members_cache
-from modules.automod.spam_filter      import is_spam_block
-from modules.automod.link_filter      import detect_links
+from classes.bot import LittleAngelBot
+from modules.automod.flood_filter import flood_and_messages_check, MESSAGES_FROM_NEW_MEMBERS_CACHE
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
-from modules.automod.thread_filter    import flood_and_threads_check, threads_from_new_members_cache
-from modules.automod.mention_filter   import check_mention_abuse, mentions_from_new_members_cache
+from modules.automod.link_filter import detect_links
+from modules.automod.mention_filter import check_mention_abuse, MENTIONS_FROM_NEW_MEMBERS_CACHE
+from modules.automod.spam_filter import is_spam_block
+from modules.automod.thread_filter import flood_and_threads_check, THREADS_FROM_NEW_MEMBERS_CACHE
+from modules.configuration import config
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -182,7 +181,7 @@ class AutoModeration(commands.Cog):
                         force_ban=True
                     )
 
-                await threads_from_new_members_cache.delete(thread.owner.id)
+                await THREADS_FROM_NEW_MEMBERS_CACHE.delete(thread.owner.id)
 
                 return
 
@@ -274,7 +273,7 @@ class AutoModeration(commands.Cog):
                         force_mute=True
                     )
 
-                    await mentions_from_new_members_cache.delete(message.author.id)
+                    await MENTIONS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
 
                     return
 
@@ -293,7 +292,7 @@ class AutoModeration(commands.Cog):
                     force_mute=True
                 )
 
-                await messages_from_new_members_cache.delete(message.author.id)
+                await MESSAGES_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
 
                 return
                 

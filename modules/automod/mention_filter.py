@@ -1,29 +1,27 @@
-import typing
-import logging
-import discord
 import asyncio
+import logging
 import traceback
+import typing
 
+from aiocache import SimpleMemoryCache
 from collections import defaultdict
-from aiocache    import SimpleMemoryCache
+import discord
 
 from modules.lock_manager import LockManagerWithIdleTTL
 
-mentions_from_new_members_cache = SimpleMemoryCache()
-lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
-
+MENTIONS_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
+LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
-# Settings
-MAX_SIMILLAR_MENTIONS = 10      # максимум упоминаний одного id
-MAX_DIFFERENT_MENTIONS = 5      # максимум уникальных упоминаний
-MAX_STORED_MESSAGES = 200       # сколько последних сообщений хранить в кэше
+MAX_SIMILLAR_MENTIONS = 10  # максимум упоминаний одного id
+MAX_DIFFERENT_MENTIONS = 5  # максимум уникальных упоминаний
+MAX_STORED_MESSAGES = 200  # сколько последних сообщений хранить в кэше
 
 
 async def get_cached_mentions_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
-    async with lock_manager.lock(member.id):
+    async with LOCK_MANAGER.lock(member.id):
 
-        mentions: dict = await mentions_from_new_members_cache.get(member.id) or {}
+        mentions: dict = await MENTIONS_FROM_NEW_MEMBERS_CACHE.get(member.id) or {}
         messages = mentions.setdefault("messages", [])
 
         if message:
@@ -62,7 +60,7 @@ async def get_cached_mentions_and_append(member: discord.Member, message: discor
 
             mentions["messages"] = messages
 
-            await mentions_from_new_members_cache.set(member.id, mentions, ttl=1800)
+            await MENTIONS_FROM_NEW_MEMBERS_CACHE.set(member.id, mentions, ttl=1800)
 
         mentions_copy = {k: v for k, v in mentions.items() if k != "messages"}
 

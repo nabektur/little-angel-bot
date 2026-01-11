@@ -1,25 +1,24 @@
-import typing
-import logging
-import discord
 import asyncio
+import logging
 import traceback
+import typing
 
-from aiocache                    import SimpleMemoryCache
+from aiocache import SimpleMemoryCache
+import discord
 
 from modules.automod.link_filter import detect_links
-from modules.lock_manager        import LockManagerWithIdleTTL
+from modules.lock_manager import LockManagerWithIdleTTL
 
-threads_from_new_members_cache = SimpleMemoryCache()
+THREADS_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
 
 _DELETE_SEMAPHORE = asyncio.Semaphore(1)
-lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
+LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
-# Settings
 MAX_THREADS = 7  # максимальное количество веток в кэше
 
 async def get_cached_threads_and_append(member: discord.Member, append_thread: discord.Thread) -> list:
-    async with lock_manager.lock(member.id):
-        threads = await threads_from_new_members_cache.get(member.id) or []
+    async with LOCK_MANAGER.lock(member.id):
+        threads = await THREADS_FROM_NEW_MEMBERS_CACHE.get(member.id) or []
 
         threads = threads[-MAX_THREADS:]
 
@@ -28,7 +27,7 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
                 "id": append_thread.id
             })
 
-            await threads_from_new_members_cache.set(member.id, threads, ttl=1200)
+            await THREADS_FROM_NEW_MEMBERS_CACHE.set(member.id, threads, ttl=1200)
 
 
     return threads

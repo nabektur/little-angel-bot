@@ -1,9 +1,7 @@
 import discord
+from discord.ext import commands
 
-from discord.ext           import commands
-
-from classes.bot           import LittleAngelBot
-
+from classes.bot import LittleAngelBot
 from modules.configuration import config
 
 class SyncSlashCommands(commands.Cog):

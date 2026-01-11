@@ -1,12 +1,12 @@
-import sys
-import typing
-import dotenv
 import logging
 import logging.handlers
+import sys
+import typing
+from itertools import cycle
 
-from pydantic          import SecretStr
+import dotenv
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from itertools         import cycle
 
 ENV_PATH = dotenv.find_dotenv()
 

@@ -1,10 +1,8 @@
 import discord
+from discord import app_commands
+from discord.ext import commands
 
-from discord               import app_commands
-from discord.ext           import commands
-
-from classes.bot           import LittleAngelBot
-
+from classes.bot import LittleAngelBot
 from modules.configuration import config
 
 class Help(commands.Cog):

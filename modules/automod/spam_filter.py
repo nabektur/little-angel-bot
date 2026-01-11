@@ -1,7 +1,6 @@
-import re
-
+from cache import AsyncTTL
 from collections import Counter
-from cache       import AsyncTTL
+import re
 
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
 EMPTY_SPAM_LINE_RE = re.compile(r"^[\s\`\u200B-\u200F\uFEFF]{0,}$")

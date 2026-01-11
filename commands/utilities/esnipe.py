@@ -1,20 +1,17 @@
-import typing
 import logging
-import discord
 import traceback
+import typing
 
-from aiocache              import SimpleMemoryCache
+from aiocache import SimpleMemoryCache
+from datetime import datetime, timezone
+import discord
+from discord import app_commands
+from discord.ext import commands
 
-from datetime              import datetime, timezone
-
-from discord               import app_commands
-from discord.ext           import commands
-
-from classes.bot           import LittleAngelBot
-
+from classes.bot import LittleAngelBot
 from modules.configuration import config
 
-esnipe_cache = SimpleMemoryCache()
+ESNIPE_CACHE = SimpleMemoryCache()
 
 class esnipe_archive(discord.ui.View):
     def __init__(self, bot: LittleAngelBot = None, timeout: int = 300, message: discord.Message = None, author_id: int = None, channel_id: int = None):
@@ -55,7 +52,7 @@ class esnipe_archive(discord.ui.View):
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
 
-        esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
+        esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
         if ipos < 0:
             ipos = len(esnipe_existing_data) - 1
         try:
@@ -95,7 +92,7 @@ class esnipe_archive(discord.ui.View):
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
 
-        esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
+        esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
 
         if ipos >= len(esnipe_existing_data):
             ipos = 0
@@ -129,11 +126,11 @@ class esnipe_archive(discord.ui.View):
         if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
-            esnipe_existing_data: typing.List = await esnipe_cache.get(self.channel_id)
+            esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
             snipess: typing.Dict = esnipe_existing_data[position]
             if int(interaction.message.embeds[epos].author.url.replace("https://discord.com/users/", "")) == snipess['before'].author.id:
                 esnipe_existing_data.pop(position)
-                await esnipe_cache.set(self.channel_id, esnipe_existing_data, ttl=3600)
+                await ESNIPE_CACHE.set(self.channel_id, esnipe_existing_data, ttl=3600)
             else:
                 await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
                 return await interaction.followup.delete_message(interaction.message.id)
@@ -150,7 +147,7 @@ class esnipe_archive(discord.ui.View):
         if not interaction.user.guild_permissions.manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
-            await esnipe_cache.set(self.channel_id, [], ttl=3600)
+            await ESNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
             pass
         emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
@@ -174,9 +171,9 @@ class ESnipe(commands.Cog):
             return
 
         channel_id = message_after.channel.id
-        existing = await esnipe_cache.get(channel_id) or []
+        existing = await ESNIPE_CACHE.get(channel_id) or []
         existing.append({'before': message_before, 'after': message_after})
-        await esnipe_cache.set(channel_id, existing, ttl=3600)
+        await ESNIPE_CACHE.set(channel_id, existing, ttl=3600)
 
 
     @app_commands.command(name="еснайп", description = "Показывает изменённые сообщения")
@@ -192,7 +189,7 @@ class ESnipe(commands.Cog):
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
 
-        esnipe_existing_data: typing.List = await esnipe_cache.get(channel.id)
+        esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(channel.id)
         if not esnipe_existing_data:
             raise KeyError()
         

@@ -1,31 +1,28 @@
-import typing
-import logging
-import discord
 import asyncio
+from collections import defaultdict
+import logging
 import traceback
+import typing
 
+from aiocache import SimpleMemoryCache
+from cache import AsyncTTL
+import discord
 from discord.ext.commands import clean_content
+from rapidfuzz import fuzz
 
-from collections          import defaultdict
-from rapidfuzz            import fuzz
-from aiocache             import SimpleMemoryCache
-from cache                import AsyncTTL
-
-from classes.bot          import LittleAngelBot
+from classes.bot import LittleAngelBot
 from modules.lock_manager import LockManagerWithIdleTTL
 
-messages_from_new_members_cache = SimpleMemoryCache()
-
+MESSAGES_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
-lock_manager = LockManagerWithIdleTTL(idle_ttl=2400)
+LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
-# Settings
-MAX_CACHE_MESSAGES = 60           # максимальное количество сообщений в кэше
-GUARANTEED_WINDOW = 15            # количество сообщений для гарантированного флуда
-ALTERNATING_WINDOW = 60           # окно анализа для чередования
-FUZZY_THRESHOLD = 80              # порог нечёткого сравнения в процентах
+MAX_CACHE_MESSAGES = 60  # максимальное количество сообщений в кэше
+GUARANTEED_WINDOW = 15  # количество сообщений для гарантированного флуда
+ALTERNATING_WINDOW = 60  # окно анализа для чередования
+FUZZY_THRESHOLD = 80  # порог нечёткого сравнения в процентах
 MIN_CLUSTERS_FOR_ALTERNATING = 2  # количество кластеров для засчитывания флуда как чередование
-MIN_CLUSTER_SIZE = 15             # количество сообщений в кластере для засчитывания флуда как чередование
+MIN_CLUSTER_SIZE = 15  # количество сообщений в кластере для засчитывания флуда как чередование
 
 @AsyncTTL(time_to_live=1600, maxsize=20000)
 async def fuzzy_compare(str1: str, str2: str) -> int:
@@ -36,8 +33,8 @@ async def fuzzy_compare(str1: str, str2: str) -> int:
     return score
 
 async def get_cached_messages_and_append(member: discord.Member, append_message_content: str = None, append_message: discord.Message = None) -> list:
-    async with lock_manager.lock(member.id):
-        messages = await messages_from_new_members_cache.get(member.id) or []
+    async with LOCK_MANAGER.lock(member.id):
+        messages = await MESSAGES_FROM_NEW_MEMBERS_CACHE.get(member.id) or []
 
         messages = messages[-MAX_CACHE_MESSAGES:]  # ограничение кэша до MAX_CACHE_MESSAGES
 
@@ -52,7 +49,7 @@ async def get_cached_messages_and_append(member: discord.Member, append_message_
                 "channel_id": append_message.channel.id
             })
 
-            await messages_from_new_members_cache.set(member.id, messages, ttl=1200)
+            await MESSAGES_FROM_NEW_MEMBERS_CACHE.set(member.id, messages, ttl=1200)
 
 
     return messages

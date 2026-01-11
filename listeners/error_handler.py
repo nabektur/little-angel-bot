@@ -5,7 +5,6 @@ from discord.ext import commands
 
 from classes.bot import LittleAngelBot
 
-
 class ErrorHandler(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
         self.bot = bot

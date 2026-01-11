@@ -1,8 +1,8 @@
 import asyncio
 import threading
 import time
-from typing import Dict, Tuple, Optional
 from contextlib import asynccontextmanager
+from typing import Dict, Optional, Tuple
 
 class LockManagerWithIdleTTL:
     def __init__(self, idle_ttl: int = 3600):

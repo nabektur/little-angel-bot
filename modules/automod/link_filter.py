@@ -2,7 +2,7 @@ import re
 import unicodedata
 import urllib.parse
 
-from cache     import AsyncTTL
+from cache import AsyncTTL
 from rapidfuzz import fuzz
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")

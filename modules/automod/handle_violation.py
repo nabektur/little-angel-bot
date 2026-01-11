@@ -1,15 +1,15 @@
+import asyncio
+import hashlib
 import time
 import typing
-import asyncio
+
+from aiocache import SimpleMemoryCache
+from datetime import timedelta
 import discord
-import hashlib
 
-from aiocache              import SimpleMemoryCache
-from datetime              import timedelta
-
-from classes.bot           import LittleAngelBot
+from classes.bot import LittleAngelBot
 from modules.configuration import config
-from modules.lock_manager  import LockManagerWithIdleTTL
+from modules.lock_manager import LockManagerWithIdleTTL
 
 hit_cache             = SimpleMemoryCache()
 sent_messages_cache   = SimpleMemoryCache()

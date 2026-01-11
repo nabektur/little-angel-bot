@@ -1,16 +1,15 @@
-import time
 import logging
+import time
 import traceback
+
 import discord
+from discord import app_commands
+from discord.ext import commands
 
-from discord          import app_commands
-from discord.ext      import commands
-
-from classes.bot      import LittleAngelBot
-
+from classes.bot import LittleAngelBot
 from classes.database import db
 
-_log = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 class Ping(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -36,7 +35,7 @@ class Ping(commands.Cog):
 
     @ping.error
     async def ping_error(self, interaction: discord.Interaction, error):
-        _log.error(traceback.format_exc())
+        LOGGER.error(traceback.format_exc())
         if interaction.response.is_done():
             await interaction.followup.send(embed=discord.Embed(title="❌ Произошла ошибка!", description="Непредвиденная ошибка, прошу связаться с разработчиком. По всей видимости, что-то не так с ботом", color=0xff0000))
         else:

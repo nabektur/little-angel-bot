@@ -1,10 +1,11 @@
+import asyncio
+import typing
+from typing import Any, List, Optional
+
+import asyncpg
 import psycopg2
 import sqlalchemy.exc
-import asyncpg
-import typing
-import asyncio
 
-from typing                import Any, List, Optional
 from modules.configuration import config
 
 class Database:
