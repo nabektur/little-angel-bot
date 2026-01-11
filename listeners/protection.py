@@ -512,14 +512,14 @@ class AutoModeration(commands.Cog):
             embed = discord.Embed(
                 title="Удаление защищённого канала",
                 description=(
-                    f"Защищённый канал `#{channel.name}` ({channel.id}) был удалён, но не удалось определить, кем именно\n"
-                    f"Возможная причина: попытка краша сервера"
+                    f"Защищённый канал `#{channel.name}` (`ID {channel.id}`) был удалён, но не удалось определить, кем именно\n"
+                    f"Возможная причина удаления канала: попытка краша сервера"
                 ),
                 color=0xFF0000
             )
             embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
             embed.set_footer(text="Удаливший не найден")
-            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)")
+            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`ID {channel.id}`)")
 
             return await safe_send_to_log(self.bot, embed=embed)
 
@@ -527,20 +527,20 @@ class AutoModeration(commands.Cog):
         embeds = []
 
         for i, user in enumerate(resolved, 1):
-            reason = f"Удаление защищённого канала #{channel.name} ({channel.id})"
+            reason = f"Удаление защищённого канала #{channel.name} (ID {channel.id})"
 
             embed = discord.Embed(
                 title="Удаление защищённого канала",
                 description=(
-                    f"{user.mention} (`@{user}`) был забанен.\n"
-                    f"Причина: удаление защищённого канала `#{channel.name}` (`{channel.id}`)\n"
-                    f"Возможная причина: попытка краша сервера"
+                    f"Участник {user.mention} (`@{user}`) был забанен.\n"
+                    f"Причина: удаление защищённого канала `#{channel.name}` (`ID {channel.id}`)\n"
+                    f"Возможная причина удаления канала: попытка краша сервера"
                 ),
                 color=0xFF0000,
             )
             embed.set_footer(text=f"ID: {user.id}")
             embed.set_thumbnail(url=user.display_avatar.url)
-            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`{channel.id}`)")
+            embed.add_field(name="Канал:", value=f"`#{channel.name}` (`ID {channel.id}`)")
 
             if i == 1:
                 embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
