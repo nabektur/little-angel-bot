@@ -26,6 +26,35 @@ SPACED_LINK_PATTERNS = [
     (re.compile(r't[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}l[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}g[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}m[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}(me|org)'), "telegram"),
 ]
 
+COLLAPSE_RE = re.compile(r"\s+")
+COMPACT_RE = re.compile(r"[^a-z0-9]")
+
+# Признаки естественного текста
+NATURAL_INDICATORS_PATTERNS = (
+    # Русские слова рядом
+    re.compile(r'[а-яё]{3,}'),
+    # Знаки препинания
+    re.compile(r'[,;:!?]'),
+    # Типичные русские предлоги/союзы
+    re.compile(r'\b(и|в|на|с|что|как|это|для|от|по|но|а|или)\b')
+)
+
+DOMAINS_WITH_DOT_RE = re.compile(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})\b")
+GLUED_DOMAINS_RE = re.compile(r"([a-zA-Z0-9]{6,})(gg|com|app)\b")
+
+EXPLICIT_URL_PATTERNS = [
+    (re.compile(r'https?://discord\.gg/\w+', re.IGNORECASE), 'discord.gg (явная ссылка)'),
+    (re.compile(r'https?://discord\.com/invite/\w+', re.IGNORECASE), 'discord.com/invite (явная ссылка)'),
+    (re.compile(r'https?://discordapp\.com/invite/\w+', re.IGNORECASE), 'discordapp.com/invite (явная ссылка)'),
+    (re.compile(r'https?://t\.me/\w+', re.IGNORECASE), 't.me (явная ссылка)'),
+]
+
+TME_SPECIAL_PATTERNS = (
+    re.compile(r't\.me/'),
+    re.compile(r't\s*\.\s*me/'),
+    re.compile(r'tme/'),
+)
+
 # emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
     "🅰️": "a", "🅱️": "b", "🅾️": "o", "🅿️": "p",
@@ -165,9 +194,6 @@ async def _char_to_ascii(ch: str) -> str:
 
     return " "
 
-COLLAPSE_RE = re.compile(r"\s+")
-COMPACT_RE = re.compile(r"[^a-z0-9]")
-
 async def normalize_and_compact(raw_text: str) -> str:
     try:
         text = urllib.parse.unquote(raw_text)
@@ -195,16 +221,6 @@ async def looks_like_discord(word: str, threshold=85):
 def extract_markdown_links(text: str):
     """Извлекает URL из markdown-разметки [текст](url)"""
     return re.findall(MARKDOWN_LINKS_RE, text)
-
-# Признаки естественного текста
-NATURAL_INDICATORS_PATTERNS = (
-    # Русские слова рядом
-    re.compile(r'[а-яё]{3,}'),
-    # Знаки препинания
-    re.compile(r'[,;:!?]'),
-    # Типичные русские предлоги/союзы
-    re.compile(r'\b(и|в|на|с|что|как|это|для|от|по|но|а|или)\b')
-)
 
 def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
     """
@@ -239,9 +255,6 @@ def extract_spaced_patterns(text: str, compact: str):
     
     return findings
 
-DOMAINS_WITH_DOT_RE = re.compile(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})\b")
-GLUED_DOMAINS_RE = re.compile(r"([a-zA-Z0-9]{6,})(gg|com|app)\b")
-
 def extract_possible_domains(text: str):
     """Извлекает возможные домены из текста"""
     text_no_spaces = text.replace(" ", "")
@@ -258,13 +271,6 @@ def extract_possible_domains(text: str):
         candidates.append(a + b)
 
     return candidates
-
-EXPLICIT_URL_PATTERNS = [
-    (re.compile(r'https?://discord\.gg/\w+', re.IGNORECASE), 'discord.gg (явная ссылка)'),
-    (re.compile(r'https?://discord\.com/invite/\w+', re.IGNORECASE), 'discord.com/invite (явная ссылка)'),
-    (re.compile(r'https?://discordapp\.com/invite/\w+', re.IGNORECASE), 'discordapp.com/invite (явная ссылка)'),
-    (re.compile(r'https?://t\.me/\w+', re.IGNORECASE), 't.me (явная ссылка)'),
-]
 
 @AsyncTTL(time_to_live=600, maxsize=20000)
 async def detect_links(raw_text: str):
@@ -306,12 +312,6 @@ async def detect_links(raw_text: str):
             return result
     
     return None
-
-TME_SPECIAL_PATTERNS = (
-    re.compile(r't\.me/'),
-    re.compile(r't\s*\.\s*me/'),
-    re.compile(r'tme/'),
-)
 
 async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
     """Проверяет один фрагмент текста на наличие ссылок"""
