@@ -1,11 +1,11 @@
 discord.py[speed]
 python-dotenv
 APScheduler
-asyncpg
+# asyncpg
 pydantic
 pydantic-settings
 SQLAlchemy
-psycopg2
+# psycopg2
 aiocache
 fastapi
 uvicorn
@@ -15,4 +15,4 @@ cachetools
 types-cachetools
 async-cache
 # markovify
-# aiosqlite
+aiosqlite
