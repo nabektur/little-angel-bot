@@ -58,7 +58,7 @@ class Spam(commands.Cog):
                 await channel.send(embed=discord.Embed(description=f'☑️ Спам активирован по команде {interaction.user.mention} на {verbose_timedelta(duration_timedelta)} (<t:{int(duration.timestamp())}:R>)!', color=config.LITTLE_ANGEL_COLOR))
             else:
                 await channel.send(embed=discord.Embed(description=f'☑️ Спам активирован по команде {interaction.user.mention}!', color=config.LITTLE_ANGEL_COLOR))
-        await db.execute("INSERT INTO spams (type, method, channel_id, guild_id, ments, timestamp) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT (guild_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, channel_id = EXCLUDED.channel_id, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, interaction.guild.id, mention, f"{int(duration.timestamp())}" if duration else None)
+        await db.execute("INSERT INTO spams (type, method, channel_id, guild_id, ments, timestamp) VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT (guild_id) DO UPDATE SET type = EXCLUDED.type, method = EXCLUDED.method, channel_id = EXCLUDED.channel_id, ments = EXCLUDED.ments, timestamp = EXCLUDED.timestamp;", type, method, channel.id, interaction.guild.id, mention, f"{int(duration.timestamp())}" if duration else None)
         asyncio.create_task(run_spam(type, method, channel, webhook, mention, duration))
 
     spam_group = app_commands.Group(
