@@ -60,7 +60,7 @@ class SpamSuggestion(commands.Cog):
         async def on_submit(self, interaction: discord.Interaction):
             user_id = interaction.user.id
 
-            blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = $1 LIMIT 1", user_id)
+            blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = ? LIMIT 1", user_id)
             if blocked:
                 return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 
@@ -79,7 +79,7 @@ class SpamSuggestion(commands.Cog):
     @app_commands.describe(type="Выберите категорию спама")
     async def suggest_spam(self, interaction: discord.Interaction, type: typing.Literal["ordinary", "nsfw"]):
 
-        blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = $1 LIMIT 1", interaction.user.id)
+        blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = ? LIMIT 1", interaction.user.id)
         if blocked:
             return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 

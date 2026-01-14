@@ -49,7 +49,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
         asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[4], key[5]))
 
 async def check_sp(channel_id):
-    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = $1 LIMIT 1", channel_id) != None
+    return await db.fetchone("SELECT channel_id FROM spams WHERE channel_id = ? LIMIT 1", channel_id) != None
 
 
 async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=None, ments=None, duration=None):

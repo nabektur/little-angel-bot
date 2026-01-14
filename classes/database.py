@@ -139,13 +139,9 @@ class Database:
         await self._ensure_connection()
         
         if USE_SQLITE:
-            # Конвертируем параметры PostgreSQL ($1, $2) в SQLite (?, ?)
-            sqlite_query = query.replace('$1', '?').replace('$2', '?').replace('$3', '?')
-            cursor = await self.conn.execute(sqlite_query, args)
+            cursor = await self.conn.execute(query, args)
             rows = await cursor.fetchall()
-            # Преобразуем в формат, совместимый с asyncpg.Record
-            columns = [description[0] for description in cursor.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return rows
         # else:
         #     retry_count = 0
         #     max_retries = 3
@@ -166,14 +162,10 @@ class Database:
         await self._ensure_connection()
         
         if USE_SQLITE:
-            # Конвертируем параметры PostgreSQL ($1, $2) в SQLite (?, ?)
             sqlite_query = query.replace('$1', '?').replace('$2', '?').replace('$3', '?')
             cursor = await self.conn.execute(sqlite_query, args)
             row = await cursor.fetchone()
-            if row:
-                columns = [description[0] for description in cursor.description]
-                return dict(zip(columns, row))
-            return None
+            return row
         # else:
         #     retry_count = 0
         #     max_retries = 3
