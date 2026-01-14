@@ -7,6 +7,24 @@ from rapidfuzz import fuzz
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
+MARKDOWN_LINKS_RE = re.compile(r'\[([^\]]+)\]\(([^\)]+)\)')
+
+# Паттерны для поиска с учетом пробелов и разделителей
+SPACED_LINK_PATTERNS = [
+    # t.me с разделителями
+    (re.compile(r't[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}m[\s\.\-_•]{0,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+'), "t.me"),
+    (re.compile(r't[\s\.\-_•]{1,3}m[\s\.\-_•]{1,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+'), "t.me"),
+    
+    # discord.gg с разделителями
+    (re.compile(r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g'), "discord.gg"),
+    (re.compile(r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g'), "discord.gg"),
+    
+    # discordapp с разделителями  
+    (re.compile(r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}p[\s\.\-_•]{0,2}p'), "discordapp.com"),
+    
+    # telegram с разделителями
+    (re.compile(r't[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}l[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}g[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}m[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}(me|org)'), "telegram"),
+]
 
 # emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
@@ -147,6 +165,9 @@ async def _char_to_ascii(ch: str) -> str:
 
     return " "
 
+COLLAPSE_RE = re.compile(r"\s+")
+COMPACT_RE = re.compile(r"[^a-z0-9]")
+
 async def normalize_and_compact(raw_text: str) -> str:
     try:
         text = urllib.parse.unquote(raw_text)
@@ -160,8 +181,8 @@ async def normalize_and_compact(raw_text: str) -> str:
         out.append(await _char_to_ascii(ch))
 
     collapsed = "".join(out)
-    collapsed = re.sub(r"\s+", " ", collapsed).strip()
-    compact = re.sub(r"[^a-z0-9]", "", collapsed.lower())
+    collapsed = COLLAPSE_RE.sub(" ", collapsed).strip()
+    compact = COMPACT_RE.sub("", collapsed.lower())
     return compact
 
 async def looks_like_discord(word: str, threshold=85):
@@ -173,7 +194,17 @@ async def looks_like_discord(word: str, threshold=85):
 
 def extract_markdown_links(text: str):
     """Извлекает URL из markdown-разметки [текст](url)"""
-    return re.findall(r'\[([^\]]+)\]\(([^\)]+)\)', text)
+    return re.findall(MARKDOWN_LINKS_RE, text)
+
+# Признаки естественного текста
+NATURAL_INDICATORS_PATTERNS = (
+    # Русские слова рядом
+    re.compile(r'[а-яё]{3,}'),
+    # Знаки препинания
+    re.compile(r'[,;:!?]'),
+    # Типичные русские предлоги/союзы
+    re.compile(r'\b(и|в|на|с|что|как|это|для|от|по|но|а|или)\b')
+)
 
 def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
     """
@@ -185,18 +216,8 @@ def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
     end = min(len(text), match_pos + match_len + 20)
     context = text[start:end].lower()
     
-    # Признаки естественного текста
-    natural_indicators = [
-        # Русские слова рядом
-        r'[а-яё]{3,}',
-        # Знаки препинания
-        r'[,;:!?]',
-        # Типичные русские предлоги/союзы
-        r'\b(и|в|на|с|что|как|это|для|от|по|но|а|или)\b',
-    ]
-    
-    for pattern in natural_indicators:
-        if re.search(pattern, context):
+    for pattern in NATURAL_INDICATORS_PATTERNS:
+        if pattern.search(context):
             return True
     
     return False
@@ -207,27 +228,10 @@ def extract_spaced_patterns(text: str, compact: str):
     """
     findings = []
     
-    # Паттерны для поиска с учетом пробелов и разделителей
-    patterns = [
-        # t.me с разделителями
-        (r't[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}m[\s\.\-_•]{0,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+', "t.me"),
-        (r't[\s\.\-_•]{1,3}m[\s\.\-_•]{1,3}e[\s\.\-_•]{0,3}/[\s\.\-_•]{0,3}\w+', "t.me"),
-        
-        # discord.gg с разделителями
-        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g', "discord.gg"),
-        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}g[\s\.\-_•]{0,3}g', "discord.gg"),
-        
-        # discordapp с разделителями  
-        (r'd[\s\.\-_•]{0,2}i[\s\.\-_•]{0,2}s[\s\.\-_•]{0,2}c[\s\.\-_•]{0,2}o[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}d[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}p[\s\.\-_•]{0,2}p', "discordapp.com"),
-        
-        # telegram с разделителями
-        (r't[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}l[\s\.\-_•]{0,2}e[\s\.\-_•]{0,2}g[\s\.\-_•]{0,2}r[\s\.\-_•]{0,2}a[\s\.\-_•]{0,2}m[\s\.\-_•]{0,3}\.[\s\.\-_•]{0,3}(me|org)', "telegram"),
-    ]
-    
     text_lower = text.lower()
     
-    for pattern, label in patterns:
-        matches = re.finditer(pattern, text_lower)
+    for pattern, label in SPACED_LINK_PATTERNS:
+        matches = pattern.finditer(text_lower)
         for match in matches:
             # Проверяем контекст
             if not is_natural_word_context(text, match.start(), len(match.group())):
@@ -235,18 +239,21 @@ def extract_spaced_patterns(text: str, compact: str):
     
     return findings
 
+DOMAINS_WITH_DOT_RE = re.compile(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})\b")
+GLUED_DOMAINS_RE = re.compile(r"([a-zA-Z0-9]{6,})(gg|com|app)\b")
+
 def extract_possible_domains(text: str):
     """Извлекает возможные домены из текста"""
     text_no_spaces = text.replace(" ", "")
     candidates = []
 
     # Стандартные домены с точкой
-    dom1 = re.findall(r"([a-zA-Z0-9]+)\.([a-zA-Z]{2,6})\b", text_no_spaces)
+    dom1 = DOMAINS_WITH_DOT_RE.findall(text_no_spaces)
     for a, b in dom1:
         candidates.append(a + "." + b)
 
     # Склеенные домены - более осторожный подход
-    dom2 = re.findall(r"([a-zA-Z0-9]{6,})(gg|com|app)\b", text_no_spaces)
+    dom2 = GLUED_DOMAINS_RE.findall(text_no_spaces)
     for a, b in dom2:
         candidates.append(a + b)
 
@@ -300,6 +307,11 @@ async def detect_links(raw_text: str):
     
     return None
 
+TME_SPECIAL_PATTERNS = (
+    re.compile(r't\.me/'),
+    re.compile(r't\s*\.\s*me/'),
+    re.compile(r'tme/'),
+)
 
 async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
     """Проверяет один фрагмент текста на наличие ссылок"""
@@ -348,9 +360,8 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     # t.me - проверяем с учетом контекста
     if "tme" in compact:
         # Ищем позицию в оригинальном тексте
-        tme_patterns = [r't\.me/', r't\s*\.\s*me/', r'tme/']
-        for pattern in tme_patterns:
-            if re.search(pattern, text_lower):
+        for pattern in TME_SPECIAL_PATTERNS:
+            if pattern.search(text_lower):
                 # Проверяем контекст
                 match = re.search(pattern, text_lower)
                 if match and not is_natural_word_context(text_fragment, match.start(), len(match.group())):

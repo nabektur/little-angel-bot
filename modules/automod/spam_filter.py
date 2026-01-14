@@ -10,6 +10,23 @@ EXCESSIVE_EMOJI_RE = re.compile(r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0
 SUSPICIOUS_LINKS_RE = re.compile(r"(https?://\S+|www\.\S+)", re.IGNORECASE)
 CAPS_WORDS_RE = re.compile(r"\b[A-ZА-ЯЁ]{3,}\b")
 
+WORDS_RE = re.compile(r'\b\w{3,}\b')
+CHAOTIC_WORDS_RE = re.compile(r'\b\w{2,}\b')
+SPECIAL_CHARS_RE = re.compile(r'[^a-zA-Zа-яА-ЯёЁ0-9\s]')
+
+LONG_REPEATS_RE = re.compile(r"(.)\1{50,}")
+NORMAL_WORDS_RE = re.compile(r"[a-zA-Z0-9а-яА-ЯёЁ\s]+")
+
+TWENTY_QUOTATION_MARKS_RE = re.compile(r"`{20,}")
+THIRTY_QUOTATION_MARKS_RE = re.compile(r"`{30,}")
+
+# LETTERS_RE = re.compile(r"[a-zA-Zа-яА-ЯёЁ]")
+ALTERNATING_SYMBOLS_PATTERN = re.compile(r"(.\|){10,}|(\|-){10,}")
+SPECIAL_CHARS_SEQUENCE_SHORT_PATTERN = re.compile(r"[!@#$%^&*()_+=\[\]{}|\\:;\"'<>,.?/~`-]{15,}")
+SPECIAL_CHARS_SEQUENCE_LONG_PATTERN = re.compile(r"[!@#$%^&*()_+=\[\]{}|\\:;\"'<>,.?/~`-]{25,}")
+REPEATED_SEPARATORS_PATTERN = re.compile(r"[\.]{20,}|[-]{20,}|[_]{20,}|[=]{20,}|[+]{20,}")
+
+
 @AsyncTTL(time_to_live=600, maxsize=20000)
 async def is_spam_block(message: str) -> bool:
     """
@@ -23,7 +40,7 @@ async def is_spam_block(message: str) -> bool:
     
     # --- 1. Повторяющиеся символы ---
     # Очень длинные повторы (явный спам)
-    if re.search(r"(.)\1{50,}", message):
+    if LONG_REPEATS_RE.search(message):
         return True
     
     # Средние повторы - адаптивный порог
@@ -69,10 +86,10 @@ async def is_spam_block(message: str) -> bool:
     tick_count = message.count("`")
     # Адаптивный порог для кавычек
     if msg_len < 100:
-        if tick_count >= 60 or re.search(r"`{20,}", message):
+        if tick_count >= 60 or TWENTY_QUOTATION_MARKS_RE.search(message):
             return True
     else:
-        if tick_count >= 150 or re.search(r"`{30,}", message):
+        if tick_count >= 150 or THIRTY_QUOTATION_MARKS_RE.search(message):
             return True
     
     # --- 4. Пустые строки ---
@@ -111,7 +128,7 @@ async def is_spam_block(message: str) -> bool:
     # --- 6. Нечитаемый мусор ---
     if msg_len > 4000:  # Повышен порог
         # Удаляем все нормальные слова
-        compact = re.sub(r"[a-zA-Z0-9а-яА-ЯёЁ\s]+", "", message)
+        compact = NORMAL_WORDS_RE.sub("", message)
         if len(compact) / msg_len >= 0.75:  # Более строгий порог
             return True
     
@@ -150,7 +167,7 @@ async def is_spam_block(message: str) -> bool:
     
     # --- 10. CAPS-спам ---
     # if msg_len > 30:  # Работает для коротких сообщений
-    #     letters = re.findall(r"[a-zA-Zа-яА-ЯёЁ]", message)
+    #     letters = LETTERS_RE.findall(message)
     #     if len(letters) > 20:  # Уменьшен порог
     #         caps_letters = len([c for c in message if c.isupper()])
             
@@ -164,7 +181,7 @@ async def is_spam_block(message: str) -> bool:
     
     # --- 11. Повторяющиеся слова/фразы ---
     if msg_len > 50:  # Уменьшен порог
-        words = re.findall(r'\b\w{3,}\b', message.lower())
+        words = WORDS_RE.findall(message.lower())
         if len(words) > 10:  # Уменьшен порог
             word_freq = Counter(words)
             most_common_word, count = word_freq.most_common(1)[0]
@@ -207,28 +224,28 @@ async def is_spam_block(message: str) -> bool:
     
     # --- 13. Подозрительные паттерны из символов ---
     # Чередование символов типа |-|-|-|-
-    if re.search(r"(.\|){10,}|(\|-){10,}", message):
+    if ALTERNATING_SYMBOLS_PATTERN.search(message):
         return True
     
     # Множественные спецсимволы подряд - адаптивно
     if msg_len < 100:
-        if re.search(r"[!@#$%^&*()_+=\[\]{}|\\:;\"'<>,.?/~`-]{15,}", message):
+        if SPECIAL_CHARS_SEQUENCE_SHORT_PATTERN.search(message):
             return True
     else:
-        if re.search(r"[!@#$%^&*()_+=\[\]{}|\\:;\"'<>,.?/~`-]{25,}", message):
+        if SPECIAL_CHARS_SEQUENCE_LONG_PATTERN.search(message):
             return True
     
     # --- 14. Спам из точек, тире, подчеркиваний ---
-    if re.search(r"[\.]{20,}|[-]{20,}|[_]{20,}|[=]{20,}|[+]{20,}", message):
+    if REPEATED_SEPARATORS_PATTERN.search(message):
         return True
     
     # --- 15. Смешанный мусор (нечитаемые комбинации) ---
     if msg_len > 30:
         # Проверяем на хаотичный набор символов без слов
-        words_and_numbers = re.findall(r'\b\w{2,}\b', message)
+        words_and_numbers = CHAOTIC_WORDS_RE.findall(message)
         if len(words_and_numbers) < 3 and msg_len > 50:
             # Очень мало осмысленных слов
-            special_chars = len(re.findall(r'[^a-zA-Zа-яА-ЯёЁ0-9\s]', message))
+            special_chars = len(SPECIAL_CHARS_RE.findall(message))
             if special_chars / msg_len > 0.6:
                 return True
     
