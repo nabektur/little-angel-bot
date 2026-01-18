@@ -650,6 +650,11 @@ class AutoModeration(commands.Cog):
                             force_ban=True
                         )
 
+                try:
+                    await after.delete(reason="Реклама в названии голосового канала")
+                except:
+                    pass
+
                 return
 
 async def setup(bot: LittleAngelBot):
