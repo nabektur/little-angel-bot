@@ -195,12 +195,8 @@ async def _char_to_ascii(ch: str) -> str:
     return " "
 
 async def normalize_and_compact(raw_text: str) -> str:
-    try:
-        text = urllib.parse.unquote(raw_text)
-    except Exception:
-        text = raw_text
 
-    text = unicodedata.normalize("NFKC", text)
+    text = unicodedata.normalize("NFKC", raw_text)
 
     out = []
     for ch in text:
@@ -279,9 +275,25 @@ async def detect_links(raw_text: str):
     Возвращает описание найденной ссылки или None
     """
 
+async def detect_links(raw_text: str):
+    """
+    Детектит подозрительные ссылки в тексте
+    """
+    
+    # Декодируем URL (возможно, многократно для обхода двойного кодирования)
+    decoded_text = raw_text
+    for _ in range(3):  # Декодируем до 3 раз
+        try:
+            new_decoded = urllib.parse.unquote(decoded_text)
+            if new_decoded == decoded_text:
+                break
+            decoded_text = new_decoded
+        except Exception:
+            break
+
     # Проверка явных HTTP/HTTPS ссылок
     for pattern, label in EXPLICIT_URL_PATTERNS:
-        if pattern.search(raw_text):
+        if pattern.search(decoded_text):
             return label
     
     # Пропускаем очень короткие сообщения без явных признаков
@@ -289,7 +301,7 @@ async def detect_links(raw_text: str):
         return None
     
     # Нормализуем текст
-    compact = await normalize_and_compact(raw_text)
+    compact = await normalize_and_compact(decoded_text)
     
     # Сначала проверяем разнесенные паттерны (они приоритетнее)
     spaced_findings = extract_spaced_patterns(raw_text, compact)

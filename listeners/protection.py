@@ -592,7 +592,7 @@ class AutoModeration(commands.Cog):
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
-                    f"Название голосового канала:\n```\n#{channel.name}```"
+                    f"Название голосового канала:\n```\n{channel.name}```"
                 )
 
                 if members:
@@ -633,7 +633,7 @@ class AutoModeration(commands.Cog):
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
-                    f"Название голосового канала:\n```\n#{after.name}```"
+                    f"Название голосового канала:\n```\n{after.name}```"
                 )
 
                 if members:
