@@ -1,4 +1,5 @@
 import re
+import logging
 import unicodedata
 import urllib.parse
 
@@ -54,6 +55,9 @@ TME_SPECIAL_PATTERNS = (
     re.compile(r't\s*\.\s*me/'),
     re.compile(r'tme/'),
 )
+
+FUZZY_INVITE_RE = re.compile(r'invit|nvite|vite')
+DISCORDGG_RE = re.compile(r'discordgg')
 
 # emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
@@ -275,14 +279,15 @@ async def detect_links(raw_text: str):
     Возвращает описание найденной ссылки или None
     """
 
+@AsyncTTL(time_to_live=600, maxsize=20000)
 async def detect_links(raw_text: str):
     """
     Детектит подозрительные ссылки в тексте
     """
     
-    # Декодируем URL (возможно, многократно для обхода двойного кодирования)
+    # Многократное декодирование URL
     decoded_text = raw_text
-    for _ in range(3):  # Декодируем до 3 раз
+    for _ in range(5):
         try:
             new_decoded = urllib.parse.unquote(decoded_text)
             if new_decoded == decoded_text:
@@ -290,42 +295,57 @@ async def detect_links(raw_text: str):
             decoded_text = new_decoded
         except Exception:
             break
-
-    for text in [decoded_text, raw_text]:
-
-        # Проверка явных HTTP/HTTPS ссылок
-        for pattern, label in EXPLICIT_URL_PATTERNS:
-            if pattern.search(text):
-                return label
-        
-        # Пропускаем очень короткие сообщения без явных признаков
-        if len(raw_text) < 8:
-            return None
-        
-        # Нормализуем текст
-        compact = await normalize_and_compact(text)
-        
-        # Сначала проверяем разнесенные паттерны (они приоритетнее)
-        spaced_findings = extract_spaced_patterns(text, compact)
-        if spaced_findings:
-            label, matched = spaced_findings[0]
-            return f"{label} (замаскированная ссылка: {matched})"
-        
-        # Шаг 1: Извлекаем ссылки из markdown
-        markdown_links = extract_markdown_links(text)
-        all_urls_to_check = [text]
-        
-        for link_text, url in markdown_links:
-            all_urls_to_check.append(url)
-            all_urls_to_check.append(link_text)
-        
-        # Шаг 2: Проверяем каждый фрагмент
-        for text_fragment in all_urls_to_check:
-            result = await _check_single_fragment(text_fragment, text, compact)
-            if result:
-                return result
+    
+    # Нормализуем декодированный текст
+    compact = await normalize_and_compact(decoded_text)
+    
+    # Проверка 1: Явные паттерны на декодированном тексте
+    for pattern, label in EXPLICIT_URL_PATTERNS:
+        if pattern.search(decoded_text):
+            return label
+    
+    # Проверка 2: Усиленные паттерны на компактном варианте
+    # Используем fuzzy matching для "invite" (минимум 4 из 6 букв подряд)
+    if "discord" in compact:
+        # Ищем "invit", "nvite", "invite" и т.д.
+        if FUZZY_INVITE_RE.search(compact):
+            return "discord.com/invite (замаскированная через encoding)"
+    
+    if DISCORDGG_RE.search(compact):
+        return "discord.gg (замаскированная)"
+    
+    if "discordapp" in compact and FUZZY_INVITE_RE.search(compact):
+        return "discordapp.com/invite (замаскированная через encoding)"
+    
+    if TME_SPECIAL_PATTERNS[2].search(compact):
+        return "t.me (замаскированная)"
+    
+    # Пропускаем очень короткие сообщения
+    if len(raw_text) < 8:
+        return None
+    
+    # Проверяем разнесенные паттерны
+    spaced_findings = extract_spaced_patterns(decoded_text, compact)
+    if spaced_findings:
+        label, matched = spaced_findings[0]
+        return f"{label} (замаскированная ссылка: {matched})"
+    
+    # Извлекаем ссылки из markdown
+    markdown_links = extract_markdown_links(decoded_text)
+    all_urls_to_check = [decoded_text]
+    
+    for link_text, url in markdown_links:
+        all_urls_to_check.append(url)
+        all_urls_to_check.append(link_text)
+    
+    # Проверяем каждый фрагмент
+    for text_fragment in all_urls_to_check:
+        result = await _check_single_fragment(text_fragment, decoded_text, compact)
+        if result:
+            return result
     
     return None
+
 
 async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
     """Проверяет один фрагмент текста на наличие ссылок"""
@@ -334,7 +354,7 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     if not compact:
         compact = await normalize_and_compact(text_fragment)
 
-    if "tme" in compact and ("t.me" in text_fragment.lower()):
+    if "tme" in compact and ("t.me" in text_fragment.lower() or "tme/" in text_fragment.lower()):
         return "t.me"
     
     text_lower = text_fragment.replace(" ", "").lower()
@@ -344,9 +364,27 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
         return None
     
     # --- Discord ---
+    # Проверяем наличие discord + частичное совпадение с invite
+    if "discord" in compact:
+        # Ищем частичные совпадения с "invite" (минимум 4 буквы подряд)
+        invite_parts = ['invit', 'nvite', 'vite']
+        if any(part in compact for part in invite_parts):
+            match_pos = text_fragment.lower().find("discord")
+            if match_pos != -1:
+                if is_natural_word_context(text_fragment, match_pos, 7):
+                    return None
+            return "discord.com/invite"
+        
+        # Проверка на discord.gg
+        if compact.endswith("gg") or "discordgg" in compact:
+            match_pos = text_fragment.lower().find("discord")
+            if match_pos != -1:
+                if is_natural_word_context(text_fragment, match_pos, 7):
+                    return None
+            return "discord.gg"
+    
     # Явные домены
     if "discordgg" in compact:
-        # Проверяем, что это не часть обычного русского текста
         match_pos = text_fragment.lower().find("discord")
         if match_pos != -1:
             if is_natural_word_context(text_fragment, match_pos, 7):
@@ -364,8 +402,8 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     if "discordappcom" in compact:
         if not any(x in original_text for x in ["https://cdn.discordapp.com", "https://media.discordapp.net", "https://images-ext-1.discordapp.net"]):
             return "discordapp.com"
-        elif "invite" in compact:
-            return "discordapp.com"
+        elif any(part in compact for part in ['invit', 'nvite']):
+            return "discordapp.com/invite"
     
     # --- Telegram ---
     if "telegramme" in compact or "telegramorg" in compact:
@@ -373,11 +411,9 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     
     # t.me - проверяем с учетом контекста
     if "tme" in compact:
-        # Ищем позицию в оригинальном тексте
         for pattern in TME_SPECIAL_PATTERNS:
             if pattern.search(text_lower):
-                # Проверяем контекст
-                match = re.search(pattern, text_lower)
+                match = pattern.search(text_lower)
                 if match and not is_natural_word_context(text_fragment, match.start(), len(match.group())):
                     return "t.me"
     
@@ -385,27 +421,22 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     candidates = extract_possible_domains(compact)
     
     for cand in candidates:
-        # Пропускаем короткие кандидаты
         if len(cand) < 8:
             continue
             
         left = cand.split(".")[0].replace("gg","").replace("com","").replace("app","")
         
         if await looks_like_discord(left):
-            # Исключаем обычное слово "discord"
             if left == "discord":
                 continue
             
-            # Исключаем CDN
             if any(x in cand for x in ["imagesext1discordapp", "mediadiscordapp", "cdndiscordapp"]):
-                if "invite" not in compact:
+                if not any(part in compact for part in ['invit', 'nvite']):
                     continue
             
-            # Исключаем внутренние ссылки
             if "/channels/" in text_lower:
                 continue
             
-            # Проверяем контекст
             match_pos = text_fragment.lower().find(left)
             if match_pos != -1:
                 if is_natural_word_context(text_fragment, match_pos, len(left)):

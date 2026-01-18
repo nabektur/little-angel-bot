@@ -15,6 +15,8 @@ CHAOTIC_WORDS_RE = re.compile(r'\b\w{2,}\b')
 SPECIAL_CHARS_RE = re.compile(r'[^a-zA-Zа-яА-ЯёЁ0-9\s]')
 
 LONG_REPEATS_RE = re.compile(r"(.)\1{50,}")
+TWENTY_FIVE_REPEATS_RE = re.compile(r"(.)\1{{25,}}")
+THIRTY_REPEATS_RE = re.compile(r"(.)\1{{30,}}")
 NORMAL_WORDS_RE = re.compile(r"[a-zA-Z0-9а-яА-ЯёЁ\s]+")
 
 TWENTY_QUOTATION_MARKS_RE = re.compile(r"`{20,}")
@@ -44,11 +46,10 @@ async def is_spam_block(message: str) -> bool:
         return True
     
     # Средние повторы - адаптивный порог
-    repeat_threshold = 25 if msg_len < 100 else 30
-    pattern = rf"(.)\1{{{repeat_threshold},}}"
-    if re.search(pattern, message):
+    repeat_pattern = TWENTY_FIVE_REPEATS_RE if msg_len < 100 else THIRTY_REPEATS_RE
+    if repeat_pattern.search(message):
         # Если это не пробелы/переносы строк
-        repeats = re.findall(pattern, message)
+        repeats = repeat_pattern.findall(message)
         for match in repeats:
             if match[0] not in [' ', '\n', '\t']:
                 return True
