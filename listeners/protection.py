@@ -609,6 +609,11 @@ class AutoModeration(commands.Cog):
                             force_ban=True
                         )
 
+                try:
+                    await channel.delete(reason="Реклама в названии голосового канала")
+                except:
+                    pass
+
                 return
             
 
