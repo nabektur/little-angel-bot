@@ -3,6 +3,7 @@ import logging
 import unicodedata
 import urllib.parse
 
+import aiohttp
 from cache import AsyncTTL
 from rapidfuzz import fuzz
 
@@ -58,6 +59,16 @@ TME_SPECIAL_PATTERNS = (
 
 FUZZY_INVITE_RE = re.compile(r'invit|nvite|vite')
 DISCORDGG_RE = re.compile(r'discordgg')
+
+# Паттерны для детекции Discord invite в URL
+DISCORD_INVITE_PATTERNS = [
+    re.compile(r"discord\.com/invite/", re.IGNORECASE),
+    re.compile(r"discord\.gg/", re.IGNORECASE),
+    re.compile(r"discordapp\.com/invite/", re.IGNORECASE),
+]
+
+# Паттерн для извлечения всех URL из текста
+URL_PATTERN = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+', re.IGNORECASE)
 
 # emoji-букв -> ASCII
 EMOJI_ASCII_MAP = {
@@ -160,6 +171,75 @@ _COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
 _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
 _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
+
+def is_discord_invite_url(url: str) -> bool:
+    """Проверяет, является ли URL ссылкой-приглашением Discord"""
+    for pattern in DISCORD_INVITE_PATTERNS:
+        if pattern.search(url):
+            return True
+    return False
+
+@AsyncTTL(time_to_live=300, maxsize=1000)
+async def check_url_redirect(url: str, max_redirects: int = 5) -> str:
+    """
+    Проверяет финальный URL после всех редиректов
+    Кэширует результат на 5 минут
+    """
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                url,
+                allow_redirects=True,
+                max_redirects=max_redirects,
+                headers={'User-Agent': 'Mozilla/5.0'}
+            ) as response:
+                return str(response.url)
+    except Exception as e:
+        logging.debug(f"Error checking redirect for {url}: {e}")
+        # В случае ошибки возвращаем исходный URL
+        return url
+
+
+def extract_urls_from_text(text: str) -> list:
+    """Извлекает все HTTP/HTTPS URL из текста"""
+    urls = URL_PATTERN.findall(text)
+    return urls
+
+
+async def check_urls_for_discord_invites(text: str) -> str:
+    """
+    Проверяет URL в тексте на редиректы к Discord invite
+    Возвращает описание найденной ссылки или None
+    """
+    urls = extract_urls_from_text(text)
+    
+    if not urls:
+        return None
+    
+    # Сначала проверяем прямые Discord invite ссылки
+    for url in urls:
+        if is_discord_invite_url(url):
+            return "discord.gg/invite (прямая ссылка через URL)"
+    
+    # Ограничиваем количество проверок (чтобы не перегружать)
+    suspicious_urls = urls[:3]
+    
+    for url in suspicious_urls:
+        try:
+            # Добавляем схему, если отсутствует
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            
+            final_url = await check_url_redirect(url)
+            
+            if is_discord_invite_url(final_url):
+                return f"discord.gg/invite (через переходник {url})"
+        except Exception as e:
+            logging.debug(f"Error checking URL {url}: {e}")
+            continue
+    
+    return None
 
 async def _char_to_ascii(ch: str) -> str:
     if VARIATION_SELECTOR_RE.match(ch):
@@ -284,6 +364,11 @@ async def detect_links(raw_text: str):
     """
     Детектит подозрительные ссылки в тексте
     """
+
+    # Проверка URL-переходников на Discord invite
+    redirect_result = await check_urls_for_discord_invites(raw_text)
+    if redirect_result:
+        return redirect_result
     
     # Многократное декодирование URL
     decoded_text = raw_text
