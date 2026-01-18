@@ -129,64 +129,59 @@ async def safe_timeout(member: discord.Member, duration: timedelta, reason: str 
 
 async def handle_violation(
     bot: LittleAngelBot,
-    detected_object: typing.Union[discord.Message, discord.Thread],
+    detected_member: discord.Member,
+    detected_channel: typing.Union[discord.abc.GuildChannel, discord.Thread],
+    detected_guild: discord.Guild,
     reason_title: str,
     reason_text: str,
     extra_info: str = "",
+    detected_message: discord.Message = None,
     timeout_reason: str = None,
     force_mute: bool = False,
     force_ban: bool = False,
 ):
 
-    if isinstance(detected_object, discord.Message):
-        user = detected_object.author
-    else:
-        user = detected_object.owner
-    guild = detected_object.guild
-
     now = time.time()
 
-    async with lock_manager_for_guild.lock(guild.id):
-        violations = await violation_cache.get(guild.id) or []
+    async with lock_manager_for_guild.lock(detected_guild.id):
+        violations = await violation_cache.get(detected_guild.id) or []
 
         # скользящее окно
         violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
         violations.append(now)
 
         await violation_cache.set(
-            guild.id,
+            detected_guild.id,
             violations,
             ttl=VIOLATION_WINDOW
         )
 
         if len(violations) >= VIOLATION_LIMIT:
-            asyncio.create_task(apply_invite_lockdown(bot, guild))
+            asyncio.create_task(apply_invite_lockdown(bot, detected_guild))
 
     # Игнорирует системные сообщения (не выдаёт мут, а лишь удаляет сообщение)
-    if isinstance(detected_object, discord.Message) and detected_object.is_system():
-        await safe_delete(detected_object)
+    if detected_message and detected_message.is_system():
+        await safe_delete(detected_message)
         return
 
     # hit-cache
-    async with lock_manager_for_hits.lock(user.id):
-        hits = await hit_cache.get(user.id) or 0
+    async with lock_manager_for_hits.lock(detected_member.id):
+        hits = await hit_cache.get(detected_member.id) or 0
         hits += 1
-        await hit_cache.set(user.id, hits, ttl=3600)
+        await hit_cache.set(detected_member.id, hits, ttl=3600)
 
     is_soft = hits <= 2 and not force_mute and not force_ban
-    # Хэш для идентификации типа нарушения
-    detected_channel = detected_object.parent if isinstance(detected_object, discord.Thread) else detected_object.channel
 
     # LOG EMBED
     if force_ban:
         punishment = "Тебе выдан бан"
-        action_text = f"Участнику {user.mention} (`@{user}`) был выдан бан"
+        action_text = f"Участнику {detected_member.mention} (`@{detected_member}`) был выдан бан"
     elif is_soft:
         punishment = "Наказание не применяется, за исключением удаления сообщения"
-        action_text = f"Удалено сообщение от {user.mention} (`@{user}`)"
+        action_text = f"Удалено сообщение от {detected_member.mention} (`@{detected_member}`)"
     else:
         punishment = "Тебе выдан мут на 1 час"
-        action_text = f"Участнику {user.mention} (`@{user}`) был выдан мут на 1 час"
+        action_text = f"Участнику {detected_member.mention} (`@{detected_member}`) был выдан мут на 1 час"
 
     log_desc = (
         f"{action_text}\n"
@@ -199,16 +194,16 @@ async def handle_violation(
         description=log_desc,
         color=0xff0000
     )
-    log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
-    log_embed.set_footer(text=f"ID: {user.id}")
-    log_embed.set_thumbnail(url=user.display_avatar.url)
+    log_embed.set_author(name=detected_guild.name, icon_url=detected_guild.icon.url if detected_guild.icon else None)
+    log_embed.set_footer(text=f"ID: {detected_member.id}")
+    log_embed.set_thumbnail(url=detected_member.display_avatar.url)
     log_embed.add_field(
         name="Канал:",
         value=f"{detected_channel.mention} (`#{detected_channel.name}`)",
         inline=False
     )
 
-    asyncio.create_task(safe_send_to_log(bot, embed=log_embed, user_id=user.id, message_content=log_desc))
+    asyncio.create_task(safe_send_to_log(bot, embed=log_embed, user_id=detected_member.id, message_content=log_desc))
 
     # MENTION EMBED
     mention_desc = (
@@ -223,8 +218,8 @@ async def handle_violation(
         description=mention_desc,
         color=0xff0000
     )
-    mention_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
-    mention_embed.set_thumbnail(url=user.display_avatar.url)
+    mention_embed.set_author(name=detected_guild.name, icon_url=detected_guild.icon.url if detected_guild.icon else None)
+    mention_embed.set_thumbnail(url=detected_member.display_avatar.url)
     mention_embed.set_footer(
         text=(
             "Если ты считаешь, что это ошибка, проигнорируй это сообщение" 
@@ -235,9 +230,9 @@ async def handle_violation(
 
     asyncio.create_task(
             safe_send_to_channel(
-            user,
+            detected_member,
             embed=mention_embed,
-            user_id=user.id,
+            user_id=detected_member.id,
             message_content=f"[ЛИЧНЫЕ СООБЩЕНИЯ]\n\n{mention_desc}"
         )
     )
@@ -246,22 +241,22 @@ async def handle_violation(
         asyncio.create_task(
             safe_send_to_channel(
                 detected_channel,
-                content=user.mention,
+                content=detected_member.mention,
                 embed=mention_embed,
-                user_id=user.id,
+                user_id=detected_member.id,
                 message_content=mention_desc
             )
         )
 
-    if isinstance(detected_object, discord.Message) and not force_ban:
-        asyncio.create_task(safe_delete(detected_object))
+    if detected_message and not force_ban:
+        asyncio.create_task(safe_delete(detected_message))
 
     # выдаёт бан
     if force_ban:
-        await safe_ban(guild, user, timeout_reason, delete_message_seconds=216000)
-        await hit_cache.delete(user.id)
+        await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
+        await hit_cache.delete(detected_member.id)
 
     # выдаёт мут
     elif not is_soft:
-        await safe_timeout(user, timedelta(hours=1), timeout_reason)
-        await hit_cache.delete(user.id)
+        await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
+        await hit_cache.delete(detected_member.id)

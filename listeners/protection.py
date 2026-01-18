@@ -159,7 +159,9 @@ class AutoModeration(commands.Cog):
                 if not matched:
                     await handle_violation(
                         self.bot,
-                        thread,
+                        detected_member=thread.owner,
+                        detected_channel=thread,
+                        detected_guild=thread.guild,
                         reason_title="Флуд ветками",
                         reason_text="флуд путём создания веток",
                         extra_info=extra,
@@ -173,7 +175,9 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        thread,
+                        detected_member=thread.owner,
+                        detected_channel=thread,
+                        detected_guild=thread.guild,
                         reason_title="Реклама в названии ветки",
                         reason_text="реклама путём создания веток",
                         extra_info=extra,
@@ -265,7 +269,10 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        message,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
                         reason_title="Злоупотребление упоминаниями",
                         reason_text="злоупотребление упоминаниями",
                         extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
@@ -284,7 +291,10 @@ class AutoModeration(commands.Cog):
 
                 await handle_violation(
                     self.bot,
-                    message,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
                     reason_title="Флуд",
                     reason_text="флуд",
                     extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
@@ -311,7 +321,10 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        message,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
                         reason_title="Реклама через активность",
                         reason_text="реклама через Discord Activity",
                         extra_info=f"Информация об активности:\n```\n{activity_info}```",
@@ -336,7 +349,10 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        message,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
                         reason_title="Спам / засорение чата",
                         reason_text="засорение чата (пустые строки / мусор / код-блоки)",
                         extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
@@ -361,7 +377,10 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        message,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
                         reason_title="Реклама в сообщении",
                         reason_text="реклама в тексте сообщения",
                         extra_info=extra,
@@ -422,7 +441,10 @@ class AutoModeration(commands.Cog):
 
                             await handle_violation(
                                 self.bot,
-                                message,
+                                detected_member=message.author,
+                                detected_channel=message.channel,
+                                detected_guild=message.guild,
+                                detected_message=message,
                                 reason_title="Реклама внутри файла",
                                 reason_text="реклама в прикреплённом файле",
                                 extra_info=extra,
@@ -453,7 +475,10 @@ class AutoModeration(commands.Cog):
 
                     await handle_violation(
                         self.bot,
-                        message,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
                         reason_title="Реклама внутри опроса",
                         reason_text="реклама в прикреплённом опросе",
                         extra_info=extra,
@@ -549,6 +574,78 @@ class AutoModeration(commands.Cog):
             await safe_ban(guild, user, reason=reason)
 
         await safe_send_to_log(self.bot, embeds=embeds)
+
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        guild = channel.guild
+        if guild.id != config.GUILD_ID:
+            return
+        
+        if isinstance(channel, discord.VoiceChannel):
+            
+            matched = await detect_links(channel.name)
+
+            if matched:
+
+                members = channel.members
+
+                extra = (
+                    f"Совпадение:\n```\n{matched}\n```\n"
+                    f"Название голосового канала:\n```\n#{channel.name}```"
+                )
+
+                if members:
+                    for member in members:
+                        await handle_violation(
+                            self.bot,
+                            detected_member=member,
+                            detected_channel=channel,
+                            detected_guild=channel.guild,
+                            reason_title="Реклама в названии голосового канала",
+                            reason_text="реклама путём создания голосового канала",
+                            extra_info=extra,
+                            timeout_reason="Реклама в названии голосового канала",
+                            force_ban=True
+                        )
+
+                return
+            
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
+        guild = after.guild
+        if guild.id != config.GUILD_ID:
+            return
+        
+        if isinstance(after, discord.VoiceChannel) and before.name != after.name:
+            
+            matched = await detect_links(after.name)
+
+            if matched:
+
+                members = after.members
+
+                extra = (
+                    f"Совпадение:\n```\n{matched}\n```\n"
+                    f"Название голосового канала:\n```\n#{after.name}```"
+                )
+
+                if members:
+                    for member in members:
+                        await handle_violation(
+                            self.bot,
+                            detected_member=member,
+                            detected_channel=after,
+                            detected_guild=after.guild,
+                            reason_title="Реклама в названии голосового канала",
+                            reason_text="реклама путём создания голосового канала",
+                            extra_info=extra,
+                            timeout_reason="Реклама в названии голосового канала",
+                            force_ban=True
+                        )
+
+                return
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(AutoModeration(bot))
