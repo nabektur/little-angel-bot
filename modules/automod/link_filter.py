@@ -291,37 +291,39 @@ async def detect_links(raw_text: str):
         except Exception:
             break
 
-    # Проверка явных HTTP/HTTPS ссылок
-    for pattern, label in EXPLICIT_URL_PATTERNS:
-        if pattern.search(decoded_text):
-            return label
-    
-    # Пропускаем очень короткие сообщения без явных признаков
-    if len(raw_text) < 8:
-        return None
-    
-    # Нормализуем текст
-    compact = await normalize_and_compact(decoded_text)
-    
-    # Сначала проверяем разнесенные паттерны (они приоритетнее)
-    spaced_findings = extract_spaced_patterns(raw_text, compact)
-    if spaced_findings:
-        label, matched = spaced_findings[0]
-        return f"{label} (замаскированная ссылка: {matched})"
-    
-    # Шаг 1: Извлекаем ссылки из markdown
-    markdown_links = extract_markdown_links(raw_text)
-    all_urls_to_check = [raw_text]
-    
-    for link_text, url in markdown_links:
-        all_urls_to_check.append(url)
-        all_urls_to_check.append(link_text)
-    
-    # Шаг 2: Проверяем каждый фрагмент
-    for text_fragment in all_urls_to_check:
-        result = await _check_single_fragment(text_fragment, raw_text, compact)
-        if result:
-            return result
+    for text in [decoded_text, raw_text]:
+
+        # Проверка явных HTTP/HTTPS ссылок
+        for pattern, label in EXPLICIT_URL_PATTERNS:
+            if pattern.search(text):
+                return label
+        
+        # Пропускаем очень короткие сообщения без явных признаков
+        if len(raw_text) < 8:
+            return None
+        
+        # Нормализуем текст
+        compact = await normalize_and_compact(text)
+        
+        # Сначала проверяем разнесенные паттерны (они приоритетнее)
+        spaced_findings = extract_spaced_patterns(text, compact)
+        if spaced_findings:
+            label, matched = spaced_findings[0]
+            return f"{label} (замаскированная ссылка: {matched})"
+        
+        # Шаг 1: Извлекаем ссылки из markdown
+        markdown_links = extract_markdown_links(text)
+        all_urls_to_check = [text]
+        
+        for link_text, url in markdown_links:
+            all_urls_to_check.append(url)
+            all_urls_to_check.append(link_text)
+        
+        # Шаг 2: Проверяем каждый фрагмент
+        for text_fragment in all_urls_to_check:
+            result = await _check_single_fragment(text_fragment, text, compact)
+            if result:
+                return result
     
     return None
 
