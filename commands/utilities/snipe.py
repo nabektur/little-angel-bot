@@ -116,7 +116,7 @@ class snipe_archive(discord.ui.View):
             snipe_existing_data[ipos]
         except:
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
-        channel = await self.bot.fetch_channel(self.channel_id)
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         await snippet(self.bot, interaction, channel, ipos, self, "button_response")
 
     @discord.ui.button(style=discord.ButtonStyle.blurple, emoji="➡")
@@ -137,7 +137,7 @@ class snipe_archive(discord.ui.View):
             snipe_existing_data[ipos]
         except:
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
-        channel = await self.bot.fetch_channel(self.channel_id)
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         await snippet(self.bot, interaction, channel, ipos, self, "button_response")
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🗑️")
@@ -149,7 +149,7 @@ class snipe_archive(discord.ui.View):
         for field in interaction.message.embeds[epos].fields:
             if field.name == "Позиция:":
                 position = int(field.value.split()[0]) - 1
-        channel = await self.bot.fetch_channel(self.channel_id)
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
@@ -171,7 +171,8 @@ class snipe_archive(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🧹")
     async def sreset(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.manage_messages:
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
+        if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
             await SNIPE_CACHE.set(self.channel_id, [], ttl=3600)

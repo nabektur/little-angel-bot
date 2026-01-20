@@ -21,7 +21,7 @@ async def sync_spam_from_database(bot: LittleAngelBot):
 
 async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
     try:
-        channel = await bot.fetch_channel(key[2])
+        channel = bot.get_channel(key[2]) or await bot.fetch_channel(key[2])
         if key[1] == "webhook":
             if isinstance(channel, discord.Thread):
                 wchannel = channel.parent

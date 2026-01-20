@@ -95,7 +95,7 @@ async def cycle_of_rofles(bot: LittleAngelBot):
         rofl_result = await function_to_call()
         rofls_channel = bot.get_channel(config.ROFLS_CHANNEL_ID)
         if not rofls_channel:
-            rofls_channel = await bot.fetch_channel(config.ROFLS_CHANNEL_ID)
+            rofls_channel = bot.get_channel(config.ROFLS_CHANNEL_ID) or await bot.fetch_channel(config.ROFLS_CHANNEL_ID)
         await rofls_channel.send(rofl_result)
     except (DiscordServerError, HTTPException):
         _log.warning(f"Проблемы с сервером Discord, пропуск рофла...\n{traceback.format_exc()}")

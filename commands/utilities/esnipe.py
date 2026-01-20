@@ -44,7 +44,7 @@ class esnipe_archive(discord.ui.View):
         channel = self.bot.get_channel(self.channel_id)
         if not channel:
             try:
-                channel = await self.bot.fetch_channel(self.channel_id)
+                channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
             except Exception as e:
                 logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
                 return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
@@ -84,7 +84,7 @@ class esnipe_archive(discord.ui.View):
         channel = self.bot.get_channel(self.channel_id)
         if not channel:
             try:
-                channel = await self.bot.fetch_channel(self.channel_id)
+                channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
             except Exception as e:
                 logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
                 return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
@@ -122,7 +122,7 @@ class esnipe_archive(discord.ui.View):
         for field in interaction.message.embeds[epos].fields:
             if field.name == "Позиция:":
                 position = int(field.value.split()[0]) - 1
-        channel = await self.bot.fetch_channel(self.channel_id)
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
@@ -144,7 +144,8 @@ class esnipe_archive(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🧹")
     async def ereset(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.manage_messages:
+        channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
+        if not channel.permissions_for(interaction.user).manage_messages:
             return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
         try:
             await ESNIPE_CACHE.set(self.channel_id, [], ttl=3600)
