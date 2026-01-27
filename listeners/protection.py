@@ -308,30 +308,6 @@ class AutoModeration(commands.Cog):
                 
         # условия срабатывания
         if priority > 1:
-                
-            # модерация активности
-            if message.activity is not None:
-
-                if message.activity.get('type') == 3 and type(message.author.activity) != discord.Spotify:
-
-                    activity_info = (
-                        f"Тип: {message.activity.get('type')}\n"
-                        f"Party ID: {message.activity.get('party_id')}\n"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Реклама через активность",
-                        reason_text="реклама через Discord Activity",
-                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность"
-                    )
-
-                    return
             
             # модерация сообщений
             if message.content or message.embeds:
@@ -391,6 +367,30 @@ class AutoModeration(commands.Cog):
                 
         # условия срабатывания
         if priority > 0:
+
+            # модерация активности
+            if message.activity is not None:
+
+                if type(message.author.activity) != discord.Spotify:
+
+                    activity_info = (
+                        f"Тип: {message.activity.get('type')}\n"
+                        f"Party ID: {message.activity.get('party_id')}\n"
+                    )
+
+                    await handle_violation(
+                        self.bot,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
+                        reason_title="Реклама через активность",
+                        reason_text="реклама через Discord Activity",
+                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                        timeout_reason="Реклама через активность"
+                    )
+
+                    return
 
             # модерация вложенных файлов
             if message.attachments:
