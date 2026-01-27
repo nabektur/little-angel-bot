@@ -397,7 +397,8 @@ class AutoModeration(commands.Cog):
                         reason_title="Реклама через активность",
                         reason_text="реклама через Discord Activity",
                         extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность"
+                        timeout_reason="Реклама через активность",
+                        force_ban=True
                     )
 
                     return
