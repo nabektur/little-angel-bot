@@ -371,7 +371,7 @@ class AutoModeration(commands.Cog):
             # модерация активности
             if message.activity is not None:
 
-                if type(message.author.activity) != discord.Spotify:
+                if message.activity.get('type') == 3 and type(message.author.activity) != discord.Spotify:
 
                     activity_info = (
                         f"Тип: {message.activity.get('type')}\n"
