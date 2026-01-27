@@ -371,12 +371,23 @@ class AutoModeration(commands.Cog):
             # модерация активности
             if message.activity is not None:
 
-                if message.activity.get('type') == 3 and type(message.author.activity) != discord.Spotify:
+                if message.activity.get('type') == 3 and message.activity.get('icon_override') and not 'spotify:' in message.activity.get('icon_override'):
+
+                    activity_presence = None
+                    for presence in message.author.activities:
+                        if isinstance(presence, discord.Spotify):
+                            activity_presence = presence
+                            break
 
                     activity_info = (
                         f"Тип: {message.activity.get('type')}\n"
                         f"Party ID: {message.activity.get('party_id')}\n"
+                        f"Альбом: {activity_presence.album if hasattr(activity_presence, 'album') else 'Нет альбома'}\n"
+                        f"Исполнитель: {activity_presence.artist if hasattr(activity_presence, 'artist') else 'Нет исполнителя'}\n"
+                        f"Трек: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет трека'}\n"
                     )
+
+                    logging.info(f"Detected activity ad from {message.author} ({message.author.id}): {message.activity} | {type(message.author.activity)} | {activity_info}")
 
                     await handle_violation(
                         self.bot,
