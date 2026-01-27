@@ -317,6 +317,12 @@ class AutoModeration(commands.Cog):
                     activity_info = (
                         f"Тип: {message.activity.get('type')}\n"
                         f"Party ID: {message.activity.get('party_id')}\n"
+                        f"Детали: {message.author.activity.details}\n"
+                        f"Состояние: {message.author.activity.state}\n"
+                        f"URL состояния: {message.author.activity.state_url}\n"
+                        f"Альбом: {message.author.activity.album}\n"
+                        f"Исполнитель: {message.author.activity.artist}\n"
+                        f"Трек: {message.author.activity.track_url}\n"
                     )
 
                     await handle_violation(

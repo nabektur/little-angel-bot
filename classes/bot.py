@@ -15,9 +15,13 @@ LOGGER = logging.getLogger(__name__)
 class LittleAngelBot(commands.AutoShardedBot):
 
     def __init__(self):
-        discord_intents = discord.Intents.default()
-        discord_intents.message_content = True
-        discord_intents.members = True
+        discord_intents = discord.Intents(
+            message_content=True,
+            members=True,
+            presences=True,
+            guilds=True,
+            guild_messages=True
+        )
 
         next_status = next(config.ACTIVITY_NAMES)
 
