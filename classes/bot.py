@@ -20,7 +20,8 @@ class LittleAngelBot(commands.AutoShardedBot):
             members=True,
             presences=True,
             guilds=True,
-            guild_messages=True
+            guild_messages=True,
+            voice_states=True,
         )
 
         next_status = next(config.ACTIVITY_NAMES)
