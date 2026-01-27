@@ -371,7 +371,7 @@ class AutoModeration(commands.Cog):
             # модерация активности
             if message.activity is not None:
 
-                if message.activity.get('type') == 3 and message.activity.get('icon_override') and not 'spotify:' in message.activity.get('icon_override'):
+                if message.activity.get('type') == 3 and (not message.activity.get('icon_override') or 'spotify:' not in message.activity.get('icon_override')):
 
                     activity_presence = None
                     for presence in message.author.activities:
