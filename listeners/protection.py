@@ -387,8 +387,6 @@ class AutoModeration(commands.Cog):
                         f"Трек: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет трека'}\n"
                     )
 
-                    logging.info(f"Detected activity ad from {message.author} ({message.author.id}): {message.activity} | {type(message.author.activity)} | {activity_info}")
-
                     await handle_violation(
                         self.bot,
                         detected_member=message.author,
