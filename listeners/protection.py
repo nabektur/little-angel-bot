@@ -382,9 +382,10 @@ class AutoModeration(commands.Cog):
                     activity_info = (
                         f"Тип: {message.activity.get('type')}\n"
                         f"Party ID: {message.activity.get('party_id')}\n"
+                        f"Трек: {activity_presence.title if hasattr(activity_presence, 'title') else 'Нет трека'}\n"
+                        f"URL трека: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет ссылки'}\n"
                         f"Альбом: {activity_presence.album if hasattr(activity_presence, 'album') else 'Нет альбома'}\n"
                         f"Исполнитель: {activity_presence.artist if hasattr(activity_presence, 'artist') else 'Нет исполнителя'}\n"
-                        f"Трек: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет трека'}\n"
                     )
 
                     await handle_violation(
