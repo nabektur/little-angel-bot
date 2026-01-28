@@ -7,11 +7,11 @@ import typing
 from aiocache import SimpleMemoryCache
 from cache import AsyncTTL
 import discord
-from discord.ext.commands import clean_content
 from rapidfuzz import fuzz
 
 from classes.bot import LittleAngelBot
 from modules.automod.handle_violation import delete_messages_safe
+from modules.extract_message_content import extract_message_content
 from modules.lock_manager import LockManagerWithIdleTTL
 
 MESSAGES_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
@@ -54,69 +54,9 @@ async def get_cached_messages_and_append(member: discord.Member, append_message_
 
     return messages
 
-async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
-    cleaner = clean_content(
-        fix_channel_mentions=True,
-        use_nicknames=True,
-        escape_markdown=True
-    )
-
-    ctx = await bot.get_context(message)
-
-    cleaned = await cleaner.convert(ctx, message.content)
-    return cleaned
-
 async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> str:
 
-    message_content = ""
-
-    if message.content:
-        cleaned = await clean_message_text(bot, message)
-        if cleaned:
-            message_content += cleaned
-
-    if message.stickers:
-        message_content += "\n\n[Стикеры:]"
-        for sticker in message.stickers:
-            message_content += f"\n{sticker.name} ({sticker.id})\n"
-
-    if message.attachments:
-        message_content += "\n\n[Вложения:]"
-        for attachment in message.attachments:
-            message_content += f"\n{attachment.filename}"
-
-    if message.embeds:
-        message_content += "\n\n[Ембеды:]"
-        for embed in message.embeds:
-            if embed.title:
-                message_content += f"\nЗаголовок: {embed.title}"
-            if embed.description:
-                message_content += f"\nОписание: {embed.description}"
-
-    # if message.reference:
-    #     if message.reference.resolved:
-    #         ref = message.reference.resolved
-    #         if isinstance(ref, discord.Message):
-    #             message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
-    #         elif isinstance(ref, discord.DeletedReferencedMessage):
-    #             message_content += f"\n\n[Ответ на удалённое сообщение]: {ref.id}"
-
-    if message.activity:
-        message_content += (
-            "\n\n[Активность:]"
-            f"\nТип: {message.activity.get('type')}"
-            f"\nParty ID: {message.activity.get('party_id')}"
-        )
-
-    if message.poll:
-        poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
-        message_content += (
-            "\n\n[Опрос:]"
-            f'\nВопрос: "{message.poll.question}"'
-            f"\nОпции: {poll_options}"
-        )
-
-    message_content = message_content.strip()
+    message_content = await extract_message_content(bot, message)
 
     messages = await get_cached_messages_and_append(member, append_message_content=message_content, append_message=message)
 

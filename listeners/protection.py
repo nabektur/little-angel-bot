@@ -12,7 +12,7 @@ from classes.bot import LittleAngelBot
 from modules.automod.attachment_spam_filter import check_attachment_spam, ATTACHMENTS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.flood_filter import flood_and_messages_check, MESSAGES_FROM_NEW_MEMBERS_CACHE
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
-from modules.automod.link_filter import detect_links
+from modules.automod.link_filter import detect_links, check_message_for_invite_codes
 from modules.automod.mention_filter import check_mention_abuse, MENTIONS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.spam_filter import is_spam_block
 from modules.automod.thread_filter import flood_and_threads_check, THREADS_FROM_NEW_MEMBERS_CACHE
@@ -329,6 +329,31 @@ class AutoModeration(commands.Cog):
                 await MESSAGES_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
 
                 return
+            
+            # детект всех инвайт кодов
+            is_invite = await check_message_for_invite_codes(self.bot, message, message.guild.id)
+
+            if is_invite.get("found_invite"):
+
+                extra = (
+                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```"
+                )
+
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Ссылка-приглашение в сообщении",
+                    reason_text="Ссылка-приглашение в сообщении",
+                    extra_info=extra,
+                    timeout_reason="Ссылка-приглашение в сообщении"
+                )
+
+                return
+
+
                 
         # условия срабатывания
         if priority > 1:

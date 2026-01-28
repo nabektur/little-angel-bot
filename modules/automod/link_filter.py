@@ -3,9 +3,14 @@ import logging
 import unicodedata
 import urllib.parse
 
+from aiocache import SimpleMemoryCache
 import aiohttp
 from cache import AsyncTTL
+import discord
 from rapidfuzz import fuzz
+
+from classes.bot import LittleAngelBot
+from modules.extract_message_content import extract_message_content
 
 VARIATION_SELECTOR_RE = re.compile(r"[\uFE0F]")
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200F\uFEFF\u2060]")
@@ -171,6 +176,330 @@ _COMBINED_MAP.update(REGIONAL_INDICATOR_MAP)
 _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
 _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
+
+# РЕКОМЕНДУЕМЫЙ ПАТТЕРН ИНВАЙТ КОДОВ: буквы + цифры/дефисы, только латиница
+POTENTIAL_INVITE_CODE_PATTERN = re.compile(
+    r'\b([a-zA-Z](?:[a-zA-Z0-9\-])*[a-zA-Z0-9])\b'
+)
+
+# СТРОГИЙ ПАТТЕРН ИНВАЙТ КОДОВ: обязательно должна быть хотя бы 1 цифра
+STRICT_INVITE_CODE_PATTERN = re.compile(
+    r'(?=.*[a-zA-Z])(?=.*[0-9])([a-zA-Z0-9\-]{5,20})'
+)
+
+INVITE_CODE_CACHE = SimpleMemoryCache()
+INVITE_CODE_CACHE_TTL = 1200
+
+def should_skip_potential_code(code: str) -> bool:
+    """Фильтрует очевидные не-инвайты (ОПТИМИЗИРОВАННАЯ ВЕРСИЯ)"""
+    
+    # Длина (Discord коды обычно 5-16 символов)
+    if len(code) < 5 or len(code) > 20:
+        return True
+    
+    # КРИТИЧНО: Кириллица - сразу отсекаем
+    if re.search(r'[а-яА-ЯёЁ]', code):
+        return True
+    
+    # Только латиница допустима
+    if not re.match(r'^[a-zA-Z0-9\-]+$', code):
+        return True
+    
+    # Только цифры (ID пользователей/каналов)
+    if code.isdigit():
+        return True
+    
+    # Только буквы БЕЗ цифр и дефисов = обычное английское слово
+    if code.isalpha():
+        # Короткие коды из букв могут быть инвайтами (например "abcdef")
+        # Но длинные слова точно нет
+        if len(code) > 10:
+            return True
+    
+    # Проверка баланса букв/цифр
+    letters = sum(c.isalpha() for c in code)
+    digits = sum(c.isdigit() for c in code)
+    
+    # Слишком много цифр = ID, timestamp
+    if digits > 0 and letters < 2:
+        return True
+    
+    # Только буквы и очень длинное = английское слово
+    if digits == 0 and letters > 12:
+        return True
+    
+    # Слишком много дефисов (UUID, даты)
+    if code.count('-') > 2:
+        return True
+    
+    # Паттерны дат (2024-01, 01-28-2024)
+    if re.match(r'^\d{2,4}-\d{2}', code):
+        return True
+    
+    # Длинные hex строки без букв или с малым количеством букв
+    if len(code) > 16 and re.match(r'^[0-9a-fA-F]+$', code):
+        hex_letters = sum(1 for c in code.lower() if c in 'abcdef')
+        if hex_letters < 3:  # Токены обычно имеют мало букв
+            return True
+    
+    # Повторяющиеся символы (aaaa, 1111, test-test-test)
+    if re.search(r'(.)\1{4,}', code):
+        return True
+    
+    # URL части
+    if any(part in code.lower() for part in ['http', 'www', 'com', 'net', 'org']):
+        return True
+    
+    # Белый список частых английских слов и терминов
+    common_words = {
+        # Платформы и бренды (без invite-смысла)
+        'youtube', 'twitch', 'github', 'google', 'spotify', 'steam',
+        'minecraft', 'roblox', 'paypal', 'patreon',
+        'twitter', 'reddit', 'instagram', 'tiktok', 'facebook',
+        'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat',
+
+        # Абстрактные и нейтральные слова
+        'example', 'sample', 'random', 'general', 'basic', 'simple',
+        'public', 'private', 'official', 'classic', 'standard',
+        'default', 'normal', 'average', 'common',
+
+        # Общие действия (не связанные с приглашением)
+        'read', 'write', 'watch', 'listen', 'learn', 'study',
+        'create', 'build', 'make', 'use', 'open', 'close',
+        'start', 'stop', 'pause', 'continue',
+
+        # Коммуникация (без join / invite)
+        'message', 'text', 'reply', 'answer', 'question',
+        'comment', 'feedback', 'response', 'discussion',
+
+        # Вежливые и бытовые
+        'hello', 'hi', 'thanks', 'thankyou', 'please', 'sorry', 'thank', 'kindly',
+        'welcome', 'goodbye', 'bye', 'morning', 'evening', 'night', 'afternoon', 'thx', 'thanks'
+
+        # Игры и медиа (без серверного подтекста)
+        'player', 'gameplay', 'gaming', 'singleplayer',
+        'video', 'music', 'audio', 'sound', 'movie', 'film',
+
+        # Технические, но безопасные
+        'system', 'process', 'status', 'error', 'warning',
+        'success', 'failed', 'loading', 'progress',
+        'settings', 'options', 'preferences',
+
+        # Аккаунт, но не доступ
+        'profile', 'account', 'username', 'nickname', 'avatar',
+        'email', 'password', 'security', 'privacy',
+
+        # Время и числа
+        'today', 'tomorrow', 'yesterday', 'daily', 'weekly',
+        'month', 'year', 'time', 'date', 'number', 'count',
+
+        # Нейтральные прилагательные
+        'cool', 'nice', 'great', 'awesome', 'fun',
+        'small', 'big', 'fast', 'slow', 'easy', 'hard'
+    }
+    if code.lower() in common_words:
+        return True
+    
+    # Проверка на английские слова по гласным
+    # Английские слова обычно имеют ~40% гласных
+    vowels = 'aeiouy'
+    vowel_count = sum(1 for c in code.lower() if c in vowels)
+    
+    # Если > 50% гласных и нет цифр = английское слово
+    if digits == 0 and vowel_count > len(code) * 0.5:
+        return True
+    
+    # Если слишком мало гласных и нет цифр = тоже странно (аббревиатуры типа "smth")
+    if digits == 0 and vowel_count < 2 and len(code) > 6:
+        return True
+    
+    return False
+
+
+async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
+    """
+    Проверяет код через Discord API с кэшированием
+    
+    Args:
+        bot: Экземпляр discord.Bot для API запросов
+        code: Потенциальный инвайт-код
+    
+    Returns:
+        dict: {'is_invite': bool, 'guild_id': int|None, 'guild_name': str|None, 'from_cache': bool}
+    """
+    
+    # Ключ для кэша (lowercase для избежания дубликатов)
+    cache_key = f"invite_code:{code.lower()}"
+    
+    # Проверяем кэш
+    cached = await INVITE_CODE_CACHE.get(cache_key)
+    if cached is not None:
+        logging.debug(f"Инвайт-код {code} найден в кэше: {cached}")
+        return {
+            'is_invite': cached['is_valid'],
+            'guild_id': cached.get('guild_id'),
+            'guild_name': cached.get('guild_name'),
+            'member_count': cached.get('member_count'),
+            'from_cache': True
+        }
+    
+    # Проверяем через Discord API
+    try:
+        invite = await bot.fetch_invite(code, with_counts=True)
+        
+        guild_id = invite.guild.id if invite.guild else None
+        guild_name = invite.guild.name if invite.guild else None
+        member_count = getattr(invite, 'approximate_member_count', None)
+        
+        # Кэшируем результат (валидный инвайт)
+        result = {
+            'is_valid': True,
+            'guild_id': guild_id,
+            'guild_name': guild_name,
+            'member_count': member_count
+        }
+        await INVITE_CODE_CACHE.set(cache_key, result, ttl=INVITE_CODE_CACHE_TTL)
+        
+        logging.info(f"Инвайт-код {code} проверен через API: валидный → {guild_name}")
+        
+        return {
+            'is_invite': True,
+            'guild_id': guild_id,
+            'guild_name': guild_name,
+            'member_count': member_count,
+            'from_cache': False
+        }
+        
+    except discord.NotFound:
+        # Невалидный инвайт - кэшируем как невалидный
+        result = {
+            'is_valid': False,
+            'guild_id': None,
+            'guild_name': None
+        }
+        await INVITE_CODE_CACHE.set(cache_key, result, ttl=INVITE_CODE_CACHE_TTL)
+        
+        logging.debug(f"Инвайт-код {code} проверен через API: невалидный (404)")
+        
+        return {
+            'is_invite': False,
+            'guild_id': None,
+            'guild_name': None,
+            'from_cache': False
+        }
+        
+    except discord.HTTPException as e:
+        # Ошибка API - НЕ кэшируем (может быть временная проблема)
+        logging.warning(f"Ошибка API при проверке кода {code}: {e}")
+        
+        return {
+            'is_invite': False,
+            'guild_id': None,
+            'guild_name': None,
+            'from_cache': False,
+            'error': str(e)
+        }
+    
+    except Exception as e:
+        # Неожиданная ошибка
+        logging.error(f"Неожиданная ошибка при проверке кода {code}: {e}")
+        
+        return {
+            'is_invite': False,
+            'guild_id': None,
+            'guild_name': None,
+            'from_cache': False,
+            'error': str(e)
+        }
+
+async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.Message) -> list:
+    """
+    Извлекает потенциальные Discord invite коды из текста
+    УЛУЧШЕННАЯ ВЕРСИЯ - работает с кириллицей
+    """
+
+    text = await extract_message_content(bot, message)
+    
+    # Разбиваем текст на токены (по пробелам и знакам препинания)
+    tokens = re.split(r'[\s\.,;!?\(\)\[\]\{\}<>«»"\']+', text)
+    
+    potential_codes = []
+    
+    for token in tokens:
+        # Проверяем формат: есть буквы + цифры, длина 5-20
+        if re.match(r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9\-]{5,20}$', token):
+            potential_codes.append(token)
+    
+    # Дополнительно ловим regex'ом (на случай склеенных кодов)
+    regex_matches = STRICT_INVITE_CODE_PATTERN.findall(text)
+    for match in regex_matches:
+        if match not in potential_codes:
+            potential_codes.append(match)
+    
+    # Фильтруем через should_skip_potential_code
+    filtered_codes = [code for code in potential_codes if not should_skip_potential_code(code)]
+    
+    # Убираем дубликаты
+    seen = set()
+    unique_codes = []
+    for code in filtered_codes:
+        code_lower = code.lower()
+        if code_lower not in seen:
+            seen.add(code_lower)
+            unique_codes.append(code)
+    
+    return unique_codes[:5]
+
+async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
+    """
+    Проверяет сообщение на наличие валидных Discord invite кодов
+    ЭТА ФУНКЦИЯ ДОЛЖНА ВЫЗЫВАТЬСЯ ТОЛЬКО ДЛЯ НОВЫХ УЧАСТНИКОВ!
+    
+    Args:
+        bot: Экземпляр discord.Bot для API запросов
+        message: Экземпляр discord.Message для проверки
+        current_guild_id: ID текущего сервера (чтобы не банить за свои инвайты)
+    
+    Returns:
+        dict: {
+            'found_invite': bool,
+            'invite_code': str|None,
+            'guild_id': int|None,
+            'guild_name': str|None,
+            'from_cache': bool
+        }
+    """
+    
+    # Извлекаем потенциальные коды
+    potential_codes = extract_potential_invite_codes(bot, message)
+    
+    if not potential_codes:
+        return {'found_invite': False}
+    
+    logging.debug(f"Найдено {len(potential_codes)} потенциальных кодов для проверки: {potential_codes}")
+    
+    # Проверяем каждый код через API
+    for code in potential_codes:
+        result = await check_potential_invite_code(bot, code)
+        
+        if result['is_invite']:
+            # Проверяем, не инвайт ли это на текущий сервер
+            if result['guild_id'] == current_guild_id:
+                logging.debug(f"Код {code} ведёт на свой сервер, пропускаем")
+                continue
+            
+            # Найден валидный инвайт на другой сервер!
+            logging.info(f"Обнаружен инвайт-код: {code} -> {result['guild_name']} (кэш: {result['from_cache']})")
+            return {
+                'found_invite': True,
+                'invite_code': code,
+                'guild_id': result['guild_id'],
+                'guild_name': result['guild_name'],
+                'from_cache': result.get('from_cache', False),
+                'member_count': result.get('member_count')
+            }
+    
+    return {'found_invite': False}
 
 def is_discord_invite_url(url: str) -> bool:
     """Проверяет, является ли URL ссылкой-приглашением Discord"""
@@ -530,3 +859,40 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
             return f"Похоже на ссылку приглашения в Discord сервер ({cand})"
     
     return None
+
+async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
+    """
+    Проверяет сообщение на наличие валидных Discord invite кодов
+    ЭТА ФУНКЦИЯ ДОЛЖНА ВЫЗЫВАТЬСЯ ТОЛЬКО ДЛЯ НОВЫХ УЧАСТНИКОВ!
+    """
+    
+    # Извлекаем потенциальные коды
+    potential_codes = await extract_potential_invite_codes(bot, message)
+    
+    if not potential_codes:
+        return {'found_invite': False}
+    
+    logging.debug(f"Найдено {len(potential_codes)} потенциальных кодов: {potential_codes}")
+    
+    # Проверяем каждый код через API (с кэшированием)
+    for code in potential_codes:
+        result = await check_potential_invite_code(bot, code)
+        
+        if result['is_invite']:
+            # Проверяем, не инвайт ли это на текущий сервер
+            if result['guild_id'] == current_guild_id:
+                logging.debug(f"Код {code} ведёт на свой сервер, пропускаем")
+                continue
+            
+            # Найден валидный инвайт на другой сервер!
+            logging.warning(f"Обнаружен инвайт-код: {code} → {result['guild_name']} (кэш: {result['from_cache']})")
+            return {
+                'found_invite': True,
+                'invite_code': code,
+                'guild_id': result['guild_id'],
+                'guild_name': result['guild_name'],
+                'from_cache': result['from_cache'],
+                'member_count': result.get('member_count')
+            }
+    
+    return {'found_invite': False}
