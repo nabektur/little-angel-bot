@@ -7,16 +7,15 @@ from aiocache import SimpleMemoryCache
 from collections import defaultdict
 import discord
 
+from modules.automod.handle_violation import delete_messages_safe
 from modules.lock_manager import LockManagerWithIdleTTL
 
 MENTIONS_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
 LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
-_PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
 MAX_SIMILLAR_MENTIONS = 10  # максимум упоминаний одного id
 MAX_DIFFERENT_MENTIONS = 5  # максимум уникальных упоминаний
 MAX_STORED_MESSAGES = 200  # сколько последних сообщений хранить в кэше
-
 
 async def get_cached_mentions_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
     async with LOCK_MANAGER.lock(member.id):
@@ -84,39 +83,6 @@ async def detect_mention_abuse(member: discord.Member, message: discord.Message)
         return True, messages
 
     return False, messages
-
-
-async def delete_messages_safe(
-    channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel, discord.StageChannel],
-    message_ids: set[int],
-    reason: str = "Автоматическая очистка"
-):
-
-    if not message_ids:
-        return
-
-    async with _PURGE_SEMAPHORE:
-        try:
-            await channel.purge(
-                check=lambda m: m.id in message_ids,
-                bulk=True,
-                limit=200,
-                reason=reason
-            )
-            return
-        except discord.HTTPException:
-            pass
-
-    # fallback - удаляет вручную
-    for msg_id in message_ids:
-        try:
-            await channel.delete_messages([discord.Object(id=msg_id)])
-        except discord.NotFound:
-            continue
-        except discord.HTTPException:
-            await asyncio.sleep(2)
-        finally:
-            await asyncio.sleep(0.25)
 
 
 async def check_mention_abuse(member: discord.Member, message: discord.Message) -> typing.Tuple[bool, str]:

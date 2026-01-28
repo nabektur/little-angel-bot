@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from classes.bot import LittleAngelBot
 from classes.database import db
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 class SuggestSpamView(discord.ui.View):
     def __init__(self, user_id: int, suggestion: str, spam_type: str):
@@ -20,7 +20,7 @@ class SuggestSpamView(discord.ui.View):
         table = "spamtexts_nsfw" if self.spam_type == "nsfw" else "spamtexts_ordinary"
         await db.execute(f"INSERT INTO {table} (text) VALUES (?) ON CONFLICT DO NOTHING;", self.suggestion)
         await interaction.message.delete()
-        await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу (`{self.spam_type}`).", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description=f"☑️ Текст добавлен в базу (`{self.spam_type}`).", color=CONFIG.LITTLE_ANGEL_COLOR), ephemeral=True)
 
     @discord.ui.button(style=discord.ButtonStyle.danger, custom_id="spam_suggestion_reject", emoji="✖️")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -64,14 +64,14 @@ class SpamSuggestion(commands.Cog):
             if blocked:
                 return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
 
-            embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=self.text.value, color=config.LITTLE_ANGEL_COLOR)
+            embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=self.text.value, color=CONFIG.LITTLE_ANGEL_COLOR)
             embed.set_footer(text=f"От: {interaction.user} ({user_id}) | Тип: {self.type}")
 
-            channel = self.bot.get_channel(config.SPAM_SUGGESTIONS_CHANNEL_ID)
+            channel = self.bot.get_channel(CONFIG.SPAM_SUGGESTIONS_CHANNEL_ID)
             if channel:
                 await channel.send(embed=embed, view=SuggestSpamView(user_id, self.text.value, self.type))
 
-            await interaction.response.send_message(embed=discord.Embed(description="✉️ Предложенный текст отправлен на модерацию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(description="✉️ Предложенный текст отправлен на модерацию!", color=CONFIG.LITTLE_ANGEL_COLOR), ephemeral=True)
 
 
     @suggestion_group.command(name="спам", description="Предложите текст для спама")

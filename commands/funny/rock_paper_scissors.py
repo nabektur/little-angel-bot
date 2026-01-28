@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 class RPSWithBot(discord.ui.Select):
     def __init__(self):
@@ -45,19 +45,19 @@ class RPSWithBot(discord.ui.Select):
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
                     description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nЯ победил! 😊",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
             elif victory == False:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
                     description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nПобеда за вами... 🥺",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
             else:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
                     description=f"Ваш выбор: `{uvy}`\nМой выбор: `{bvy}`\nНичья! 🤝",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
         else:
             return await interaction.response.send_message(embed=discord.Embed(
@@ -123,7 +123,7 @@ class RPSWithUser(discord.ui.Select):
             await interaction.response.edit_message(embed=discord.Embed(
                 title="КНБ выбор",
                 description=f"{user1.mention} совершил ход\n{user2.mention} ваша очередь!",
-                color=config.LITTLE_ANGEL_COLOR
+                color=CONFIG.LITTLE_ANGEL_COLOR
             ), view=self.view)
         else:
             selected2 = self.values[0]
@@ -153,13 +153,13 @@ class RPSWithUser(discord.ui.Select):
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
                     description=f"Выбор {user1.mention}: `{selected1}`\nВыбор {user2.mention}: `{selected2}`\nНичья!",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
             else:
                 await interaction.response.edit_message(embed=discord.Embed(
                     title="КНБ",
                     description=f"Выбор {user1.mention}: `{selected1}`\nВыбор {user2.mention}: `{selected2}`\nПобедил: {victory.mention}",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
 
 
@@ -197,7 +197,7 @@ class RPS(commands.Cog):
                 embed=discord.Embed(
                     title="КНБ выбор",
                     description="Хорошо, вы предпочли играть с ботом. Выберите вариант в меню снизу",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ),
                 view=view
             )
@@ -227,7 +227,7 @@ class RPS(commands.Cog):
                 embed=discord.Embed(
                     title="КНБ выбор",
                     description=f"Начинаем игру!\nХод за {view.user1.mention}",
-                    color=config.LITTLE_ANGEL_COLOR
+                    color=CONFIG.LITTLE_ANGEL_COLOR
                 ),
                 view=view
             )

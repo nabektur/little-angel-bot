@@ -9,7 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 ESNIPE_CACHE = SimpleMemoryCache()
 
@@ -70,7 +70,7 @@ class esnipe_archive(discord.ui.View):
             before.content = "**Нет содержания**"
         if not after.content:
             after.content = "**Нет содержания**"
-        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
+        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=CONFIG.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
 
     @discord.ui.button(style=discord.ButtonStyle.blurple, emoji="➡")
     async def esoon(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -111,7 +111,7 @@ class esnipe_archive(discord.ui.View):
             before.content = "**Нет содержания**"
         if not after.content:
             after.content = "**Нет содержания**"
-        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
+        await interaction.edit_original_response(view=self, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=CONFIG.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{ipos + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
 
     @discord.ui.button(style=discord.ButtonStyle.red, emoji="🗑️")
     async def edelete(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -137,7 +137,7 @@ class esnipe_archive(discord.ui.View):
         except:
             await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
             return await interaction.followup.delete_message(interaction.message.id)
-        emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
+        emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
@@ -151,7 +151,7 @@ class esnipe_archive(discord.ui.View):
             await ESNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
             pass
-        emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
+        emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
@@ -207,13 +207,13 @@ class ESnipe(commands.Cog):
         if not after.content:
             after.content = "**Нет содержания**"
         view = esnipe_archive(self.bot, timeout=300, channel_id=channel.id, author_id=interaction.user.id)
-        await interaction.response.send_message(view=view, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=config.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{position + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
+        await interaction.response.send_message(view=view, embed=discord.Embed(description=f"**До изменения:**\n{before.content}\n**После:**\n{after.content}", color=CONFIG.LITTLE_ANGEL_COLOR).set_author(name=before.author.display_name, icon_url=before.author.display_avatar.url, url=f"https://discord.com/users/{before.author.id}").add_field(name="Позиция:", value=f"{position + 1} / {rpos}", inline=False).add_field(name="Ссылка на сообщение", value=f"[Перейти]({after.jump_url})", inline=False))
         view.message = await interaction.original_response()
 
     @esnipe.error
     async def esnipe_error(self, interaction: discord.Interaction, error):
         if isinstance(getattr(error, "original", error), KeyError):
-            await interaction.response.send_message(embed=discord.Embed(description="Нет изменённых сообщений в канале, либо вы ввели неверную позицию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(description="Нет изменённых сообщений в канале, либо вы ввели неверную позицию!", color=CONFIG.LITTLE_ANGEL_COLOR), ephemeral=True)
 
 
 async def setup(bot: LittleAngelBot):

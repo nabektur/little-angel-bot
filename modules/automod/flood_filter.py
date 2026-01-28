@@ -11,10 +11,10 @@ from discord.ext.commands import clean_content
 from rapidfuzz import fuzz
 
 from classes.bot import LittleAngelBot
+from modules.automod.handle_violation import delete_messages_safe
 from modules.lock_manager import LockManagerWithIdleTTL
 
 MESSAGES_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
-_PURGE_SEMAPHORE = asyncio.Semaphore(1)
 LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
 MAX_CACHE_MESSAGES = 60  # максимальное количество сообщений в кэше
@@ -244,53 +244,6 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
         return True, message_list, message_content
     
     return False, message_list, message_content
-
-async def delete_messages_safe(
-    channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel, discord.StageChannel],
-    message_ids: set[int],
-    reason: str = "Автоматическая очистка"
-):
-    """
-    Безопасное удаление группы сообщений:
-    - Пытается удалить с помощью bulk delete
-    - Если не получилось - удаляет по одному, управляя скоростью
-    """
-
-    if not message_ids:
-        return
-
-    # --- основной безопасный purge ---
-    async with _PURGE_SEMAPHORE:
-        try:
-            await channel.purge(
-                check=lambda m: m.id in message_ids,
-                bulk=True,
-                limit=200,
-                reason=reason
-            )
-            return
-        except discord.HTTPException:
-            # попадает в rate-limit, fallback
-            pass
-
-    # --- fallback: удаляет поштучно ---
-    for msg_id in message_ids:
-
-        try:
-            await channel.delete_messages(
-                [
-                    discord.Object(id=msg_id)
-                ]
-            )
-        except discord.NotFound:
-            # попадает в not found - пропускает
-            continue
-        except discord.HTTPException:
-            # ловит ошибку 429 - ждёт и пробует дальше
-            await asyncio.sleep(2)
-        finally:
-            # минимальная задержка между удалениями
-            await asyncio.sleep(0.25)
 
 async def flood_and_messages_check(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> typing.Tuple[bool, str]:
     is_flood, messages, message_content = await detect_flood(bot, member, message)

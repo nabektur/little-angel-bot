@@ -9,13 +9,14 @@ import discord
 from discord.ext import commands, tasks
 
 from classes.bot import LittleAngelBot
+from modules.automod.attachment_spam_filter import check_attachment_spam, ATTACHMENTS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.flood_filter import flood_and_messages_check, MESSAGES_FROM_NEW_MEMBERS_CACHE
 from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
 from modules.automod.link_filter import detect_links
 from modules.automod.mention_filter import check_mention_abuse, MENTIONS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.spam_filter import is_spam_block
 from modules.automod.thread_filter import flood_and_threads_check, THREADS_FROM_NEW_MEMBERS_CACHE
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -118,7 +119,7 @@ class AutoModeration(commands.Cog):
     async def on_thread_create(self, thread: discord.Thread):
 
         # базовые проверки
-        if thread.guild.id != config.GUILD_ID:
+        if thread.guild.id != CONFIG.GUILD_ID:
             return
         if not thread.owner:
             return
@@ -204,7 +205,7 @@ class AutoModeration(commands.Cog):
         # базовые проверки
         if not message.guild:
             return
-        if message.guild.id != config.GUILD_ID:
+        if message.guild.id != CONFIG.GUILD_ID:
             return
         if message.author == self.bot.user:
             return
@@ -220,14 +221,14 @@ class AutoModeration(commands.Cog):
                 except discord.NotFound:
                     return
         
-        # расстановка приоритетов
-        priority: int = 2
+        priority: int = 2  # расстановка приоритетов
+        difference_between_join_and_now = None  # время с момента присоединения
 
         if message.author.guild_permissions.manage_messages:
             priority = 0
         elif message.interaction_metadata:
             priority = 3
-        elif message.channel.id in config.ADS_CHANNELS_IDS:
+        elif message.channel.id in CONFIG.ADS_CHANNELS_IDS:
             priority = 0
         else:
             now = datetime.now(timezone.utc)
@@ -237,7 +238,7 @@ class AutoModeration(commands.Cog):
 
                 if difference_between_join_and_now > timedelta(weeks=2):
                     priority = 1
-                elif next((role for role in message.author.roles if role.id in config.AUTOMOD_WHITELISTED_ROLES_IDS), None):
+                elif next((role for role in message.author.roles if role.id in CONFIG.AUTOMOD_WHITELISTED_ROLES_IDS), None):
                     priority = 1
                 elif difference_between_join_and_now < timedelta(days=2):
                     priority = 3
@@ -260,6 +261,29 @@ class AutoModeration(commands.Cog):
                 
         # условия срабатывания
         if priority > 2:
+
+            if message.attachments and difference_between_join_and_now and difference_between_join_and_now < timedelta(minutes=7):
+                # детект спама вложениями
+                is_attachment_spam, attachment_content = await check_attachment_spam(message.author, message)
+
+                if is_attachment_spam:
+
+                    await handle_violation(
+                        self.bot,
+                        detected_member=message.author,
+                        detected_channel=message.channel,
+                        detected_guild=message.guild,
+                        detected_message=message,
+                        reason_title="Подозрение на спам вложениями",
+                        reason_text="нечеловеческое поведение / подозрение на спам вложениями",
+                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{attachment_content[:300].replace('`', '')}\n```",
+                        timeout_reason="Подозрение на спам вложениями от нового участника",
+                        force_mute=True
+                    )
+
+                    await ATTACHMENTS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
+
+                    return
 
             if message.content:
                 # детект злоупотребления упоминаниями
@@ -504,10 +528,10 @@ class AutoModeration(commands.Cog):
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
 
-        if guild.id != config.GUILD_ID:
+        if guild.id != CONFIG.GUILD_ID:
             return
 
-        if channel.id not in config.PROTECTED_CHANNELS_IDS:
+        if channel.id not in CONFIG.PROTECTED_CHANNELS_IDS:
             return
 
         # Ищет кто удалил канал
@@ -590,7 +614,7 @@ class AutoModeration(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
-        if guild.id != config.GUILD_ID:
+        if guild.id != CONFIG.GUILD_ID:
             return
         
         if isinstance(channel, discord.VoiceChannel):
@@ -631,7 +655,7 @@ class AutoModeration(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
         guild = after.guild
-        if guild.id != config.GUILD_ID:
+        if guild.id != CONFIG.GUILD_ID:
             return
         
         if isinstance(after, discord.VoiceChannel) and before.name != after.name:

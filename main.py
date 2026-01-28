@@ -6,7 +6,7 @@ import traceback
 import discord
 
 from classes.bot import bot  # Кастомный класс бота
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,16 +19,16 @@ async def on_ready():
     if len(bot.guilds) > 1:
         await asyncio.gather(*[
             guild.leave() for guild in bot.guilds 
-            if guild.id != config.GUILD_ID
+            if guild.id != CONFIG.GUILD_ID
         ])
 
-    log_channel = bot.get_channel(config.BOT_LOGS_CHANNEL_ID)
+    log_channel = bot.get_channel(CONFIG.BOT_LOGS_CHANNEL_ID)
     if log_channel:
-        await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=config.LITTLE_ANGEL_COLOR))
+        await log_channel.send(embed=discord.Embed(description=f"☑️ Бот запущен как **{bot.user}**", color=CONFIG.LITTLE_ANGEL_COLOR))
 
 def main():
     try:
-        bot.run(config.DISCORD_TOKEN.get_secret_value())
+        bot.run(CONFIG.DISCORD_TOKEN.get_secret_value())
     except Exception as e:
         LOGGER.error(f"Произошла ошибка {e}:\n{traceback.format_exc()}")
     finally:

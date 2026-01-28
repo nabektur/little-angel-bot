@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 from classes.database import db
 
 async def is_autopub(channel_id: int):
@@ -38,7 +38,7 @@ class AutoPublish(commands.Cog):
         if not (channel_permissions.read_messages and channel_permissions.send_messages and channel_permissions.manage_messages and channel_permissions.read_message_history):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Бот не может публиковать сообщения в указанном канале! Убедитесь, что в новостном канале бот может просматривать сам канал, отправлять сообщения, управлять ими и читать историю сообщений"), ephemeral=True)
         await db.execute("INSERT INTO autopublish (channel_id) VALUES(?);", channel.id)
-        await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description=f"Автопубликация включена!"))
+        await interaction.response.send_message(embed=discord.Embed(color=CONFIG.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description=f"Автопубликация включена!"))
         
     @autopublish_group.command(name="выключить", description="Выключает автопубликацию новостей на сервере")
     @app_commands.describe(channel="Выберите новостной канал автоматической публикации")
@@ -47,7 +47,7 @@ class AutoPublish(commands.Cog):
             return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Функция автопубликации недоступна вне каналов с объявлениями!"), ephemeral=True)
         if await is_autopub(channel.id):
             await db.execute("DELETE FROM autopublish WHERE channel_id = ?;", channel.id)
-            return await interaction.response.send_message(embed=discord.Embed(color=config.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description="Автопубликация была выключена!"))
+            return await interaction.response.send_message(embed=discord.Embed(color=CONFIG.LITTLE_ANGEL_COLOR, title="☑️ Успешно!", description="Автопубликация была выключена!"))
         else:
             await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="В этом канале не была включена автопубликация!"), ephemeral=True)
 

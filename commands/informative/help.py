@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 class Help(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -39,7 +39,7 @@ class Help(commands.Cog):
             "</кнб:1380965824185110679> — Сыграем в камень-ножницы-бумага?\n"
             "</дон:1380831146815914064> — Бот связывается с Рамзаном Кадыровым, чтобы спросить о вас и понять награждать ли вас, или нет."
         )
-        embed = discord.Embed(title='Справка', description=description, color=config.LITTLE_ANGEL_COLOR)
+        embed = discord.Embed(title='Справка', description=description, color=CONFIG.LITTLE_ANGEL_COLOR)
         embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         await interaction.response.send_message(embed=embed)
 

@@ -8,7 +8,7 @@ import discord
 
 from classes.bot import LittleAngelBot
 from classes.database import db
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ async def start_spam_from_database(bot: LittleAngelBot, key: typing.Tuple):
         duration = datetime.fromtimestamp(int(key[5]), timezone.utc)
         if datetime.now(timezone.utc) >= duration:
             await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
-            await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
+            await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=CONFIG.LITTLE_ANGEL_COLOR))
             return
         asyncio.create_task(run_spam(key[0], key[1], channel, webhook, key[4], duration))
     else:
@@ -68,7 +68,7 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
         while await check_sp(channel.id):
             if duration and datetime.now(timezone.utc) >= duration:
                 await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
-                await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=config.LITTLE_ANGEL_COLOR))
+                await channel.send(embed=discord.Embed(description="☑️ Спам остановлен по причине длительности!", color=CONFIG.LITTLE_ANGEL_COLOR))
                 break
 
             text = secrets.choice(stexts)

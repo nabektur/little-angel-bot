@@ -7,7 +7,7 @@ import aiosqlite
 # import psycopg2
 # import sqlalchemy.exc
 
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 # Тип базы данных
 USE_SQLITE = True  # False для использования PostgreSQL
@@ -28,7 +28,7 @@ class Database:
             await self.conn.execute("PRAGMA foreign_keys = ON")
         # else:
         #     self.pool = await asyncpg.create_pool(
-        #         config.DATABASE_URL.get_secret_value(),
+        #         CONFIG.DATABASE_URL.get_secret_value(),
         #         min_size=1,
         #         max_size=10,
         #         max_queries=50000,
@@ -61,9 +61,9 @@ class Database:
             await self.execute("CREATE TABLE IF NOT EXISTS autopublish (channel_id INTEGER PRIMARY KEY);")
             await self.execute("CREATE TABLE IF NOT EXISTS ipou_reconstructions (number INTEGER);")
             
-            for text in config.DEFAULT_ORDINARY_TEXTS:
+            for text in CONFIG.DEFAULT_ORDINARY_TEXTS:
                 await self.execute("INSERT OR IGNORE INTO spamtexts_ordinary (text) VALUES (?);", text)
-            for text in config.DEFAULT_NSFW_TEXTS:
+            for text in CONFIG.DEFAULT_NSFW_TEXTS:
                 await self.execute("INSERT OR IGNORE INTO spamtexts_nsfw (text) VALUES (?);", text)
         # else:
         #     # PostgreSQL версии запросов
@@ -74,11 +74,11 @@ class Database:
         #     await self.execute("CREATE TABLE IF NOT EXISTS autopublish (channel_id bigint PRIMARY KEY);")
         #     await self.executemany(
         #         "INSERT INTO spamtexts_ordinary (text) VALUES ($1) ON CONFLICT DO NOTHING;",
-        #         [(text,) for text in config.DEFAULT_ORDINARY_TEXTS]
+        #         [(text,) for text in CONFIG.DEFAULT_ORDINARY_TEXTS]
         #     )
         #     await self.executemany(
         #         "INSERT INTO spamtexts_nsfw (text) VALUES ($1) ON CONFLICT DO NOTHING;",
-        #         [(text,) for text in config.DEFAULT_NSFW_TEXTS]
+        #         [(text,) for text in CONFIG.DEFAULT_NSFW_TEXTS]
         #     )
         
     async def execute(self, query: str, *args) -> str:

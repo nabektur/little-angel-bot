@@ -9,7 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 SNIPE_CACHE = SimpleMemoryCache()
 
@@ -26,7 +26,7 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
     await ci.response.defer()
     s: discord.Message = snipess['msg']
     prava = snipess['perms']
-    sniped_embed = discord.Embed(timestamp=s.created_at, color=config.LITTLE_ANGEL_COLOR, description=s.content)
+    sniped_embed = discord.Embed(timestamp=s.created_at, color=CONFIG.LITTLE_ANGEL_COLOR, description=s.content)
     sniped_embed.set_author(name=s.author.display_name, icon_url=s.author.display_avatar.url, url=f"https://discord.com/users/{s.author.id}")
     if s.type == discord.MessageType.reply:
         try:
@@ -164,7 +164,7 @@ class snipe_archive(discord.ui.View):
         except:
             await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
             return await interaction.followup.delete_message(interaction.message.id)
-        emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
+        emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
@@ -178,7 +178,7 @@ class snipe_archive(discord.ui.View):
             await SNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
             pass
-        emb = discord.Embed(title="☑️ Успешно!", color=config.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
+        emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Весь архив этого канала был стёрт!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
         await interaction.response.edit_message(embed=emb, attachments=[], view=None)
@@ -283,7 +283,7 @@ class Snipe(commands.Cog):
     @snipe.error
     async def snipe_error(self, interaction: discord.Interaction, error):
         if isinstance(getattr(error, "original", error), KeyError):
-            await interaction.response.send_message(embed=discord.Embed(description="Нет удалённых сообщений в канале, либо вы ввели неверную позицию!", color=config.LITTLE_ANGEL_COLOR), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(description="Нет удалённых сообщений в канале, либо вы ввели неверную позицию!", color=CONFIG.LITTLE_ANGEL_COLOR), ephemeral=True)
         
 
 async def setup(bot: LittleAngelBot):

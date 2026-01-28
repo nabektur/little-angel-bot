@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from classes.database import db
 from classes.scheduler import scheduler
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,10 +24,10 @@ class LittleAngelBot(commands.AutoShardedBot):
             voice_states=True,
         )
 
-        next_status = next(config.ACTIVITY_NAMES)
+        next_status = next(CONFIG.ACTIVITY_NAMES)
 
         super().__init__(
-            command_prefix=commands.when_mentioned_or(config.BOT_PREFIX),
+            command_prefix=commands.when_mentioned_or(CONFIG.BOT_PREFIX),
             case_insensitive=True,
             help_command=None,
             intents=discord_intents,

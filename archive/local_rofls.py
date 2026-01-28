@@ -8,7 +8,7 @@ import markovify
 
 from classes.bot           import LittleAngelBot
 from classes.database      import db
-from modules.configuration import config
+from modules.configuration import CONFIG
 
 from discord.ext import tasks
 from discord.errors import DiscordServerError, HTTPException, Forbidden, NotFound
@@ -93,15 +93,15 @@ async def cycle_of_rofles(bot: LittleAngelBot):
         functions = [fream_sentence, calculate_ipou_reconstruction]
         function_to_call = secrets.choice(functions)
         rofl_result = await function_to_call()
-        rofls_channel = bot.get_channel(config.ROFLS_CHANNEL_ID)
+        rofls_channel = bot.get_channel(CONFIG.ROFLS_CHANNEL_ID)
         if not rofls_channel:
-            rofls_channel = bot.get_channel(config.ROFLS_CHANNEL_ID) or await bot.fetch_channel(config.ROFLS_CHANNEL_ID)
+            rofls_channel = bot.get_channel(CONFIG.ROFLS_CHANNEL_ID) or await bot.fetch_channel(CONFIG.ROFLS_CHANNEL_ID)
         await rofls_channel.send(rofl_result)
     except (DiscordServerError, HTTPException):
         _log.warning(f"Проблемы с сервером Discord, пропуск рофла...\n{traceback.format_exc()}")
         pass
     except (Forbidden, NotFound):
         cycle_of_rofles.stop()
-        _log.error(f"Цикл рофлов остановлен из-за ошибки прав доступа к каналу {config.ROFLS_CHANNEL_ID}\n{traceback.format_exc()}")
+        _log.error(f"Цикл рофлов остановлен из-за ошибки прав доступа к каналу {CONFIG.ROFLS_CHANNEL_ID}\n{traceback.format_exc()}")
     except Exception as e:
         _log.error(f"Ошибка в цикле рофлов: {e}\n{traceback.format_exc()}")

@@ -79,7 +79,7 @@ class Settings(BaseSettings):
         env_file=ENV_PATH, enable_decoding="utf-8"
     )
 
-config = Settings()
+CONFIG = Settings()
 
 # Логирование
 def setup_logging():
@@ -103,7 +103,7 @@ def setup_logging():
         logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s')
     )
     
-    root_logger.setLevel(config.LOGGING_LEVEL)
+    root_logger.setLevel(CONFIG.LOGGING_LEVEL)
     root_logger.addHandler(stdout_handler)
     root_logger.addHandler(backup_handler)
     

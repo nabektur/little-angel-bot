@@ -8,17 +8,19 @@ from datetime import timedelta
 import discord
 
 from classes.bot import LittleAngelBot
-from modules.configuration import config
+from modules.configuration import CONFIG
 from modules.lock_manager import LockManagerWithIdleTTL
 
-hit_cache             = SimpleMemoryCache()
-sent_messages_cache   = SimpleMemoryCache()
-violation_cache       = SimpleMemoryCache()  # guild_id -> List[timestamps]
-invite_lockdown_cache = SimpleMemoryCache()
+HIT_CACHE             = SimpleMemoryCache()
+SENT_MESSAGES_CACHE   = SimpleMemoryCache()
+VIOLATION_CACHE       = SimpleMemoryCache()  # guild_id -> List[timestamps]
+INVITE_LOCKDOWN_CACHE = SimpleMemoryCache()
 
-lock_manager_for_hits     = LockManagerWithIdleTTL(idle_ttl=3600)
-lock_manager_for_messages = LockManagerWithIdleTTL(idle_ttl=2400)
-lock_manager_for_guild    = LockManagerWithIdleTTL(idle_ttl=7200)
+_PURGE_SEMAPHORE = asyncio.Semaphore(1)
+
+LOCK_MANAGER_FOR_HITS     = LockManagerWithIdleTTL(idle_ttl=3600)
+LOCK_MANAGER_FOR_MESSAGES = LockManagerWithIdleTTL(idle_ttl=2400)
+LOCK_MANAGER_FOR_GUILD    = LockManagerWithIdleTTL(idle_ttl=7200)
 
 INVITE_LOCKDOWN_DURATION = 2 * 60 * 60      # 2 часа
 INVITE_LOCKDOWN_COOLDOWN = 45 * 60          # 45 минут
@@ -28,8 +30,8 @@ VIOLATION_LIMIT          = 10               # 10 нарушений в VILOATION
 async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
     now = time.time()
 
-    async with lock_manager_for_guild.lock(guild.id):
-        data = await invite_lockdown_cache.get(guild.id) or {}
+    async with LOCK_MANAGER_FOR_GUILD.lock(guild.id):
+        data = await INVITE_LOCKDOWN_CACHE.get(guild.id) or {}
 
         lockdown_until = data.get("lockdown_until", 0)
         cooldown_until = data.get("cooldown_until", 0)
@@ -57,7 +59,7 @@ async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
 
         cooldown_until = now + INVITE_LOCKDOWN_COOLDOWN
 
-        await invite_lockdown_cache.set(
+        await INVITE_LOCKDOWN_CACHE.set(
             guild.id,
             {
                 "lockdown_until": lockdown_until,
@@ -72,8 +74,8 @@ def generate_message_hash(message_content: str) -> str:
 
 async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
     """Проверяет, отправлялось ли недавно такое же сообщение в отношении данного пользователя"""
-    async with lock_manager_for_messages.lock(user_id):
-        last_sent_cache: typing.List = await sent_messages_cache.get(user_id)
+    async with LOCK_MANAGER_FOR_MESSAGES.lock(user_id):
+        last_sent_cache: typing.List = await SENT_MESSAGES_CACHE.get(user_id)
         
         # Инициализация списка
         if last_sent_cache is None:
@@ -87,7 +89,7 @@ async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
         if len(last_sent_cache) > 10:  # Хранит только последние 10 типов нарушений
             last_sent_cache = last_sent_cache[-10:]
         
-        await sent_messages_cache.set(user_id, last_sent_cache, ttl=60)  # автоочистка через минуту
+        await SENT_MESSAGES_CACHE.set(user_id, last_sent_cache, ttl=60)  # автоочистка через минуту
         return False
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
@@ -108,9 +110,9 @@ async def safe_send_to_log(bot: LittleAngelBot, *args, user_id: int = None, mess
     if user_id and message_content and await check_message_sent_recently(user_id, generate_message_hash(message_content)):
         return None
     try:
-        channel: discord.TextChannel = bot.get_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+        channel: discord.TextChannel = bot.get_channel(CONFIG.AUTOMOD_LOGS_CHANNEL_ID)
         if not channel:
-            channel: discord.TextChannel = await bot.fetch_channel(config.AUTOMOD_LOGS_CHANNEL_ID)
+            channel: discord.TextChannel = await bot.fetch_channel(CONFIG.AUTOMOD_LOGS_CHANNEL_ID)
         return await channel.send(*args, **kwargs)
     except Exception:
         return None
@@ -120,6 +122,53 @@ async def safe_delete(msg: discord.Message):
         await msg.delete()
     except Exception:
         pass
+
+async def delete_messages_safe(
+    channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel, discord.StageChannel],
+    message_ids: set[int],
+    reason: str = "Автоматическая очистка"
+):
+    """
+    Безопасное удаление группы сообщений:
+    - Пытается удалить с помощью bulk delete
+    - Если не получилось - удаляет по одному, управляя скоростью
+    """
+
+    if not message_ids:
+        return
+
+    # --- основной безопасный purge ---
+    async with _PURGE_SEMAPHORE:
+        try:
+            await channel.purge(
+                check=lambda m: m.id in message_ids,
+                bulk=True,
+                limit=200,
+                reason=reason
+            )
+            return
+        except discord.HTTPException:
+            # попадает в rate-limit, fallback
+            pass
+
+    # --- fallback: удаляет поштучно ---
+    for msg_id in message_ids:
+
+        try:
+            await channel.delete_messages(
+                [
+                    discord.Object(id=msg_id)
+                ]
+            )
+        except discord.NotFound:
+            # попадает в not found - пропускает
+            continue
+        except discord.HTTPException:
+            # ловит ошибку 429 - ждёт и пробует дальше
+            await asyncio.sleep(2)
+        finally:
+            # минимальная задержка между удалениями
+            await asyncio.sleep(0.25)
 
 async def safe_timeout(member: discord.Member, duration: timedelta, reason: str = None):
     try:
@@ -143,14 +192,14 @@ async def handle_violation(
 
     now = time.time()
 
-    async with lock_manager_for_guild.lock(detected_guild.id):
-        violations = await violation_cache.get(detected_guild.id) or []
+    async with LOCK_MANAGER_FOR_GUILD.lock(detected_guild.id):
+        violations = await VIOLATION_CACHE.get(detected_guild.id) or []
 
         # скользящее окно
         violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
         violations.append(now)
 
-        await violation_cache.set(
+        await VIOLATION_CACHE.set(
             detected_guild.id,
             violations,
             ttl=VIOLATION_WINDOW
@@ -165,10 +214,10 @@ async def handle_violation(
         return
 
     # hit-cache
-    async with lock_manager_for_hits.lock(detected_member.id):
-        hits = await hit_cache.get(detected_member.id) or 0
+    async with LOCK_MANAGER_FOR_HITS.lock(detected_member.id):
+        hits = await HIT_CACHE.get(detected_member.id) or 0
         hits += 1
-        await hit_cache.set(detected_member.id, hits, ttl=3600)
+        await HIT_CACHE.set(detected_member.id, hits, ttl=3600)
 
     is_soft = hits <= 2 and not force_mute and not force_ban
 
@@ -254,9 +303,9 @@ async def handle_violation(
     # выдаёт бан
     if force_ban:
         await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
-        await hit_cache.delete(detected_member.id)
+        await HIT_CACHE.delete(detected_member.id)
 
     # выдаёт мут
     elif not is_soft:
         await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
-        await hit_cache.delete(detected_member.id)
+        await HIT_CACHE.delete(detected_member.id)
