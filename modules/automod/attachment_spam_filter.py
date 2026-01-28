@@ -66,7 +66,7 @@ async def detect_attachment_spam(member: discord.Member, message: discord.Messag
 async def check_attachment_spam(member: discord.Member, message: discord.Message) -> typing.Tuple[bool, str]:
     is_attachment_spam, messages = await detect_attachment_spam(member, message)
 
-    attachment_content = None
+    attachment_content = message.content
 
     if is_attachment_spam:
         try:
@@ -92,7 +92,9 @@ async def check_attachment_spam(member: discord.Member, message: discord.Message
             logging.error(traceback.format_exc())
 
         if message.attachments:
-            attachment_content = "[Вложения:]\n\n"
+            if attachment_content:
+                attachment_content += "\n\n"
+            attachment_content += "[Вложения:]\n\n"
             for attachment in message.attachments:
                 attachment_content += (
                     f"Имя файла: {attachment.filename}\n"
