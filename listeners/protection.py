@@ -151,7 +151,7 @@ class AutoModeration(commands.Cog):
         if priority > 1:
 
             # модерация создания веток
-            need_to_prune, matched, thread_name = await flood_and_threads_check(thread.owner, thread)
+            need_to_prune, matched, thread_name = await flood_and_threads_check(self.bot, thread.owner, thread)
 
             if need_to_prune:
 
@@ -388,7 +388,7 @@ class AutoModeration(commands.Cog):
 
                 # детект рекламы
 
-                matched = await detect_links(message.content)
+                matched = await detect_links(self.bot, message)
 
                 if matched:
 
@@ -480,7 +480,7 @@ class AutoModeration(commands.Cog):
 
                         content = file_bytes[:1_000_000].decode(errors='ignore')
 
-                        matched = await detect_links(content)
+                        matched = await detect_links(self.bot, content)
 
                         if matched:
 
@@ -524,7 +524,7 @@ class AutoModeration(commands.Cog):
                     f"\nОпции: {poll_options}"
                 )
 
-                matched = await detect_links(poll_content)
+                matched = await detect_links(self.bot, poll_content)
 
                 if matched:
 
@@ -644,7 +644,7 @@ class AutoModeration(commands.Cog):
         
         if isinstance(channel, discord.VoiceChannel):
             
-            matched = await detect_links(channel.name)
+            matched = await detect_links(self.bot, channel.name)
 
             if matched:
 
@@ -685,7 +685,7 @@ class AutoModeration(commands.Cog):
         
         if isinstance(after, discord.VoiceChannel) and before.name != after.name:
             
-            matched = await detect_links(after.name)
+            matched = await detect_links(self.bot, after.name)
 
             if matched:
 

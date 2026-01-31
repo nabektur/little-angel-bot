@@ -6,6 +6,7 @@ import traceback
 
 from aiocache                    import SimpleMemoryCache
 
+from classes.bot                 import LittleAngelBot
 from modules.automod.link_filter import detect_links
 from modules.lock_manager        import LockManagerWithIdleTTL
 
@@ -33,7 +34,7 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
 
     return threads
 
-async def analyze_thread(member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, list, typing.Optional[str]]:
+async def analyze_thread(bot: LittleAngelBot, member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, list, typing.Optional[str]]:
     """
     Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
     """
@@ -46,7 +47,7 @@ async def analyze_thread(member: discord.Member, thread: discord.Thread) -> typi
     if len(threads_list) >= MAX_THREADS:
         return True, threads_list, None
     
-    matched = await detect_links(thread.name)
+    matched = await detect_links(bot, thread.name)
 
     if matched:
         return True, threads_list, matched
@@ -73,8 +74,8 @@ async def delete_thread_safe(
             pass
 
 
-async def flood_and_threads_check(member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, typing.Optional[str], str]:
-    is_flood, threads, matched = await analyze_thread(member, thread)
+async def flood_and_threads_check(bot: LittleAngelBot, member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, typing.Optional[str], str]:
+    is_flood, threads, matched = await analyze_thread(bot, member, thread)
 
     if is_flood:
         

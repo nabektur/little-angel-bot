@@ -43,7 +43,7 @@ async def extract_message_content(bot: LittleAngelBot, message: discord.Message)
     if message.attachments:
         message_content += "\n\n[Вложения:]"
         for attachment in message.attachments:
-            message_content += f"\n{attachment.filename}"
+            message_content += f"\n{attachment.filename.replace('.', ' ')}\n"
 
     if message.embeds:
         message_content += "\n\n[Ембеды:]"

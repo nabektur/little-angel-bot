@@ -2,6 +2,7 @@ import re
 import logging
 import unicodedata
 import urllib.parse
+import typing
 
 from aiocache import SimpleMemoryCache
 import aiohttp
@@ -696,18 +697,18 @@ def extract_possible_domains(text: str):
 
     return candidates
 
+
 @AsyncTTL(time_to_live=600, maxsize=20000)
-async def detect_links(raw_text: str):
+async def detect_links(bot: LittleAngelBot, message: typing.Union[discord.Message, str]):
     """
     Детектит подозрительные ссылки в тексте
     Возвращает описание найденной ссылки или None
     """
 
-@AsyncTTL(time_to_live=600, maxsize=20000)
-async def detect_links(raw_text: str):
-    """
-    Детектит подозрительные ссылки в тексте
-    """
+    if isinstance(message, discord.Message):
+        raw_text = await extract_message_content(bot, message)
+    else:
+        raw_text = message
 
     # Проверка URL-переходников на Discord invite
     redirect_result = await check_urls_for_discord_invites(raw_text)
