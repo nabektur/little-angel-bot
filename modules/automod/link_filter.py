@@ -187,6 +187,20 @@ STRICT_INVITE_CODE_PATTERN = re.compile(
     r'(?=.*[a-zA-Z])(?=.*[0-9])([a-zA-Z0-9\-]{5,20})'
 )
 
+# Паттерн для вырезания URL из текста перед парсингом
+URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
+    r'https?://[^\s\.,;!?\(\)\[\]\{\}<>«»"\']*'
+    r'|[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:/[^\s]*)?'
+)
+
+CYRILLIC_LETTERS_RE = re.compile(r'[а-яА-ЯёЁ]')
+TOKENS_RE = re.compile(r'[\s\.,;!?\(\)\[\]\{\}<>«»"\']+')
+ONLY_LATIN_RE = re.compile(r'^[a-zA-Z0-9\-]+$')
+DATE_RE = re.compile(r'^\d{2,4}-\d{2}')
+REPEAT_RE = re.compile(r'(.)\1{4,}')
+LINE_WITHOUT_LETTERS_RE = re.compile(r'^[0-9a-fA-F]+$')
+ARE_THERE_NUMBERS_ANS_LETTERS_RE = re.compile(r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9\-]{5,20}$')
+
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
 
@@ -198,11 +212,11 @@ def should_skip_potential_code(code: str) -> bool:
         return True
     
     # КРИТИЧНО: Кириллица - сразу отсекаем
-    if re.search(r'[а-яА-ЯёЁ]', code):
+    if CYRILLIC_LETTERS_RE.search(code):
         return True
     
     # Только латиница допустима
-    if not re.match(r'^[a-zA-Z0-9\-]+$', code):
+    if not ONLY_LATIN_RE.match(code):
         return True
     
     # Только цифры (ID пользователей/каналов)
@@ -233,17 +247,17 @@ def should_skip_potential_code(code: str) -> bool:
         return True
     
     # Паттерны дат (2024-01, 01-28-2024)
-    if re.match(r'^\d{2,4}-\d{2}', code):
+    if DATE_RE.match(code):
         return True
     
     # Длинные hex строки без букв или с малым количеством букв
-    if len(code) > 16 and re.match(r'^[0-9a-fA-F]+$', code):
+    if len(code) > 16 and LINE_WITHOUT_LETTERS_RE.match(code):
         hex_letters = sum(1 for c in code.lower() if c in 'abcdef')
         if hex_letters < 3:  # Токены обычно имеют мало букв
             return True
     
     # Повторяющиеся символы (aaaa, 1111, test-test-test)
-    if re.search(r'(.)\1{4,}', code):
+    if REPEAT_RE.search(code):
         return True
     
     # URL части
@@ -256,7 +270,7 @@ def should_skip_potential_code(code: str) -> bool:
         'youtube', 'twitch', 'github', 'google', 'spotify', 'steam',
         'minecraft', 'roblox', 'paypal', 'patreon',
         'twitter', 'reddit', 'instagram', 'tiktok', 'facebook',
-        'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat',
+        'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat', 'giphy', 'tenor'
 
         # Абстрактные и нейтральные слова
         'example', 'sample', 'random', 'general', 'basic', 'simple',
@@ -419,19 +433,20 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     """
 
     text = await extract_message_content(bot, message)
+    clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', text)
     
     # Разбиваем текст на токены (по пробелам и знакам препинания)
-    tokens = re.split(r'[\s\.,;!?\(\)\[\]\{\}<>«»"\']+', text)
+    tokens = TOKENS_RE.split(clean_text)
     
     potential_codes = []
     
     for token in tokens:
         # Проверяем формат: есть буквы + цифры, длина 5-20
-        if re.match(r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9\-]{5,20}$', token):
+        if ARE_THERE_NUMBERS_ANS_LETTERS_RE.match(token):
             potential_codes.append(token)
     
     # Дополнительно ловим regex'ом (на случай склеенных кодов)
-    regex_matches = STRICT_INVITE_CODE_PATTERN.findall(text)
+    regex_matches = STRICT_INVITE_CODE_PATTERN.findall(clean_text)
     for match in regex_matches:
         if match not in potential_codes:
             potential_codes.append(match)
