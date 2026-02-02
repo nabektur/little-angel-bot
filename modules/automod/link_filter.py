@@ -202,6 +202,213 @@ REPEAT_RE = re.compile(r'(.)\1{4,}')
 LINE_WITHOUT_LETTERS_RE = re.compile(r'^[0-9a-fA-F]+$')
 ARE_THERE_NUMBERS_ANS_LETTERS_RE = re.compile(r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9\-]{5,20}$')
 
+# Белый список частых английских слов и терминов
+COMMON_ENGLISH_WORDS = {
+    # === ПЛАТФОРМЫ И БРЕНДЫ ===
+    'youtube', 'twitch', 'github', 'google', 'spotify', 'steam',
+    'minecraft', 'roblox', 'paypal', 'patreon',
+    'twitter', 'reddit', 'instagram', 'tiktok', 'facebook',
+    'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat', 
+    'giphy', 'tenor', 'discord', 'skype', 'zoom', 'slack',
+    'pinterest', 'linkedin', 'vimeo', 'soundcloud', 'bandcamp',
+    'dropbox', 'onedrive', 'icloud', 'gdrive', 'mega',
+    'epic', 'origin', 'battlenet', 'gog', 'itch',
+    'playstation', 'xbox', 'nintendo', 'switch',
+    
+    # === МЕСТОИМЕНИЯ ===
+    'i', 'me', 'my', 'mine', 'myself',
+    'you', 'your', 'yours', 'yourself',
+    'he', 'him', 'his', 'himself',
+    'she', 'her', 'hers', 'herself',
+    'it', 'its', 'itself',
+    'we', 'us', 'our', 'ours', 'ourselves',
+    'they', 'them', 'their', 'theirs', 'themselves',
+    'this', 'that', 'these', 'those',
+    'who', 'whom', 'whose', 'which', 'what',
+    'anyone', 'someone', 'everyone', 'nobody', 'somebody',
+    
+    # === ГЛАГОЛЫ (ОБЩИЕ ДЕЙСТВИЯ) ===
+    'read', 'write', 'watch', 'listen', 'learn', 'study',
+    'create', 'build', 'make', 'use', 'open', 'close',
+    'start', 'stop', 'pause', 'continue', 'finish', 'end',
+    'go', 'come', 'get', 'give', 'take', 'bring',
+    'send', 'receive', 'buy', 'sell', 'pay', 'download',
+    'upload', 'install', 'update', 'delete', 'remove',
+    'save', 'load', 'copy', 'paste', 'cut', 'edit',
+    'search', 'find', 'look', 'see', 'show', 'hide',
+    'click', 'tap', 'press', 'hold', 'drag', 'drop',
+    'run', 'walk', 'jump', 'move', 'turn', 'rotate',
+    'play', 'stream', 'record', 'broadcast',
+    'like', 'love', 'hate', 'want', 'need', 'wish',
+    'think', 'know', 'understand', 'believe', 'feel',
+    'say', 'tell', 'talk', 'speak', 'ask', 'answer',
+    'help', 'support', 'fix', 'solve', 'test', 'check',
+    'try', 'attempt', 'fail', 'win', 'lose',
+    
+    # === СУЩЕСТВИТЕЛЬНЫЕ (КОММУНИКАЦИЯ) ===
+    'message', 'text', 'reply', 'answer', 'question',
+    'comment', 'feedback', 'response', 'discussion',
+    'chat', 'talk', 'conversation', 'dialogue',
+    'post', 'thread', 'topic', 'subject',
+    'notification', 'alert', 'reminder',
+    
+    # === ВЕЖЛИВЫЕ СЛОВА И ПРИВЕТСТВИЯ ===
+    'hello', 'hi', 'hey', 'greetings', 'salutations',
+    'thanks', 'thankyou', 'thank', 'thx', 'ty',
+    'please', 'sorry', 'excuse', 'pardon',
+    'welcome', 'goodbye', 'bye', 'farewell', 'cya', 'seeya',
+    'morning', 'afternoon', 'evening', 'night',
+    'kindly', 'regards', 'sincerely',
+    
+    # === АБСТРАКТНЫЕ И НЕЙТРАЛЬНЫЕ ===
+    'example', 'sample', 'random', 'general', 'basic', 'simple',
+    'public', 'private', 'official', 'unofficial', 'classic', 'standard',
+    'default', 'normal', 'average', 'common', 'usual', 'typical',
+    'special', 'unique', 'custom', 'personal', 'individual',
+    'main', 'primary', 'secondary', 'extra', 'additional',
+    'original', 'copy', 'version', 'update', 'upgrade', 'russian', 'english',
+    'language', 'word', 'phrase', 'sentence', 'ukrainian', 'spanish', 'german', 
+    'french', 'italian', 'portuguese', 'russia', 'ukraine', 'spain', 'germany',
+    
+    # === ИГРЫ И МЕДИА ===
+    'player', 'gameplay', 'gaming', 'singleplayer', 'multiplayer',
+    'game', 'level', 'stage', 'round', 'match', 'tournament',
+    'video', 'music', 'audio', 'sound', 'movie', 'film',
+    'song', 'track', 'album', 'playlist', 'podcast',
+    'stream', 'vod', 'clip', 'highlight', 'montage',
+    'channel', 'content', 'creator', 'streamer', 'viewer',
+    
+    # === ТЕХНИЧЕСКИЕ ТЕРМИНЫ ===
+    'system', 'process', 'status', 'error', 'warning',
+    'success', 'failed', 'failure', 'loading', 'progress',
+    'settings', 'options', 'preferences', 'config', 'configuration',
+    'data', 'file', 'folder', 'directory', 'document',
+    'app', 'application', 'program', 'software', 'hardware',
+    'browser', 'extension', 'plugin', 'addon', 'mod',
+    'network', 'internet', 'online', 'offline', 'connection',
+    'server', 'client', 'host', 'local', 'remote',
+    'database', 'api', 'code', 'script', 'function',
+    'bug', 'issue', 'problem', 'solution', 'fix',
+    
+    # === АККАУНТ И ПРОФИЛЬ ===
+    'profile', 'account', 'username', 'nickname', 'name',
+    'avatar', 'icon', 'picture', 'photo', 'image',
+    'email', 'password', 'login', 'logout', 'signin', 'signout',
+    'security', 'privacy', 'verification', 'authentication',
+    'subscription', 'premium', 'vip', 'pro', 'plus',
+    
+    # === ВРЕМЯ ===
+    'today', 'tomorrow', 'yesterday', 'now', 'later', 'soon',
+    'daily', 'weekly', 'monthly', 'yearly', 'annual',
+    'day', 'week', 'month', 'year', 'hour', 'minute', 'second',
+    'time', 'date', 'schedule', 'calendar', 'deadline',
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december',
+    
+    # === ЧИСЛА И КОЛИЧЕСТВО ===
+    'number', 'count', 'amount', 'total', 'sum',
+    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+    'first', 'second', 'third', 'last', 'next', 'previous',
+    'many', 'few', 'some', 'all', 'none', 'any',
+    'more', 'less', 'most', 'least', 'enough',
+    
+    # === ПРИЛАГАТЕЛЬНЫЕ (ПОЗИТИВНЫЕ) ===
+    'cool', 'nice', 'great', 'awesome', 'amazing', 'fantastic',
+    'good', 'better', 'best', 'excellent', 'perfect', 'wonderful',
+    'fun', 'funny', 'entertaining', 'interesting', 'exciting',
+    'beautiful', 'pretty', 'cute', 'lovely', 'gorgeous',
+    
+    # === ПРИЛАГАТЕЛЬНЫЕ (НЕГАТИВНЫЕ) ===
+    'bad', 'worse', 'worst', 'terrible', 'awful', 'horrible',
+    'boring', 'dull', 'annoying', 'frustrating',
+    'ugly', 'weird', 'strange', 'odd',
+    
+    # === ПРИЛАГАТЕЛЬНЫЕ (РАЗМЕР И СКОРОСТЬ) ===
+    'small', 'big', 'large', 'huge', 'tiny', 'medium',
+    'long', 'short', 'tall', 'high', 'low', 'wide', 'narrow',
+    'fast', 'slow', 'quick', 'rapid', 'instant',
+    'heavy', 'light', 'strong', 'weak',
+    
+    # === ПРИЛАГАТЕЛЬНЫЕ (СЛОЖНОСТЬ) ===
+    'easy', 'hard', 'difficult', 'simple', 'complex', 'complicated',
+    'clear', 'unclear', 'obvious', 'confusing',
+    
+    # === ЦВЕТА ===
+    'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink',
+    'black', 'white', 'gray', 'grey', 'brown',
+    'color', 'colour', 'dark', 'light', 'bright',
+    
+    # === НАПРАВЛЕНИЯ И ПОЛОЖЕНИЯ ===
+    'up', 'down', 'left', 'right', 'top', 'bottom',
+    'front', 'back', 'side', 'middle', 'center', 'edge',
+    'in', 'out', 'inside', 'outside', 'above', 'below',
+    'over', 'under', 'near', 'far', 'close', 'away',
+    'here', 'there', 'where', 'everywhere', 'nowhere', 'somewhere',
+    
+    # === ЛОГИЧЕСКИЕ И ВОПРОСИТЕЛЬНЫЕ ===
+    'yes', 'no', 'maybe', 'perhaps', 'probably', 'possibly',
+    'true', 'false', 'correct', 'incorrect', 'right', 'wrong',
+    'why', 'how', 'when', 'where', 'what', 'who',
+    'if', 'then', 'else', 'or', 'and', 'but', 'because',
+    
+    # === ЭМОЦИИ И СОСТОЯНИЯ ===
+    'happy', 'sad', 'angry', 'mad', 'upset', 'worried',
+    'excited', 'bored', 'tired', 'sleepy', 'awake',
+    'hungry', 'thirsty', 'sick', 'healthy', 'hurt', 'pain',
+    
+    # === ОБЩИЕ СУЩЕСТВИТЕЛЬНЫЕ ===
+    'thing', 'stuff', 'item', 'object', 'element',
+    'part', 'piece', 'section', 'area', 'zone', 'region',
+    'place', 'location', 'spot', 'position', 'point',
+    'way', 'method', 'approach', 'style', 'type', 'kind',
+    'list', 'menu', 'page', 'screen', 'window', 'tab',
+    'button', 'icon', 'link', 'url', 'website', 'site',
+    'user', 'member', 'person', 'people', 'human',
+    'friend', 'buddy', 'pal', 'dude', 'bro', 'mate',
+    'team', 'group', 'clan', 'guild', 'party', 'squad',
+    'community', 'society', 'organization', 'company',
+    
+    # === РАЗНОЕ ===
+    'info', 'information', 'detail', 'description',
+    'title', 'name', 'label', 'tag', 'category',
+    'rule', 'law', 'policy', 'guide', 'tutorial',
+    'tip', 'hint', 'advice', 'suggestion', 'recommendation',
+    'news', 'update', 'announcement', 'notice',
+    'event', 'activity', 'action', 'task', 'mission', 'quest',
+    'goal', 'objective', 'purpose', 'reason', 'cause',
+    'result', 'outcome', 'effect', 'consequence',
+    'chance', 'opportunity', 'possibility', 'option', 'choice',
+    'problem', 'issue', 'challenge', 'difficulty',
+    'money', 'price', 'cost', 'value', 'worth',
+    'free', 'paid', 'premium', 'cheap', 'expensive',
+    'new', 'old', 'recent', 'latest', 'current', 'past',
+    'real', 'fake', 'actual', 'virtual', 'digital',
+    
+    # === СЛЕНГ И ИНТЕРНЕТ-КУЛЬТУРА ===
+    'lol', 'lmao', 'rofl', 'omg', 'wtf', 'btw', 'imo', 'imho',
+    'afk', 'brb', 'gtg', 'idk', 'tbh', 'nvm', 'jk',
+    'noob', 'newbie', 'pro', 'expert', 'legend',
+    'meme', 'gif', 'emoji', 'sticker', 'reaction',
+    'hype', 'vibe', 'mood', 'energy', 'cringe',
+    
+    # === ПРЕДЛОГИ ===
+    'at', 'on', 'by', 'with', 'without', 'for', 'from', 'to',
+    'about', 'during', 'after', 'before', 'between', 'among',
+    'through', 'across', 'around', 'against', 'along',
+    
+    # === СОЮЗЫ И АРТИКЛИ ===
+    'a', 'an', 'the', 'as', 'so', 'than', 'like',
+    'while', 'until', 'unless', 'since', 'although', 'though',
+    
+    # === НАРЕЧИЯ ===
+    'very', 'really', 'quite', 'just', 'only', 'also', 'too',
+    'always', 'never', 'sometimes', 'often', 'rarely', 'seldom',
+    'already', 'still', 'yet', 'again', 'once', 'twice',
+    'well', 'badly', 'quickly', 'slowly', 'carefully',
+    'actually', 'basically', 'literally', 'definitely', 'probably',
+}
+
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
 
@@ -265,54 +472,8 @@ def should_skip_potential_code(code: str) -> bool:
     if any(part in code.lower() for part in ['http', 'www', 'com', 'net', 'org']):
         return True
     
-    # Белый список частых английских слов и терминов
-    common_words = {
-        # Платформы и бренды (без invite-смысла)
-        'youtube', 'twitch', 'github', 'google', 'spotify', 'steam',
-        'minecraft', 'roblox', 'paypal', 'patreon',
-        'twitter', 'reddit', 'instagram', 'tiktok', 'facebook',
-        'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat', 'giphy', 'tenor'
 
-        # Абстрактные и нейтральные слова
-        'example', 'sample', 'random', 'general', 'basic', 'simple',
-        'public', 'private', 'official', 'classic', 'standard',
-        'default', 'normal', 'average', 'common',
-
-        # Общие действия (не связанные с приглашением)
-        'read', 'write', 'watch', 'listen', 'learn', 'study',
-        'create', 'build', 'make', 'use', 'open', 'close',
-        'start', 'stop', 'pause', 'continue',
-
-        # Коммуникация (без join / invite)
-        'message', 'text', 'reply', 'answer', 'question',
-        'comment', 'feedback', 'response', 'discussion',
-
-        # Вежливые и бытовые
-        'hello', 'hi', 'thanks', 'thankyou', 'please', 'sorry', 'thank', 'kindly',
-        'welcome', 'goodbye', 'bye', 'morning', 'evening', 'night', 'afternoon', 'thx', 'thanks'
-
-        # Игры и медиа (без серверного подтекста)
-        'player', 'gameplay', 'gaming', 'singleplayer',
-        'video', 'music', 'audio', 'sound', 'movie', 'film',
-
-        # Технические, но безопасные
-        'system', 'process', 'status', 'error', 'warning',
-        'success', 'failed', 'loading', 'progress',
-        'settings', 'options', 'preferences',
-
-        # Аккаунт, но не доступ
-        'profile', 'account', 'username', 'nickname', 'avatar',
-        'email', 'password', 'security', 'privacy',
-
-        # Время и числа
-        'today', 'tomorrow', 'yesterday', 'daily', 'weekly',
-        'month', 'year', 'time', 'date', 'number', 'count',
-
-        # Нейтральные прилагательные
-        'cool', 'nice', 'great', 'awesome', 'fun',
-        'small', 'big', 'fast', 'slow', 'easy', 'hard'
-    }
-    if code.lower() in common_words:
+    if code.lower() in COMMON_ENGLISH_WORDS:
         return True
     
     # Проверка на английские слова по гласным

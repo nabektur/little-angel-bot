@@ -644,11 +644,11 @@ class AutoModeration(commands.Cog):
         
         if isinstance(channel, discord.VoiceChannel):
             
+            members = channel.members
+            # детект рекламы
             matched = await detect_links(self.bot, channel.name)
 
             if matched:
-
-                members = channel.members
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
@@ -666,13 +666,38 @@ class AutoModeration(commands.Cog):
                             reason_text="реклама путём создания голосового канала",
                             extra_info=extra,
                             timeout_reason="Реклама в названии голосового канала",
-                            force_ban=True
+                            force_mute=True
                         )
 
                 try:
                     await channel.delete(reason="Реклама в названии голосового канала")
                 except:
                     pass
+
+                return
+            
+            # детект всех инвайт кодов
+            is_invite = await check_message_for_invite_codes(self.bot, channel.name, channel.guild.id)
+
+            if is_invite.get("found_invite"):
+
+                extra = (
+                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```"
+                )
+
+                if members:
+                    for member in members:
+                        await handle_violation(
+                            self.bot,
+                            detected_member=member,
+                            detected_channel=channel,
+                            detected_guild=channel.guild,
+                            reason_title="Ссылка-приглашение в названии голосового канала",
+                            reason_text="Ссылка-приглашение в названии голосового канала",
+                            extra_info=extra,
+                            timeout_reason="Ссылка-приглашение в названии голосового канала",
+                            force_mute=True
+                        )
 
                 return
             
@@ -685,11 +710,11 @@ class AutoModeration(commands.Cog):
         
         if isinstance(after, discord.VoiceChannel) and before.name != after.name:
             
+            members = after.members
+            # детект рекламы
             matched = await detect_links(self.bot, after.name)
 
             if matched:
-
-                members = after.members
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
@@ -714,6 +739,31 @@ class AutoModeration(commands.Cog):
                     await after.delete(reason="Реклама в названии голосового канала")
                 except:
                     pass
+
+                return
+            
+            # детект всех инвайт кодов
+            is_invite = await check_message_for_invite_codes(self.bot, after.name, after.guild.id)
+
+            if is_invite.get("found_invite"):
+
+                extra = (
+                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```"
+                )
+
+                if members:
+                    for member in members:
+                        await handle_violation(
+                            self.bot,
+                            detected_member=member,
+                            detected_channel=after,
+                            detected_guild=after.guild,
+                            reason_title="Ссылка-приглашение в названии голосового канала",
+                            reason_text="Ссылка-приглашение в названии голосового канала",
+                            extra_info=extra,
+                            timeout_reason="Ссылка-приглашение в названии голосового канала",
+                            force_mute=True
+                        )
 
                 return
 
