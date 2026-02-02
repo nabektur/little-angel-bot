@@ -384,6 +384,7 @@ COMMON_ENGLISH_WORDS = {
     'free', 'paid', 'premium', 'cheap', 'expensive',
     'new', 'old', 'recent', 'latest', 'current', 'past',
     'real', 'fake', 'actual', 'virtual', 'digital',
+    'clone', 'plush', 'winks'
     
     # === СЛЕНГ И ИНТЕРНЕТ-КУЛЬТУРА ===
     'lol', 'lmao', 'rofl', 'omg', 'wtf', 'btw', 'imo', 'imho',
