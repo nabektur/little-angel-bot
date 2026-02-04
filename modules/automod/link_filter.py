@@ -178,14 +178,9 @@ _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
 _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
 
-# РЕКОМЕНДУЕМЫЙ ПАТТЕРН ИНВАЙТ КОДОВ: буквы + цифры/дефисы, только латиница
-POTENTIAL_INVITE_CODE_PATTERN = re.compile(
-    r'\b([a-zA-Z](?:[a-zA-Z0-9\-])*[a-zA-Z0-9])\b'
-)
-
 # СТРОГИЙ ПАТТЕРН ИНВАЙТ КОДОВ: обязательно должна быть хотя бы 1 цифра
 STRICT_INVITE_CODE_PATTERN = re.compile(
-    r'(?=.*[a-zA-Z])(?=.*[0-9])([a-zA-Z0-9\-]{5,20})'
+    r'\b(?=\S*[0-9])(?=\S*[a-zA-Z])[a-zA-Z0-9\-]{5,20}\b'
 )
 
 # Паттерн для вырезания URL из текста перед парсингом
@@ -195,303 +190,23 @@ URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
 )
 
 CYRILLIC_LETTERS_RE = re.compile(r'[а-яА-ЯёЁ]')
-TOKENS_RE = re.compile(r'[\s\.,;!?\(\)\[\]\{\}<>«»"\']+')
-ONLY_LATIN_RE = re.compile(r'^[a-zA-Z0-9\-]+$')
 DATE_RE = re.compile(r'^\d{2,4}-\d{2}')
-REPEAT_RE = re.compile(r'(.)\1{4,}')
-LINE_WITHOUT_LETTERS_RE = re.compile(r'^[0-9a-fA-F]+$')
-ARE_THERE_NUMBERS_ANS_LETTERS_RE = re.compile(r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9\-]{5,20}$')
-
-# Белый список частых английских слов и терминов
-COMMON_ENGLISH_WORDS = {
-    # === ПЛАТФОРМЫ И БРЕНДЫ ===
-    'youtube', 'twitch', 'github', 'google', 'spotify', 'steam',
-    'minecraft', 'roblox', 'paypal', 'patreon',
-    'twitter', 'reddit', 'instagram', 'tiktok', 'facebook',
-    'amazon', 'netflix', 'telegram', 'whatsapp', 'snapchat', 
-    'giphy', 'tenor', 'discord', 'skype', 'zoom', 'slack',
-    'pinterest', 'linkedin', 'vimeo', 'soundcloud', 'bandcamp',
-    'dropbox', 'onedrive', 'icloud', 'gdrive', 'mega',
-    'epic', 'origin', 'battlenet', 'gog', 'itch',
-    'playstation', 'xbox', 'nintendo', 'switch',
-    
-    # === МЕСТОИМЕНИЯ ===
-    'i', 'me', 'my', 'mine', 'myself',
-    'you', 'your', 'yours', 'yourself',
-    'he', 'him', 'his', 'himself',
-    'she', 'her', 'hers', 'herself',
-    'it', 'its', 'itself',
-    'we', 'us', 'our', 'ours', 'ourselves',
-    'they', 'them', 'their', 'theirs', 'themselves',
-    'this', 'that', 'these', 'those',
-    'who', 'whom', 'whose', 'which', 'what',
-    'anyone', 'someone', 'everyone', 'nobody', 'somebody',
-    
-    # === ГЛАГОЛЫ (ОБЩИЕ ДЕЙСТВИЯ) ===
-    'read', 'write', 'watch', 'listen', 'learn', 'study',
-    'create', 'build', 'make', 'use', 'open', 'close',
-    'start', 'stop', 'pause', 'continue', 'finish', 'end',
-    'go', 'come', 'get', 'give', 'take', 'bring',
-    'send', 'receive', 'buy', 'sell', 'pay', 'download',
-    'upload', 'install', 'update', 'delete', 'remove',
-    'save', 'load', 'copy', 'paste', 'cut', 'edit',
-    'search', 'find', 'look', 'see', 'show', 'hide',
-    'click', 'tap', 'press', 'hold', 'drag', 'drop',
-    'run', 'walk', 'jump', 'move', 'turn', 'rotate',
-    'play', 'stream', 'record', 'broadcast',
-    'like', 'love', 'hate', 'want', 'need', 'wish',
-    'think', 'know', 'understand', 'believe', 'feel',
-    'say', 'tell', 'talk', 'speak', 'ask', 'answer',
-    'help', 'support', 'fix', 'solve', 'test', 'check',
-    'try', 'attempt', 'fail', 'win', 'lose',
-    
-    # === СУЩЕСТВИТЕЛЬНЫЕ (КОММУНИКАЦИЯ) ===
-    'message', 'text', 'reply', 'answer', 'question',
-    'comment', 'feedback', 'response', 'discussion',
-    'chat', 'talk', 'conversation', 'dialogue',
-    'post', 'thread', 'topic', 'subject',
-    'notification', 'alert', 'reminder',
-    
-    # === ВЕЖЛИВЫЕ СЛОВА И ПРИВЕТСТВИЯ ===
-    'hello', 'hi', 'hey', 'greetings', 'salutations',
-    'thanks', 'thankyou', 'thank', 'thx', 'ty',
-    'please', 'sorry', 'excuse', 'pardon',
-    'welcome', 'goodbye', 'bye', 'farewell', 'cya', 'seeya',
-    'morning', 'afternoon', 'evening', 'night',
-    'kindly', 'regards', 'sincerely',
-    
-    # === АБСТРАКТНЫЕ И НЕЙТРАЛЬНЫЕ ===
-    'example', 'sample', 'random', 'general', 'basic', 'simple',
-    'public', 'private', 'official', 'unofficial', 'classic', 'standard',
-    'default', 'normal', 'average', 'common', 'usual', 'typical',
-    'special', 'unique', 'custom', 'personal', 'individual',
-    'main', 'primary', 'secondary', 'extra', 'additional',
-    'original', 'copy', 'version', 'update', 'upgrade', 'russian', 'english',
-    'language', 'word', 'phrase', 'sentence', 'ukrainian', 'spanish', 'german', 
-    'french', 'italian', 'portuguese', 'russia', 'ukraine', 'spain', 'germany',
-    
-    # === ИГРЫ И МЕДИА ===
-    'player', 'gameplay', 'gaming', 'singleplayer', 'multiplayer',
-    'game', 'level', 'stage', 'round', 'match', 'tournament',
-    'video', 'music', 'audio', 'sound', 'movie', 'film',
-    'song', 'track', 'album', 'playlist', 'podcast',
-    'stream', 'vod', 'clip', 'highlight', 'montage',
-    'channel', 'content', 'creator', 'streamer', 'viewer',
-    
-    # === ТЕХНИЧЕСКИЕ ТЕРМИНЫ ===
-    'system', 'process', 'status', 'error', 'warning',
-    'success', 'failed', 'failure', 'loading', 'progress',
-    'settings', 'options', 'preferences', 'config', 'configuration',
-    'data', 'file', 'folder', 'directory', 'document',
-    'app', 'application', 'program', 'software', 'hardware',
-    'browser', 'extension', 'plugin', 'addon', 'mod',
-    'network', 'internet', 'online', 'offline', 'connection',
-    'server', 'client', 'host', 'local', 'remote',
-    'database', 'api', 'code', 'script', 'function',
-    'bug', 'issue', 'problem', 'solution', 'fix',
-    
-    # === АККАУНТ И ПРОФИЛЬ ===
-    'profile', 'account', 'username', 'nickname', 'name',
-    'avatar', 'icon', 'picture', 'photo', 'image',
-    'email', 'password', 'login', 'logout', 'signin', 'signout',
-    'security', 'privacy', 'verification', 'authentication',
-    'subscription', 'premium', 'vip', 'pro', 'plus',
-    
-    # === ВРЕМЯ ===
-    'today', 'tomorrow', 'yesterday', 'now', 'later', 'soon',
-    'daily', 'weekly', 'monthly', 'yearly', 'annual',
-    'day', 'week', 'month', 'year', 'hour', 'minute', 'second',
-    'time', 'date', 'schedule', 'calendar', 'deadline',
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december',
-    
-    # === ЧИСЛА И КОЛИЧЕСТВО ===
-    'number', 'count', 'amount', 'total', 'sum',
-    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-    'first', 'second', 'third', 'last', 'next', 'previous',
-    'many', 'few', 'some', 'all', 'none', 'any',
-    'more', 'less', 'most', 'least', 'enough',
-    
-    # === ПРИЛАГАТЕЛЬНЫЕ (ПОЗИТИВНЫЕ) ===
-    'cool', 'nice', 'great', 'awesome', 'amazing', 'fantastic',
-    'good', 'better', 'best', 'excellent', 'perfect', 'wonderful',
-    'fun', 'funny', 'entertaining', 'interesting', 'exciting',
-    'beautiful', 'pretty', 'cute', 'lovely', 'gorgeous',
-    
-    # === ПРИЛАГАТЕЛЬНЫЕ (НЕГАТИВНЫЕ) ===
-    'bad', 'worse', 'worst', 'terrible', 'awful', 'horrible',
-    'boring', 'dull', 'annoying', 'frustrating',
-    'ugly', 'weird', 'strange', 'odd',
-    
-    # === ПРИЛАГАТЕЛЬНЫЕ (РАЗМЕР И СКОРОСТЬ) ===
-    'small', 'big', 'large', 'huge', 'tiny', 'medium',
-    'long', 'short', 'tall', 'high', 'low', 'wide', 'narrow',
-    'fast', 'slow', 'quick', 'rapid', 'instant',
-    'heavy', 'light', 'strong', 'weak',
-    
-    # === ПРИЛАГАТЕЛЬНЫЕ (СЛОЖНОСТЬ) ===
-    'easy', 'hard', 'difficult', 'simple', 'complex', 'complicated',
-    'clear', 'unclear', 'obvious', 'confusing',
-    
-    # === ЦВЕТА ===
-    'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink',
-    'black', 'white', 'gray', 'grey', 'brown',
-    'color', 'colour', 'dark', 'light', 'bright',
-    
-    # === НАПРАВЛЕНИЯ И ПОЛОЖЕНИЯ ===
-    'up', 'down', 'left', 'right', 'top', 'bottom',
-    'front', 'back', 'side', 'middle', 'center', 'edge',
-    'in', 'out', 'inside', 'outside', 'above', 'below',
-    'over', 'under', 'near', 'far', 'close', 'away',
-    'here', 'there', 'where', 'everywhere', 'nowhere', 'somewhere',
-    
-    # === ЛОГИЧЕСКИЕ И ВОПРОСИТЕЛЬНЫЕ ===
-    'yes', 'no', 'maybe', 'perhaps', 'probably', 'possibly',
-    'true', 'false', 'correct', 'incorrect', 'right', 'wrong',
-    'why', 'how', 'when', 'where', 'what', 'who',
-    'if', 'then', 'else', 'or', 'and', 'but', 'because',
-    
-    # === ЭМОЦИИ И СОСТОЯНИЯ ===
-    'happy', 'sad', 'angry', 'mad', 'upset', 'worried',
-    'excited', 'bored', 'tired', 'sleepy', 'awake',
-    'hungry', 'thirsty', 'sick', 'healthy', 'hurt', 'pain',
-    
-    # === ОБЩИЕ СУЩЕСТВИТЕЛЬНЫЕ ===
-    'thing', 'stuff', 'item', 'object', 'element',
-    'part', 'piece', 'section', 'area', 'zone', 'region',
-    'place', 'location', 'spot', 'position', 'point',
-    'way', 'method', 'approach', 'style', 'type', 'kind',
-    'list', 'menu', 'page', 'screen', 'window', 'tab',
-    'button', 'icon', 'link', 'url', 'website', 'site',
-    'user', 'member', 'person', 'people', 'human',
-    'friend', 'buddy', 'pal', 'dude', 'bro', 'mate',
-    'team', 'group', 'clan', 'guild', 'party', 'squad',
-    'community', 'society', 'organization', 'company',
-    
-    # === РАЗНОЕ ===
-    'info', 'information', 'detail', 'description',
-    'title', 'name', 'label', 'tag', 'category',
-    'rule', 'law', 'policy', 'guide', 'tutorial',
-    'tip', 'hint', 'advice', 'suggestion', 'recommendation',
-    'news', 'update', 'announcement', 'notice',
-    'event', 'activity', 'action', 'task', 'mission', 'quest',
-    'goal', 'objective', 'purpose', 'reason', 'cause',
-    'result', 'outcome', 'effect', 'consequence',
-    'chance', 'opportunity', 'possibility', 'option', 'choice',
-    'problem', 'issue', 'challenge', 'difficulty',
-    'money', 'price', 'cost', 'value', 'worth',
-    'free', 'paid', 'premium', 'cheap', 'expensive',
-    'new', 'old', 'recent', 'latest', 'current', 'past',
-    'real', 'fake', 'actual', 'virtual', 'digital',
-    'clone', 'plush', 'winks'
-    
-    # === СЛЕНГ И ИНТЕРНЕТ-КУЛЬТУРА ===
-    'lol', 'lmao', 'rofl', 'omg', 'wtf', 'btw', 'imo', 'imho',
-    'afk', 'brb', 'gtg', 'idk', 'tbh', 'nvm', 'jk',
-    'noob', 'newbie', 'pro', 'expert', 'legend',
-    'meme', 'gif', 'emoji', 'sticker', 'reaction',
-    'hype', 'vibe', 'mood', 'energy', 'cringe',
-    
-    # === ПРЕДЛОГИ ===
-    'at', 'on', 'by', 'with', 'without', 'for', 'from', 'to',
-    'about', 'during', 'after', 'before', 'between', 'among',
-    'through', 'across', 'around', 'against', 'along',
-    
-    # === СОЮЗЫ И АРТИКЛИ ===
-    'a', 'an', 'the', 'as', 'so', 'than', 'like',
-    'while', 'until', 'unless', 'since', 'although', 'though',
-    
-    # === НАРЕЧИЯ ===
-    'very', 'really', 'quite', 'just', 'only', 'also', 'too',
-    'always', 'never', 'sometimes', 'often', 'rarely', 'seldom',
-    'already', 'still', 'yet', 'again', 'once', 'twice',
-    'well', 'badly', 'quickly', 'slowly', 'carefully',
-    'actually', 'basically', 'literally', 'definitely', 'probably',
-}
 
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
 
 def should_skip_potential_code(code: str) -> bool:
-    """Фильтрует очевидные не-инвайты (ОПТИМИЗИРОВАННАЯ ВЕРСИЯ)"""
+    """Фильтрует явно невалидные коды"""
     
-    # Длина (Discord коды обычно 5-16 символов)
-    if len(code) < 5 or len(code) > 20:
-        return True
-    
-    # КРИТИЧНО: Кириллица - сразу отсекаем
+    # Кириллица - сразу отсекаем
     if CYRILLIC_LETTERS_RE.search(code):
         return True
-    
-    # Только латиница допустима
-    if not ONLY_LATIN_RE.match(code):
-        return True
-    
-    # Только цифры (ID пользователей/каналов)
-    if code.isdigit():
-        return True
-    
-    # Только буквы БЕЗ цифр и дефисов = обычное английское слово
-    if code.isalpha():
-        # Короткие коды из букв могут быть инвайтами (например "abcdef")
-        # Но длинные слова точно нет
-        if len(code) > 10:
-            return True
-    
-    # Проверка баланса букв/цифр
-    letters = sum(c.isalpha() for c in code)
-    digits = sum(c.isdigit() for c in code)
-    
-    # Слишком много цифр = ID, timestamp
-    if digits > 0 and letters < 2:
-        return True
-    
-    # Только буквы и очень длинное = английское слово
-    if digits == 0 and letters > 12:
-        return True
-    
-    # Слишком много дефисов (UUID, даты)
-    if code.count('-') > 2:
-        return True
-    
-    # Паттерны дат (2024-01, 01-28-2024)
+
+    # Паттерны дат (2024-01, 2024-12-31)
     if DATE_RE.match(code):
         return True
     
-    # Длинные hex строки без букв или с малым количеством букв
-    if len(code) > 16 and LINE_WITHOUT_LETTERS_RE.match(code):
-        hex_letters = sum(1 for c in code.lower() if c in 'abcdef')
-        if hex_letters < 3:  # Токены обычно имеют мало букв
-            return True
-    
-    # Повторяющиеся символы (aaaa, 1111, test-test-test)
-    if REPEAT_RE.search(code):
-        return True
-    
-    # URL части
-    if any(part in code.lower() for part in ['http', 'www', 'com', 'net', 'org']):
-        return True
-    
-
-    if code.lower() in COMMON_ENGLISH_WORDS:
-        return True
-    
-    # Проверка на английские слова по гласным
-    # Английские слова обычно имеют ~40% гласных
-    vowels = 'aeiouy'
-    vowel_count = sum(1 for c in code.lower() if c in vowels)
-    
-    # Если > 50% гласных и нет цифр = английское слово
-    if digits == 0 and vowel_count > len(code) * 0.5:
-        return True
-    
-    # Если слишком мало гласных и нет цифр = тоже странно (аббревиатуры типа "smth")
-    if digits == 0 and vowel_count < 2 and len(code) > 6:
-        return True
-    
     return False
-
 
 async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
     """
@@ -592,32 +307,21 @@ async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
 async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.Message) -> list:
     """
     Извлекает потенциальные Discord invite коды из текста
-    УЛУЧШЕННАЯ ВЕРСИЯ - работает с кириллицей
+    ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - regex делает всю работу
     """
-
+    
     text = await extract_message_content(bot, message)
+    
+    # Убираем URL из текста, чтобы не ловить части ссылок
     clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', text)
     
-    # Разбиваем текст на токены (по пробелам и знакам препинания)
-    tokens = TOKENS_RE.split(clean_text)
+    # Извлекаем все совпадения с паттерном
+    matches = STRICT_INVITE_CODE_PATTERN.findall(clean_text)
     
-    potential_codes = []
+    # Минимальная фильтрация (только критичные случаи)
+    filtered_codes = [code for code in matches if not should_skip_potential_code(code)]
     
-    for token in tokens:
-        # Проверяем формат: есть буквы + цифры, длина 5-20
-        if ARE_THERE_NUMBERS_ANS_LETTERS_RE.match(token):
-            potential_codes.append(token)
-    
-    # Дополнительно ловим regex'ом (на случай склеенных кодов)
-    regex_matches = STRICT_INVITE_CODE_PATTERN.findall(clean_text)
-    for match in regex_matches:
-        if match not in potential_codes:
-            potential_codes.append(match)
-    
-    # Фильтруем через should_skip_potential_code
-    filtered_codes = [code for code in potential_codes if not should_skip_potential_code(code)]
-    
-    # Убираем дубликаты
+    # Убираем дубликаты (case-insensitive)
     seen = set()
     unique_codes = []
     for code in filtered_codes:
@@ -626,6 +330,7 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
             seen.add(code_lower)
             unique_codes.append(code)
     
+    # Ограничиваем количество для проверки (не более 5)
     return unique_codes[:5]
 
 async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
