@@ -189,7 +189,6 @@ URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
     r'|[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:/[^\s]*)?'
 )
 
-CYRILLIC_LETTERS_RE = re.compile(r'[а-яА-ЯёЁ]')
 DATE_RE = re.compile(r'^\d{2,4}-\d{2}')
 DISCORD_EMOJI_PATTERN = re.compile(r'<a?:[a-zA-Z0-9_]+:\d+>')
 
@@ -199,8 +198,8 @@ INVITE_CODE_CACHE_TTL = 1200
 def should_skip_potential_code(code: str) -> bool:
     """Фильтрует явно невалидные коды"""
     
-    # Кириллица - сразу отсекаем
-    if CYRILLIC_LETTERS_RE.search(code):
+    # В инвайт-коде ВСЕГДА есть латинские буквы
+    if not any(c.isalpha() and c.isascii() for c in code):
         return True
 
     # Паттерны дат (2024-01, 2024-12-31)
@@ -316,7 +315,7 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     clean_text = DISCORD_EMOJI_PATTERN.sub(' ', text)
     
     # Убираем URL из текста, чтобы не ловить части ссылок
-    clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', text)
+    clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', clean_text)
     
     # Извлекаем все совпадения с паттерном
     matches = STRICT_INVITE_CODE_PATTERN.findall(clean_text)
