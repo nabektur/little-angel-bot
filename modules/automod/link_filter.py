@@ -190,7 +190,7 @@ URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
 )
 
 DATE_RE = re.compile(r'^\d{2,4}-\d{2}')
-DISCORD_EMOJI_PATTERN = re.compile(r'<a?:[a-zA-Z0-9_]+:\d+>')
+DISCORD_EMOJI_PATTERN = re.compile(r'<a?:[^:>]+:\d{17,20}>|:[^:\s]+:')
 
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
@@ -312,7 +312,11 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     
     text = await extract_message_content(bot, message)
 
+    logging.info(f"Текст до обработки: {text}")
+
     clean_text = DISCORD_EMOJI_PATTERN.sub(' ', text)
+
+    logging.info(f"Текст после обработки: {clean_text}")
     
     # Убираем URL из текста, чтобы не ловить части ссылок
     clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', clean_text)
