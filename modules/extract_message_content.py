@@ -93,12 +93,12 @@ async def extract_message_content(bot: LittleAngelBot, message: discord.Message)
         activity_dict = await activity_to_dict(message.activity)
         message_content += f"\n\n[Активность из сообщения:]\n{await format_dict_fields(activity_dict)}"
 
-    if message.author.activities:
-        message_content += "\n\n[Все активности пользователя:]"
-        for idx, activity in enumerate(message.author.activities, 1):
-            activity_dict = await activity_to_dict(activity)
-            activity_type = type(activity).__name__
-            message_content += f"\n\n--- Активность {idx} ({activity_type}) ---\n{await format_dict_fields(activity_dict)}"
+        if message.author.activities:
+            message_content += "\n\n[Все активности пользователя:]"
+            for idx, activity in enumerate(message.author.activities, 1):
+                activity_dict = await activity_to_dict(activity)
+                activity_type = type(activity).__name__
+                message_content += f"\n\n--- Активность {idx} ({activity_type}) ---\n{await format_dict_fields(activity_dict)}"
 
     if message.poll:
         poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
