@@ -772,7 +772,6 @@ async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.M
                 continue
             
             # Найден валидный инвайт на другой сервер!
-            logging.warning(f"Обнаружен инвайт-код: {code} → {result['guild_name']} (кэш: {result['from_cache']})")
             return {
                 'found_invite': True,
                 'invite_code': code,
