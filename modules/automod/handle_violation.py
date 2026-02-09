@@ -70,6 +70,17 @@ async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild, reaso
                 embed=log_embed
             )
 
+            try:
+                news_channel: discord.TextChannel = bot.get_channel(CONFIG.NEWS_CHANNEL_ID)
+                if not news_channel:
+                    news_channel: discord.TextChannel = await bot.fetch_channel(CONFIG.NEWS_CHANNEL_ID)
+                await safe_send_to_channel(
+                    news_channel,
+                    embed=log_embed
+                )
+            except Exception:
+                return None
+
         disabled_until = discord.utils.utcnow() + timedelta(
             seconds=(lockdown_until - now)
         )
