@@ -178,9 +178,9 @@ _COMBINED_MAP.update(ENCLOSED_ALPHANUM_MAP)
 _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
 
-# СТРОГИЙ ПАТТЕРН ИНВАЙТ КОДОВ: обязательно должна быть хотя бы 1 цифра
+# СТРОГИЙ ПАТТЕРН ИНВАЙТ КОДОВ
 STRICT_INVITE_CODE_PATTERN = re.compile(
-    r'\b(?=\S*[0-9])(?=\S*[a-zA-Z])[a-zA-Z0-9\-]{5,20}\b'
+    r'\b(?=\S*[A-Z])(?=\S*[a-z])[a-zA-Z0-9\-]{5,20}\b'
 )
 
 # Паттерн для вырезания URL из текста перед парсингом
@@ -195,7 +195,7 @@ DISCORD_EMOJI_PATTERN = re.compile(r'<a?:[^:>]+:\d{17,20}>|:[^:\s]+:')
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
 
-WHITELISTED_WORDS = ("spotify")
+WHITELISTED_WORDS = ("spotify",)
 
 def should_skip_potential_code(code: str) -> bool:
     """Фильтрует явно невалидные коды"""

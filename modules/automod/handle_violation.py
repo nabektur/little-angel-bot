@@ -447,12 +447,12 @@ async def handle_violation(
     if detected_message and not force_ban:
         asyncio.create_task(safe_delete(detected_message))
 
-    # # выдаёт бан
-    # if force_ban:
-    #     await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
-    #     await HIT_CACHE.delete(detected_member.id)
+    # выдаёт бан
+    if force_ban:
+        await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
+        await HIT_CACHE.delete(detected_member.id)
 
-    # # выдаёт мут
-    # elif not is_soft:
-    #     await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
-    #     await HIT_CACHE.delete(detected_member.id)
+    # выдаёт мут
+    elif not is_soft:
+        await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
+        await HIT_CACHE.delete(detected_member.id)
