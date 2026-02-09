@@ -16,13 +16,15 @@ SNIPE_CACHE = SimpleMemoryCache()
 async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.Union[discord.StageChannel, discord.TextChannel, discord.VoiceChannel, discord.Thread], index: int, view: discord.ui.View = None, method: str = None):
     user_permissions_in_channel = channel.permissions_for(ci.user)
     if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-        return await ci.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+        await ci.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+        return
     snipe_existing_data: typing.List = await SNIPE_CACHE.get(channel.id)
     rpos = len(snipe_existing_data)
     try:
         snipess = snipe_existing_data[int(index)]
     except:
-        return await ci.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Произошло неожиданное изменение записей, вызовите команду, или нажмите кнопку ещё раз"), ephemeral=True)
+        await ci.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Произошло неожиданное изменение записей, вызовите команду, или нажмите кнопку ещё раз"), ephemeral=True)
+        return
     await ci.response.defer()
     s: discord.Message = snipess['msg']
     prava = snipess['perms']
@@ -109,13 +111,15 @@ class snipe_archive(discord.ui.View):
             if field.name == "Позиция:":
                 ipos = int(field.value.split()[0]) - 2
         if interaction.user.id != self.author_id:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            return
         if ipos < 0:
             ipos = len(snipe_existing_data) - 1
         try:
             snipe_existing_data[ipos]
         except:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            return
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         await snippet(self.bot, interaction, channel, ipos, self, "button_response")
 
@@ -130,13 +134,15 @@ class snipe_archive(discord.ui.View):
             if field.name == "Позиция:":
                 ipos = int(field.value.split()[0])
         if interaction.user.id != self.author_id:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            return
         if ipos >= len(snipe_existing_data):
             ipos = 0
         try:
             snipe_existing_data[ipos]
         except:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            return
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         await snippet(self.bot, interaction, channel, ipos, self, "button_response")
 
@@ -151,7 +157,8 @@ class snipe_archive(discord.ui.View):
                 position = int(field.value.split()[0]) - 1
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            return
         try:
             snipe_existing_data: typing.List = await SNIPE_CACHE.get(self.channel_id)
             snipess: typing.Dict = snipe_existing_data[position]
@@ -160,10 +167,12 @@ class snipe_archive(discord.ui.View):
                 await SNIPE_CACHE.set(self.channel_id, snipe_existing_data, ttl=3600)
             else:
                 await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
-                return await interaction.followup.delete_message(interaction.message.id)
+                await interaction.followup.delete_message(interaction.message.id)
+                return
         except:
             await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
-            return await interaction.followup.delete_message(interaction.message.id)
+            await interaction.followup.delete_message(interaction.message.id)
+            return
         emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
@@ -173,7 +182,8 @@ class snipe_archive(discord.ui.View):
     async def sreset(self, interaction: discord.Interaction, button: discord.ui.Button):
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            return
         try:
             await SNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
@@ -262,11 +272,13 @@ class Snipe(commands.Cog):
         if not channel:
             channel = interaction.channel
         if channel.is_nsfw() and not interaction.channel.is_nsfw():
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Нельзя смотреть материалы с NSFW канала в канале без этой метки!"), ephemeral=True)
+            return
         user_permissions_in_channel = channel.permissions_for(interaction.user)
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
-
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            return
+        
         snipe_existing_data: typing.List = await SNIPE_CACHE.get(channel.id)
         if not snipe_existing_data:
             raise KeyError()

@@ -1,8 +1,44 @@
+import logging
+
 from cache import AsyncTTL
 import discord
 from discord.ext.commands import clean_content
 
 from classes.bot import LittleAngelBot
+
+@AsyncTTL(time_to_live=30)
+async def activity_to_dict(activity):
+    """Преобразует объект активности в словарь со всеми полями"""
+    if isinstance(activity, dict):
+        return activity
+    
+    result = {}
+    for attr in dir(activity):
+        if not attr.startswith('_') and not callable(getattr(activity, attr, None)):
+            try:
+                value = getattr(activity, attr)
+                if value is not None and not hasattr(value, '__dict__'):
+                    result[attr] = value
+            except Exception:
+                continue
+    return result
+
+@AsyncTTL(time_to_live=30)
+async def format_dict_fields(data, indent=0):
+    lines = []
+    prefix = "  " * indent
+    
+    for key, value in data.items():
+        if isinstance(value, dict):
+            lines.append(f"{prefix}{key}:")
+            lines.append(await format_dict_fields(value, indent + 1))
+        elif isinstance(value, (list, tuple)):
+            if value:
+                lines.append(f"{prefix}{key}: {', '.join(str(v) for v in value)}")
+        else:
+            lines.append(f"{prefix}{key}: {value}")
+    
+    return '\n'.join(lines)
 
 @AsyncTTL(time_to_live=5)
 async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
@@ -54,24 +90,15 @@ async def extract_message_content(bot: LittleAngelBot, message: discord.Message)
                 message_content += f"\nОписание: {embed.description}"
 
     if message.activity:
-        message_content += (
-            "\n\n[Активность:]"
-            f"\nТип: {message.activity.get('type')}"
-            f"\nParty ID: {message.activity.get('party_id', 'N/A')}"
-        )
-        if message.activity.get('type') == 3:
-            activity_presence = None
-            for presence in message.author.activities:
-                if isinstance(presence, discord.Spotify):
-                    activity_presence = presence
-                    break
+        activity_dict = await activity_to_dict(message.activity)
+        message_content += f"\n\n[Активность из сообщения:]\n{await format_dict_fields(activity_dict)}"
 
-            message_content += (
-                f"\nТрек: {activity_presence.title if hasattr(activity_presence, 'title') else 'Нет трека'}"
-                f"\nURL трека: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет ссылки'}"
-                f"\nАльбом: {activity_presence.album if hasattr(activity_presence, 'album') else 'Нет альбома'}"
-                f"\nИсполнитель: {activity_presence.artist if hasattr(activity_presence, 'artist') else 'Нет исполнителя'}"
-            )
+    if message.author.activities:
+        message_content += "\n\n[Все активности пользователя:]"
+        for idx, activity in enumerate(message.author.activities, 1):
+            activity_dict = await activity_to_dict(activity)
+            activity_type = type(activity).__name__
+            message_content += f"\n\n--- Активность {idx} ({activity_type}) ---\n{await format_dict_fields(activity_dict)}"
 
     if message.poll:
         poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
@@ -84,4 +111,3 @@ async def extract_message_content(bot: LittleAngelBot, message: discord.Message)
     message_content = message_content.strip()
 
     return message_content
-

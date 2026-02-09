@@ -19,7 +19,8 @@ class Spam(commands.Cog):
         
     async def spam_activate(self, interaction: discord.Interaction, type: str, method: str, channel: typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel], duration: typing.Optional[datetime], mention: str):
         if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = ? LIMIT 1", interaction.guild.id):
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён на сервере! (максимум 1 процесс на сервере)", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="Спам уже включён на сервере! (максимум 1 процесс на сервере)", color=0xff0000), ephemeral=True)
+            return
         channel_permissions = channel.permissions_for(interaction.guild.me)
         if method == "webhook":
             try:
@@ -34,18 +35,22 @@ class Spam(commands.Cog):
                 else:
                     webhook = await wchannel.create_webhook(name="Ангелочек", avatar=await self.bot.user.avatar.read())
             except:
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять вебхуками для использования этой команды!"), ephemeral=True)
+                return
         else:
             if channel.slowmode_delay and not channel_permissions.manage_messages:
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями! Это право нужно боту для того чтобы избегать медленного режима"), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями! Это право нужно боту для того чтобы избегать медленного режима"), ephemeral=True)
+                return
             webhook = None
         if isinstance(channel, discord.Thread):
             if not channel_permissions.send_messages_in_threads:
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в эту ветку для использования этой команды!"), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в эту ветку для использования этой команды!"), ephemeral=True)
+                return
         else:
             if not channel_permissions.send_messages:
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
-
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права высылать сообщения в этот канал для использования этой команды!"), ephemeral=True)
+                return
+            
         await interaction.response.defer()
         if duration:
             duration_timedelta = duration
@@ -116,9 +121,11 @@ class Spam(commands.Cog):
             channel = interaction.channel
         if duration:
             if duration > timedelta(days=365) or duration < timedelta(seconds=3):
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 год, либо меньше, чем 3 секунды!"), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 год, либо меньше, чем 3 секунды!"), ephemeral=True)
+                return
         if not isinstance(channel, typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]):
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Команду можно применять только к текстовым каналам, веткам и голосовым каналам!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Команду можно применять только к текстовым каналам, веткам и голосовым каналам!"), ephemeral=True)
+            return
         mention = []
         if mention_1:
             mention.append(mention_1)
@@ -133,7 +140,8 @@ class Spam(commands.Cog):
         mention = [u.mention if u != interaction.guild.default_role else "@everyone" for u in mention]
         if mention:
             if not channel.permissions_for(interaction.guild.me).mention_everyone:
-                return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права упоминать @everyone и @here для использования этой команды с включёнными упоминаниями!"), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права упоминать @everyone и @here для использования этой команды с включёнными упоминаниями!"), ephemeral=True)
+                return
             if self.bot.user.mention in mention:
                 mention.remove(self.bot.user.mention)
             mention = " ".join(list(set(mention)))
@@ -147,7 +155,8 @@ class Spam(commands.Cog):
                 duration=duration,
                 mention=mention
             )
-            return await interaction.response.send_modal(modal)
+            await interaction.response.send_modal(modal)
+            return
         await self.spam_activate(interaction=interaction, type=type, method=method, channel=channel, duration=duration, mention=mention)
 
 

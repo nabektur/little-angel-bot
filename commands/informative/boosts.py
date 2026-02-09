@@ -13,16 +13,18 @@ class Boost(commands.Cog):
     async def boosts_info_command(self, interaction: discord.Interaction):
         guild = interaction.guild
         if guild.premium_subscription_count == 0:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="На сервере нет бустов!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", description="На сервере нет бустов!", color=0xff0000), ephemeral=True)
+            return
         boosters = guild.premium_subscribers
         boosters_str = ""
         for booster in boosters:
             boosters_str += f"\n{booster} ({booster.mention}) — Бустит с <t:{int(booster.premium_since.timestamp())}>"
         if boosters:
-            return await interaction.response.send_message(embed=discord.Embed(title="Информация про бусты", color=0xf569fa, description=f"Уровень сервера: {guild.premium_tier}\nКоличество бустеров: {len(boosters)}\nКоличество бустов: {guild.premium_subscription_count}\nРоль для бустеров: {guild.premium_subscriber_role.mention}\nБустеры:{boosters_str}"))
+            await interaction.response.send_message(embed=discord.Embed(title="Информация про бусты", color=0xf569fa, description=f"Уровень сервера: {guild.premium_tier}\nКоличество бустеров: {len(boosters)}\nКоличество бустов: {guild.premium_subscription_count}\nРоль для бустеров: {guild.premium_subscriber_role.mention}\nБустеры:{boosters_str}"))
+            return
         else:
-            return await interaction.response.send_message(embed=discord.Embed(title="Информация про бусты", color=0xf569fa, description=f"Уровень сервера: {guild.premium_tier}\nКоличество бустеров: {len(boosters)}\nКоличество бустов: {guild.premium_subscription_count}\nРоль для бустеров: {guild.premium_subscriber_role.mention}"))
-
+            await interaction.response.send_message(embed=discord.Embed(title="Информация про бусты", color=0xf569fa, description=f"Уровень сервера: {guild.premium_tier}\nКоличество бустеров: {len(boosters)}\nКоличество бустов: {guild.premium_subscription_count}\nРоль для бустеров: {guild.premium_subscriber_role.mention}"))
+            return
 
 async def setup(bot: LittleAngelBot):
     await bot.add_cog(Boost(bot))

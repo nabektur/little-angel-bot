@@ -39,7 +39,8 @@ class esnipe_archive(discord.ui.View):
             if field.name == "Позиция:":
                 ipos = int(field.value.split()[0]) - 2
         if interaction.user.id != self.author_id:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            return
         
         channel = self.bot.get_channel(self.channel_id)
         if not channel:
@@ -47,10 +48,12 @@ class esnipe_archive(discord.ui.View):
                 channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
             except Exception as e:
                 logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
-                return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+                return
         user_permissions_in_channel = channel.permissions_for(interaction.user)
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            return
 
         esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
         if ipos < 0:
@@ -59,7 +62,8 @@ class esnipe_archive(discord.ui.View):
             rpos = len(esnipe_existing_data)
             esnipe_existing_data[ipos]
         except:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            return
         await interaction.response.defer()
 
         self.timeout = 300
@@ -79,7 +83,8 @@ class esnipe_archive(discord.ui.View):
             if field.name == "Позиция:":
                 ipos = int(field.value.split()[0])
         if interaction.user.id != self.author_id:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Использовать интеграцию может только тот человек, который вызывал команду!", color=0xff0000), ephemeral=True)
+            return
         
         channel = self.bot.get_channel(self.channel_id)
         if not channel:
@@ -87,10 +92,12 @@ class esnipe_archive(discord.ui.View):
                 channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
             except Exception as e:
                 logging.error(f"ESnipe: Не удалось получить канал по ID {self.channel_id}: {e}\n{traceback.format_exc()}")
-                return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Не удалось получить канал для проверки прав доступа!", color=0xff0000), ephemeral=True)
+                return
         user_permissions_in_channel = channel.permissions_for(interaction.user)
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            return
 
         esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
 
@@ -100,7 +107,8 @@ class esnipe_archive(discord.ui.View):
             rpos = len(esnipe_existing_data)
             esnipe_existing_data[ipos]
         except:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вызовите новую команду из-за того, что кто-то сбросил, или изменил архив"), ephemeral=True)
+            return
         await interaction.response.defer()
 
         self.timeout = 300
@@ -124,7 +132,8 @@ class esnipe_archive(discord.ui.View):
                 position = int(field.value.split()[0]) - 1
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            return
         try:
             esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(self.channel_id)
             snipess: typing.Dict = esnipe_existing_data[position]
@@ -133,10 +142,12 @@ class esnipe_archive(discord.ui.View):
                 await ESNIPE_CACHE.set(self.channel_id, esnipe_existing_data, ttl=3600)
             else:
                 await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
-                return await interaction.followup.delete_message(interaction.message.id)
+                await interaction.followup.delete_message(interaction.message.id)
+                return
         except:
             await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="Данное сообщение уже было удалено из архива!", color=0xff0000), ephemeral=True)
-            return await interaction.followup.delete_message(interaction.message.id)
+            await interaction.followup.delete_message(interaction.message.id)
+            return
         emb = discord.Embed(title="☑️ Успешно!", color=CONFIG.LITTLE_ANGEL_COLOR, description=f"Заархивированное сообщение с позицией {position + 1} было удалено!", timestamp=datetime.now(timezone.utc))
         emb.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar, url=f"https://discord.com/users/{interaction.user.id}")
         self.finished = True
@@ -146,7 +157,8 @@ class esnipe_archive(discord.ui.View):
     async def ereset(self, interaction: discord.Interaction, button: discord.ui.Button):
         channel = self.bot.get_channel(self.channel_id) or await self.bot.fetch_channel(self.channel_id)
         if not channel.permissions_for(interaction.user).manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права управлять сообщениями для использования этой кнопки!", color=0xff0000), ephemeral=True)
+            return
         try:
             await ESNIPE_CACHE.set(self.channel_id, [], ttl=3600)
         except:
@@ -188,8 +200,9 @@ class ESnipe(commands.Cog):
         
         user_permissions_in_channel = channel.permissions_for(interaction.user)
         if user_permissions_in_channel.read_message_history == False or user_permissions_in_channel.read_messages == False:
-            return await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
-
+            await interaction.response.send_message(embed=discord.Embed(title="Ошибка! ❌", description="У вас нет права просматривать этот канал или читать историю сообщений в нём!", color=0xff0000), ephemeral=True)
+            return
+        
         esnipe_existing_data: typing.List = await ESNIPE_CACHE.get(channel.id)
         if not esnipe_existing_data:
             raise KeyError()

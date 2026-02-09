@@ -62,8 +62,9 @@ class SpamSuggestion(commands.Cog):
 
             blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = ? LIMIT 1", user_id)
             if blocked:
-                return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
-
+                await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
+                return
+            
             embed = discord.Embed(title="✨ Новый предложенный текст для спама", description=self.text.value, color=CONFIG.LITTLE_ANGEL_COLOR)
             embed.set_footer(text=f"От: {interaction.user} ({user_id}) | Тип: {self.type}")
 
@@ -81,13 +82,15 @@ class SpamSuggestion(commands.Cog):
 
         blocked = await db.fetchone("SELECT user_id FROM blocked_users WHERE user_id = ? LIMIT 1", interaction.user.id)
         if blocked:
-            return await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
-
+            await interaction.response.send_message(embed=discord.Embed(description="❌ Вы заблокированы и не можете предлагать тексты.", color=0xff0000), ephemeral=True)
+            return
+        
         modal = self.SpamSuggestionModal(
             bot=self.bot,
             type=type
         )
-        return await interaction.response.send_modal(modal)
+        await interaction.response.send_modal(modal)
+        return
 
 
 async def setup(bot: LittleAngelBot):

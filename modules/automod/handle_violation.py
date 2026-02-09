@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import time
 import typing
+import logging
 
 from aiocache import SimpleMemoryCache
 from datetime import timedelta
@@ -11,10 +12,11 @@ from classes.bot import LittleAngelBot
 from modules.configuration import CONFIG
 from modules.lock_manager import LockManagerWithIdleTTL
 
-HIT_CACHE             = SimpleMemoryCache()
-SENT_MESSAGES_CACHE   = SimpleMemoryCache()
-VIOLATION_CACHE       = SimpleMemoryCache()  # guild_id -> List[timestamps]
-INVITE_LOCKDOWN_CACHE = SimpleMemoryCache()
+AUTOMOD_HIT_CACHE       = SimpleMemoryCache()
+HIT_CACHE               = SimpleMemoryCache()
+SENT_MESSAGES_CACHE     = SimpleMemoryCache()
+VIOLATION_CACHE         = SimpleMemoryCache()  # guild_id -> List[timestamps]
+INVITE_LOCKDOWN_CACHE   = SimpleMemoryCache()
 
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
 
@@ -22,12 +24,18 @@ LOCK_MANAGER_FOR_HITS     = LockManagerWithIdleTTL(idle_ttl=3600)
 LOCK_MANAGER_FOR_MESSAGES = LockManagerWithIdleTTL(idle_ttl=2400)
 LOCK_MANAGER_FOR_GUILD    = LockManagerWithIdleTTL(idle_ttl=7200)
 
+LOCK_MANAGER_FOR_AUTOMOD_HITS  = LockManagerWithIdleTTL(idle_ttl=300)
+LOCK_MANAGER_FOR_GUILD_AUTOMOD = LockManagerWithIdleTTL(idle_ttl=600)
+
+LOCK_MANAGER_FOR_DISCORD_AUTOMOD = LockManagerWithIdleTTL(idle_ttl=1200)
+DISCORD_AUTOMOD_CACHE            = SimpleMemoryCache()
+
 INVITE_LOCKDOWN_DURATION = 2 * 60 * 60      # 2 часа
 INVITE_LOCKDOWN_COOLDOWN = 45 * 60          # 45 минут
 VIOLATION_WINDOW         = 5 * 60           # 5 минут
 VIOLATION_LIMIT          = 10               # 10 нарушений в VILOATION_WINDOW минут
 
-async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
+async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild, reason: str):
     now = time.time()
 
     async with LOCK_MANAGER_FOR_GUILD.lock(guild.id):
@@ -46,9 +54,20 @@ async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild):
         else:
             lockdown_until = now + INVITE_LOCKDOWN_DURATION
 
+            log_desc = (
+                "**Включён локдаун приглашений и личных сообщений** на 2 часа\n"
+                f"Причина: {reason}\n\n"
+            )
+            log_embed = discord.Embed(
+                title="Локдаун",
+                description=log_desc,
+                color=0xff0000
+            )
+            log_embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+
             await safe_send_to_log(
                 bot,
-                content="🔒 **Включён локдаун приглашений и личных сообщений** на 2 часа вследствие всплеска нарушений"
+                embed=log_embed
             )
 
         disabled_until = discord.utils.utcnow() + timedelta(
@@ -102,7 +121,8 @@ async def safe_send_to_channel(channel: discord.abc.Messageable, *args, user_id:
     if user_id and message_content and await check_message_sent_recently(user_id, generate_message_hash(message_content)):
         return None
     try:
-        return await channel.send(*args, **kwargs)
+        await channel.send(*args, **kwargs)
+        return
     except Exception:
         return None
 
@@ -113,7 +133,8 @@ async def safe_send_to_log(bot: LittleAngelBot, *args, user_id: int = None, mess
         channel: discord.TextChannel = bot.get_channel(CONFIG.AUTOMOD_LOGS_CHANNEL_ID)
         if not channel:
             channel: discord.TextChannel = await bot.fetch_channel(CONFIG.AUTOMOD_LOGS_CHANNEL_ID)
-        return await channel.send(*args, **kwargs)
+        await channel.send(*args, **kwargs)
+        return
     except Exception:
         return None
 
@@ -176,6 +197,121 @@ async def safe_timeout(member: discord.Member, duration: timedelta, reason: str 
     except Exception:
         pass
 
+async def handle_automod_violation(
+    bot: LittleAngelBot,
+    execution: discord.AutoModAction
+):
+
+    # hit-cache
+    async with LOCK_MANAGER_FOR_AUTOMOD_HITS.lock(execution.member.id):
+        hits = await AUTOMOD_HIT_CACHE.get(execution.member.id) or 0
+        hits += 1
+        await AUTOMOD_HIT_CACHE.set(execution.member.id, hits, ttl=600)
+
+    if execution.alert_system_message_id:
+        async with LOCK_MANAGER_FOR_DISCORD_AUTOMOD.lock(execution.alert_system_message_id):
+            await DISCORD_AUTOMOD_CACHE.set(execution.alert_system_message_id, 1, ttl=1200)
+    
+    logging.info(f"Обрабатывается automod нарушение от {execution.member.display_name}")
+
+    is_soft = hits < 10
+
+    # LOG EMBED
+    if is_soft:
+        return
+        # punishment = None
+        # action_text = None
+    else:
+        punishment = "Тебе выдан мут на 1 час"
+        action_text = f"Участнику {execution.member.mention} (`@{execution.member}`) был выдан мут на 1 час"
+
+    log_desc = (
+        f"{action_text}\n"
+        f"Причина: Множественные срабатывания автомода / попытки обойти автомод"
+    )
+
+    log_embed = discord.Embed(
+        title="Попытки обойти автомод",
+        description=log_desc,
+        color=0xff0000
+    )
+    log_embed.set_author(name=execution.guild.name, icon_url=execution.guild.icon.url if execution.guild.icon else None)
+    log_embed.set_footer(text=f"ID: {execution.member.id}")
+    log_embed.set_thumbnail(url=execution.member.display_avatar.url)
+    log_embed.add_field(
+        name="Канал:",
+        value=f"{execution.channel.mention} (`#{execution.channel.name}`)",
+        inline=False
+    )
+
+    asyncio.create_task(safe_send_to_log(bot, embed=log_embed, user_id=execution.member.id, message_content=log_desc))
+
+    # MENTION EMBED
+    mention_desc = (
+        f"Причина срабатывания: множественные срабатывания автомода / попытки обойти автомод\n"
+        f"{punishment}\n\n"
+        # f"{extra_info}\n"
+        f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
+    )
+
+    mention_embed = discord.Embed(
+        title="Попытки обойти автомод",
+        description=mention_desc,
+        color=0xff0000
+    )
+    mention_embed.set_author(name=execution.guild.name, icon_url=execution.guild.icon.url if execution.guild.icon else None)
+    mention_embed.set_thumbnail(url=execution.member.display_avatar.url)
+    mention_embed.set_footer(
+        text=(
+            "Если ты считаешь, что это ошибка, проигнорируй это сообщение" 
+            if is_soft 
+            else "Если ты считаешь, что это ошибка, обратись к модераторам"
+        )
+    )
+
+    asyncio.create_task(
+            safe_send_to_channel(
+            execution.member,
+            embed=mention_embed,
+            user_id=execution.member.id,
+            message_content=f"[ЛИЧНЫЕ СООБЩЕНИЯ]\n\n{mention_desc}"
+        )
+    )
+
+    if not isinstance(execution.channel, discord.ForumChannel):
+        asyncio.create_task(
+            safe_send_to_channel(
+                execution.channel,
+                content=execution.member.mention,
+                embed=mention_embed,
+                user_id=execution.member.id,
+                message_content=mention_desc
+            )
+        )
+
+    # выдаёт мут
+    if not is_soft:
+        await safe_timeout(execution.member, timedelta(hours=1), "множественные срабатывания автомода / попытки обойти автомод")
+        await AUTOMOD_HIT_CACHE.delete(execution.member.id)
+
+        async with LOCK_MANAGER_FOR_GUILD.lock(execution.guild.id):
+            violations = await VIOLATION_CACHE.get(execution.guild.id) or []
+
+            # скользящее окно
+            now = time.time()
+            violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
+            violations.extend([now, now, now])
+
+            await VIOLATION_CACHE.set(
+                execution.guild.id,
+                violations,
+                ttl=VIOLATION_WINDOW
+            )
+
+            if len(violations) >= VIOLATION_LIMIT:
+                asyncio.create_task(apply_invite_lockdown(bot, execution.guild, "Подозрение на рейд сервера (массовые срабатывания автомодерации)"))
+
+
 async def handle_violation(
     bot: LittleAngelBot,
     detected_member: discord.Member,
@@ -206,7 +342,7 @@ async def handle_violation(
         )
 
         if len(violations) >= VIOLATION_LIMIT:
-            asyncio.create_task(apply_invite_lockdown(bot, detected_guild))
+            asyncio.create_task(apply_invite_lockdown(bot, detected_guild, "Подозрение на рейд сервера (массовые срабатывания автомодерации)"))
 
     # Игнорирует системные сообщения (не выдаёт мут, а лишь удаляет сообщение)
     if detected_message and detected_message.is_system():
@@ -219,7 +355,7 @@ async def handle_violation(
         hits += 1
         await HIT_CACHE.set(detected_member.id, hits, ttl=3600)
 
-    is_soft = hits <= 2 and not force_mute and not force_ban
+    is_soft = hits < 3 and not force_mute and not force_ban
 
     # LOG EMBED
     if force_ban:
@@ -300,12 +436,12 @@ async def handle_violation(
     if detected_message and not force_ban:
         asyncio.create_task(safe_delete(detected_message))
 
-    # выдаёт бан
-    if force_ban:
-        await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
-        await HIT_CACHE.delete(detected_member.id)
+    # # выдаёт бан
+    # if force_ban:
+    #     await safe_ban(detected_guild, detected_member, timeout_reason, delete_message_seconds=216000)
+    #     await HIT_CACHE.delete(detected_member.id)
 
-    # выдаёт мут
-    elif not is_soft:
-        await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
-        await HIT_CACHE.delete(detected_member.id)
+    # # выдаёт мут
+    # elif not is_soft:
+    #     await safe_timeout(detected_member, timedelta(hours=1), timeout_reason)
+    #     await HIT_CACHE.delete(detected_member.id)

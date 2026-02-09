@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 from classes.bot import LittleAngelBot
 from modules.automod.attachment_spam_filter import check_attachment_spam, ATTACHMENTS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.flood_filter import flood_and_messages_check, MESSAGES_FROM_NEW_MEMBERS_CACHE
-from modules.automod.handle_violation import handle_violation, safe_ban, safe_send_to_log
+from modules.automod.handle_violation import handle_automod_violation, handle_violation, safe_ban, safe_send_to_log, apply_invite_lockdown, DISCORD_AUTOMOD_CACHE, LOCK_MANAGER_FOR_DISCORD_AUTOMOD
 from modules.automod.link_filter import detect_links, check_message_for_invite_codes
 from modules.automod.mention_filter import check_mention_abuse, MENTIONS_FROM_NEW_MEMBERS_CACHE
 from modules.automod.spam_filter import is_spam_block
@@ -209,6 +209,17 @@ class AutoModeration(commands.Cog):
             return
         if message.author == self.bot.user:
             return
+        if message.is_system() and message.type == discord.MessageType.auto_moderation_action:
+            await asyncio.sleep(3)
+
+            async with LOCK_MANAGER_FOR_DISCORD_AUTOMOD.lock(message.id):
+                hits = await DISCORD_AUTOMOD_CACHE.get(message.id) or None
+                if hits:
+                    return
+                await DISCORD_AUTOMOD_CACHE.set(message.id, 1, ttl=1200)
+            
+            await apply_invite_lockdown(self.bot, message.guild, "Подозрение на рейд сервера (уведомление от Discord)")
+            return
         if message.author.bot:
             if not message.interaction_metadata:
                 return
@@ -258,60 +269,27 @@ class AutoModeration(commands.Cog):
                 # лёгкая чистка, основная в таске
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
-                
-        # условия срабатывания
-        if priority > 2:
 
-            if message.attachments and difference_between_join_and_now and difference_between_join_and_now < timedelta(minutes=7):
-                # детект спама вложениями
-                is_attachment_spam, attachment_content = await check_attachment_spam(message.author, message)
+        # модерация активности  
+        if message.activity and priority > 0:
 
-                if is_attachment_spam:
+            if message.activity.get('type') == 3 and (not message.activity.get('icon_override') or 'spotify:' not in message.activity.get('icon_override')):
 
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Подозрение на спам вложениями",
-                        reason_text="нечеловеческое поведение / подозрение на спам вложениями",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{attachment_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Подозрение на спам вложениями от нового участника",
-                        force_mute=True
-                    )
+                activity_presence = None
+                for presence in message.author.activities:
+                    if isinstance(presence, discord.Spotify):
+                        activity_presence = presence
+                        break
 
-                    await ATTACHMENTS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
-
-                    return
-
-            if message.content:
-                # детект злоупотребления упоминаниями
-                is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
-
-                if is_mention_abuse:
-
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Злоупотребление упоминаниями",
-                        reason_text="злоупотребление упоминаниями",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Злоупотребление упоминаниями от нового участника",
-                        force_mute=True
-                    )
-
-                    await MENTIONS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
-
-                    return
-
-            # детект флуда
-            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
-
-            if is_flood:
+                activity_info = (
+                    f"Тип: {message.activity.get('type')}\n"
+                    f"Party ID: {message.activity.get('party_id')}\n"
+                    f"Трек: {activity_presence.title if hasattr(activity_presence, 'title') else 'Нет трека'}\n"
+                    f"URL трека: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет ссылки'}\n"
+                    f"Альбом: {activity_presence.album if hasattr(activity_presence, 'album') else 'Нет альбома'}\n"
+                    f"Исполнитель: {activity_presence.artist if hasattr(activity_presence, 'artist') else 'Нет исполнителя'}\n"
+                    f"Длительность трека: {str(activity_presence.duration) if hasattr(activity_presence, 'duration') else 'Неизвестна'}"
+                )
 
                 await handle_violation(
                     self.bot,
@@ -319,18 +297,164 @@ class AutoModeration(commands.Cog):
                     detected_channel=message.channel,
                     detected_guild=message.guild,
                     detected_message=message,
-                    reason_title="Флуд",
-                    reason_text="флуд",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
-                    timeout_reason="Флуд от нового участника",
-                    force_mute=True
+                    reason_title="Реклама через активность",
+                    reason_text="реклама через Discord Activity",
+                    extra_info=f"Информация об активности:\n```\n{activity_info}```",
+                    timeout_reason="Реклама через активность",
+                    force_ban=True
                 )
-
-                await MESSAGES_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
 
                 return
             
-            # детект всех инвайт кодов
+        # модерация вложенных файлов
+        if message.attachments and priority > 0:
+
+            for attachment in message.attachments:
+
+                if not attachment.content_type:
+                    continue
+
+                # Проверяет только текстовые файлы
+                if attachment.content_type and any(ct in attachment.content_type for ct in [
+                    "text/", "application/json", "application/xml", 
+                    "application/x-yaml", "application/yaml"
+                ]):
+
+                    # ограничение по размеру
+                    # if attachment.size > MAX_FILE_SIZE_BYTES:
+                    #     continue
+
+                    try:
+                        file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
+                    except (asyncio.TimeoutError, discord.HTTPException):
+                        continue
+
+                    if file_bytes.count(b"\x00") > 100:
+                        continue  # бинарный файл
+
+                    content = file_bytes[:1_000_000].decode(errors='ignore')
+
+                    matched = await detect_links(self.bot, content)
+
+                    if matched:
+
+                        # первые 300 символов файла
+                        preview = content[:300].replace("`", "'")
+
+                        file_info = (
+                            f"Имя файла: {attachment.filename}\n"
+                            f"Размер: {attachment.size} байт\n"
+                            f"Тип: {attachment.content_type}\n"
+                        )
+
+                        extra = (
+                            f"Совпадение:\n```\n{matched}\n```\n"
+                            f"Информация о файле:\n```\n{file_info}```\n"
+                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                        )
+
+                        await handle_violation(
+                            self.bot,
+                            detected_member=message.author,
+                            detected_channel=message.channel,
+                            detected_guild=message.guild,
+                            detected_message=message,
+                            reason_title="Реклама внутри файла",
+                            reason_text="реклама в прикреплённом файле",
+                            extra_info=extra,
+                            timeout_reason="Реклама в файле",
+                            force_ban=True
+                        )
+
+                        return
+                    
+        # модерация опросов
+        if message.poll and priority > 0:
+
+            poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
+            poll_content = (
+                "\n\n[Опрос:]"
+                f'\nВопрос: "{message.poll.question}"'
+                f"\nОпции: {poll_options}"
+            )
+
+            matched = await detect_links(self.bot, poll_content)
+
+            if matched:
+
+                extra = (
+                    f"Совпадение:\n```\n{matched}\n```\n"
+                    f"Информация об опросе:\n```\n{poll_content}```\n"
+                )
+
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Реклама внутри опроса",
+                    reason_text="реклама в прикреплённом опросе",
+                    extra_info=extra,
+                    timeout_reason="Реклама в опросе",
+                    force_ban=True
+                )
+
+                return
+            
+        # детект злоупотребления упоминаниями
+        if message.content and priority > 2:
+            is_mention_abuse, mention_content = await check_mention_abuse(message.author, message)
+
+            if is_mention_abuse:
+
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Злоупотребление упоминаниями",
+                    reason_text="злоупотребление упоминаниями",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Злоупотребление упоминаниями от нового участника",
+                    force_mute=True
+                )
+
+                await MENTIONS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
+
+                return
+            
+        # детект рекламы
+        if priority > 1:
+            matched = await detect_links(self.bot, message)
+
+            if matched:
+
+                # первые 300 символов сообщения
+                preview = message.content[:300].replace("`", "'")
+
+                extra = (
+                    f"Совпадение:\n```\n{matched}\n```\n"
+                    f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                )
+
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Реклама в сообщении",
+                    reason_text="реклама в тексте сообщения",
+                    extra_info=extra,
+                    timeout_reason="Реклама в сообщении"
+                )
+
+                return
+            
+        # детект всех инвайт кодов
+        if priority > 2:
             is_invite = await check_message_for_invite_codes(self.bot, message, message.guild.id)
 
             if is_invite.get("found_invite"):
@@ -353,201 +477,87 @@ class AutoModeration(commands.Cog):
 
                 return
 
+        # детект флуда
+        if priority > 2:
+            is_flood, flood_content = await flood_and_messages_check(self.bot, message.author, message)
 
-                
-        # условия срабатывания
-        if priority > 1:
-            
-            # модерация сообщений
-            if message.content or message.embeds:
-            
-                # защита от засирания чата
+            if is_flood:
 
-                message_content = message.content if message.content else ""
-                for embed in message.embeds:
-                    if embed.title:
-                        message_content += f"\nЗаголовок: {embed.title}"
-                    if embed.description:
-                        message_content += f"\nОписание: {embed.description}"
-
-                if await is_spam_block(message_content):
-
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Спам / засорение чата",
-                        reason_text="засорение чата (пустые строки / мусор / код-блоки)",
-                        extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
-                        timeout_reason="Спам / засорение чата"
-                    )
-
-                    return
-
-                # детект рекламы
-
-                matched = await detect_links(self.bot, message)
-
-                if matched:
-
-                    # первые 300 символов сообщения
-                    preview = message.content[:300].replace("`", "'")
-
-                    extra = (
-                        f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Реклама в сообщении",
-                        reason_text="реклама в тексте сообщения",
-                        extra_info=extra,
-                        timeout_reason="Реклама в сообщении"
-                    )
-
-                    return
-                
-        # условия срабатывания
-        if priority > 0:
-
-            # модерация активности
-            if message.activity is not None:
-
-                if message.activity.get('type') == 3 and (not message.activity.get('icon_override') or 'spotify:' not in message.activity.get('icon_override')):
-
-                    activity_presence = None
-                    for presence in message.author.activities:
-                        if isinstance(presence, discord.Spotify):
-                            activity_presence = presence
-                            break
-
-                    activity_info = (
-                        f"Тип: {message.activity.get('type')}\n"
-                        f"Party ID: {message.activity.get('party_id')}\n"
-                        f"Трек: {activity_presence.title if hasattr(activity_presence, 'title') else 'Нет трека'}\n"
-                        f"URL трека: {activity_presence.track_url if hasattr(activity_presence, 'track_url') else 'Нет ссылки'}\n"
-                        f"Альбом: {activity_presence.album if hasattr(activity_presence, 'album') else 'Нет альбома'}\n"
-                        f"Исполнитель: {activity_presence.artist if hasattr(activity_presence, 'artist') else 'Нет исполнителя'}\n"
-                    )
-
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Реклама через активность",
-                        reason_text="реклама через Discord Activity",
-                        extra_info=f"Информация об активности:\n```\n{activity_info}```",
-                        timeout_reason="Реклама через активность",
-                        force_ban=True
-                    )
-
-                    return
-
-            # модерация вложенных файлов
-            if message.attachments:
-
-                for attachment in message.attachments:
-
-                    if not attachment.content_type:
-                        continue
-
-                    # Проверяет только текстовые файлы
-                    if attachment.content_type and any(ct in attachment.content_type for ct in [
-                        "text/", "application/json", "application/xml", 
-                        "application/x-yaml", "application/yaml"
-                    ]):
-
-                        # ограничение по размеру
-                        # if attachment.size > MAX_FILE_SIZE_BYTES:
-                        #     continue
-
-                        try:
-                            file_bytes = await asyncio.wait_for(attachment.read(), timeout=30)
-                        except (asyncio.TimeoutError, discord.HTTPException):
-                            continue
-
-                        if file_bytes.count(b"\x00") > 100:
-                            continue  # бинарный файл
-
-                        content = file_bytes[:1_000_000].decode(errors='ignore')
-
-                        matched = await detect_links(self.bot, content)
-
-                        if matched:
-
-                            # первые 300 символов файла
-                            preview = content[:300].replace("`", "'")
-
-                            file_info = (
-                                f"Имя файла: {attachment.filename}\n"
-                                f"Размер: {attachment.size} байт\n"
-                                f"Тип: {attachment.content_type}\n"
-                            )
-
-                            extra = (
-                                f"Совпадение:\n```\n{matched}\n```\n"
-                                f"Информация о файле:\n```\n{file_info}```\n"
-                                f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
-                            )
-
-                            await handle_violation(
-                                self.bot,
-                                detected_member=message.author,
-                                detected_channel=message.channel,
-                                detected_guild=message.guild,
-                                detected_message=message,
-                                reason_title="Реклама внутри файла",
-                                reason_text="реклама в прикреплённом файле",
-                                extra_info=extra,
-                                timeout_reason="Реклама в файле",
-                                force_ban=True
-                            )
-
-                            return
-                    
-            # модерация опросов
-            if message.poll:
-
-                poll_options = " | ".join([f'"{option.text}"' for option in message.poll.answers])
-                poll_content = (
-                    "\n\n[Опрос:]"
-                    f'\nВопрос: "{message.poll.question}"'
-                    f"\nОпции: {poll_options}"
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Флуд",
+                    reason_text="флуд",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{flood_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Флуд от нового участника",
+                    force_mute=True
                 )
 
-                matched = await detect_links(self.bot, poll_content)
+                await MESSAGES_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
 
-                if matched:
+                return
+            
+        # модерация сообщений
+        if (message.content or message.embeds) and priority > 1:
+        
+            # защита от засирания чата
 
-                    extra = (
-                        f"Совпадение:\n```\n{matched}\n```\n"
-                        f"Информация об опросе:\n```\n{poll_content}```\n"
-                    )
+            message_content = message.content if message.content else ""
+            for embed in message.embeds:
+                if embed.title:
+                    message_content += f"\nЗаголовок: {embed.title}"
+                if embed.description:
+                    message_content += f"\nОписание: {embed.description}"
 
-                    await handle_violation(
-                        self.bot,
-                        detected_member=message.author,
-                        detected_channel=message.channel,
-                        detected_guild=message.guild,
-                        detected_message=message,
-                        reason_title="Реклама внутри опроса",
-                        reason_text="реклама в прикреплённом опросе",
-                        extra_info=extra,
-                        timeout_reason="Реклама в опросе",
-                        force_ban=True
-                    )
+            if await is_spam_block(message_content):
 
-                    return
+                await handle_violation(
+                    self.bot,
+                    detected_member=message.author,
+                    detected_channel=message.channel,
+                    detected_guild=message.guild,
+                    detected_message=message,
+                    reason_title="Спам / засорение чата",
+                    reason_text="засорение чата (пустые строки / мусор / код-блоки)",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{message_content[:300].replace('`', '')}\n```",
+                    timeout_reason="Спам / засорение чата"
+                )
 
+                return
+                
+        # детект спама вложениями
+        # if message.attachments and priority > 2 and difference_between_join_and_now and difference_between_join_and_now < timedelta(minutes=7):
+            
+        #     is_attachment_spam, attachment_content = await check_attachment_spam(message.author, message)
+
+        #     if is_attachment_spam:
+
+        #         await handle_violation(
+        #             self.bot,
+        #             detected_member=message.author,
+        #             detected_channel=message.channel,
+        #             detected_guild=message.guild,
+        #             detected_message=message,
+        #             reason_title="Подозрение на спам вложениями",
+        #             reason_text="нечеловеческое поведение / подозрение на спам вложениями",
+        #             extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{attachment_content[:300].replace('`', '')}\n```",
+        #             timeout_reason="Подозрение на спам вложениями от нового участника",
+        #             force_mute=True
+        #         )
+
+        #         await ATTACHMENTS_FROM_NEW_MEMBERS_CACHE.delete(message.author.id)
+
+        #         return
+
+    @commands.Cog.listener()
+    async def on_automod_action(self, execution: discord.AutoModAction):
+        await handle_automod_violation(
+            self.bot,
+            execution
+        )
                 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
@@ -605,7 +615,8 @@ class AutoModeration(commands.Cog):
             embed.set_footer(text="Удаливший не найден")
             embed.add_field(name="Канал:", value=f"`#{channel.name}` (`ID {channel.id}`)")
 
-            return await safe_send_to_log(self.bot, embed=embed)
+            await safe_send_to_log(self.bot, embed=embed)
+            return
 
         # Находит всех + банит каждого
         embeds = []

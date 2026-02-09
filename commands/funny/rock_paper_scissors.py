@@ -60,11 +60,12 @@ class RPSWithBot(discord.ui.Select):
                     color=CONFIG.LITTLE_ANGEL_COLOR
                 ), view=None)
         else:
-            return await interaction.response.send_message(embed=discord.Embed(
+            await interaction.response.send_message(embed=discord.Embed(
                 title="Ошибка! ❌",
                 description="Использовать интеграцию может только тот человек, который вызывал команду!",
                 color=0xff0000
             ), ephemeral=True)
+            return
 
 
 class RPSWithBotView(discord.ui.View):
@@ -100,11 +101,12 @@ class RPSWithUser(discord.ui.Select):
         user2 = self.view.user2
 
         if interaction.user.id not in [user1.id, user2.id]:
-            return await interaction.response.send_message(embed=discord.Embed(
+            await interaction.response.send_message(embed=discord.Embed(
                 title="Ошибка! ❌",
                 description="Вы не участвуете в этой игре!",
                 color=0xff0000
             ), ephemeral=True)
+            return
 
         try:
             selected1 = self.view.selected1
@@ -112,11 +114,12 @@ class RPSWithUser(discord.ui.Select):
             pass
 
         if (interaction.user.id == user2.id and selected1 == None) or (interaction.user.id == user1.id and selected1):
-            return await interaction.response.send_message(embed=discord.Embed(
+            await interaction.response.send_message(embed=discord.Embed(
                 title="Ошибка! ❌",
                 description="Сейчас не ваш ход!",
                 color=0xff0000
             ), ephemeral=True)
+            return
 
         if not selected1:
             self.view.selected1 = self.values[0]
@@ -204,17 +207,19 @@ class RPS(commands.Cog):
             view.message = await interaction.original_response()
         else:
             if member.bot:
-                return await interaction.response.send_message(embed=discord.Embed(
+                await interaction.response.send_message(embed=discord.Embed(
                     title="Ошибка! ❌",
                     description="Выберите человека, а не бота!",
                     color=0xff0000
                 ), ephemeral=True)
+                return
             if member == interaction.user:
-                return await interaction.response.send_message(embed=discord.Embed(
+                await interaction.response.send_message(embed=discord.Embed(
                     title="Ошибка! ❌",
                     description="Нельзя играть с самим собой!",
                     color=0xff0000
                 ), ephemeral=True)
+                return
 
             view = RPSWithUserView(timeout=300)
             ralis = [interaction.user, member]

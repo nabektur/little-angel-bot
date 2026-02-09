@@ -195,6 +195,8 @@ DISCORD_EMOJI_PATTERN = re.compile(r'<a?:[^:>]+:\d{17,20}>|:[^:\s]+:')
 INVITE_CODE_CACHE = SimpleMemoryCache()
 INVITE_CODE_CACHE_TTL = 1200
 
+WHITELISTED_WORDS = ("spotify")
+
 def should_skip_potential_code(code: str) -> bool:
     """Фильтрует явно невалидные коды"""
     
@@ -204,6 +206,9 @@ def should_skip_potential_code(code: str) -> bool:
 
     # Паттерны дат (2024-01, 2024-12-31)
     if DATE_RE.match(code):
+        return True
+    
+    if any(w in code.lower() for w in WHITELISTED_WORDS):
         return True
     
     return False
@@ -251,8 +256,6 @@ async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
             'member_count': member_count
         }
         await INVITE_CODE_CACHE.set(cache_key, result, ttl=INVITE_CODE_CACHE_TTL)
-        
-        logging.info(f"Инвайт-код {code} проверен через API: валидный → {guild_name}")
         
         return {
             'is_invite': True,
@@ -312,11 +315,7 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     
     text = await extract_message_content(bot, message)
 
-    logging.info(f"Текст до обработки: {text}")
-
     clean_text = DISCORD_EMOJI_PATTERN.sub(' ', text)
-
-    logging.info(f"Текст после обработки: {clean_text}")
     
     # Убираем URL из текста, чтобы не ловить части ссылок
     clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', clean_text)
@@ -378,7 +377,6 @@ async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.M
                 continue
             
             # Найден валидный инвайт на другой сервер!
-            logging.info(f"Обнаружен инвайт-код: {code} -> {result['guild_name']} (кэш: {result['from_cache']})")
             return {
                 'found_invite': True,
                 'invite_code': code,

@@ -40,20 +40,26 @@ class AutoRemove(commands.Cog):
             channel = interaction.channel
         bot_member = interaction.guild.me
         if not isinstance(channel, typing.Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]):
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Команду можно применять только к текстовым каналам, веткам и голосовым каналам!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Команду можно применять только к текстовым каналам, веткам и голосовым каналам!"), ephemeral=True)
+            return
         channel_permissions = channel.permissions_for(bot_member)
         if not (channel_permissions.read_messages and channel_permissions.read_message_history):
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права просматривать указанный канал или просматривать историю его сообщений для использования этой команды!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права просматривать указанный канал или просматривать историю его сообщений для использования этой команды!"), ephemeral=True)
+            return
         if not channel_permissions.manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями в канале для использования этой команды!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="У бота нет права управлять сообщениями в канале для использования этой команды!"), ephemeral=True)
+            return
         try:
             message = await channel.fetch_message(message_id)
         except:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Сообщения с указанным ID не существует!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Сообщения с указанным ID не существует!"), ephemeral=True)
+            return
         if message.author.id != interaction.user.id and not channel.permissions_for(interaction.user).manage_messages:
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы не можете удалять чужие сообщения без права на управление сообщениями!"), ephemeral=True)
+            return
         if duration > timedelta(days=30) or duration < timedelta(seconds=3):
-            return await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(title="❌ Ошибка!", color=0xff0000, description="Вы указали длительность, которая больше, чем 1 месяц, либо меньше, чем 3 секунды!"), ephemeral=True)
+            return
         
         duration_datetime: datetime = datetime.now(timezone.utc) + duration
 
