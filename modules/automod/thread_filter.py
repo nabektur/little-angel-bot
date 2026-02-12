@@ -34,9 +34,6 @@ async def get_cached_threads_and_append(member: discord.Member, append_thread: d
     return threads
 
 async def analyze_thread(bot: LittleAngelBot, member: discord.Member, thread: discord.Thread) -> typing.Tuple[bool, list, typing.Optional[str]]:
-    """
-    Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
-    """
 
     threads_list = await get_cached_threads_and_append(member, append_thread=thread)
 
@@ -54,9 +51,6 @@ async def delete_thread_safe(
     thread: discord.Thread,
     reason: str = "Автоматическая очистка"
 ):
-    """
-    Безопасное удаление ветки
-    """
 
     async with _DELETE_SEMAPHORE:
 

@@ -97,11 +97,9 @@ async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild, reaso
         )
 
 def generate_message_hash(message_content: str) -> str:
-    """Генерирует хэш для идентификации типа нарушения"""
     return hashlib.md5(message_content.encode()).hexdigest()[:16]
 
 async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
-    """Проверяет, отправлялось ли недавно такое же сообщение в отношении данного пользователя"""
     async with LOCK_MANAGER_FOR_MESSAGES.lock(user_id):
         last_sent_cache: typing.List = await SENT_MESSAGES_CACHE.get(user_id)
         
@@ -156,11 +154,6 @@ async def delete_messages_safe(
     message_ids: set[int],
     reason: str = "Автоматическая очистка"
 ):
-    """
-    Безопасное удаление группы сообщений:
-    - Пытается удалить с помощью bulk delete
-    - Если не получилось - удаляет по одному, управляя скоростью
-    """
 
     if not message_ids:
         return

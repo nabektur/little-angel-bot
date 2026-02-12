@@ -29,9 +29,6 @@ REPEATED_SEPARATORS_PATTERN = re.compile(r"[\.]{20,}|[-]{20,}|[_]{20,}|[=]{20,}|
 
 @AsyncTTL(time_to_live=600, maxsize=20000)
 async def is_spam_block(message: str) -> bool:
-    """
-    Детектит различные виды спама с минимизацией ложных срабатываний
-    """
     msg_len = len(message)
     
     if msg_len < 3:

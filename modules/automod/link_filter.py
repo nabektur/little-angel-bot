@@ -182,7 +182,6 @@ INVITE_CODE_CACHE_TTL = 1200
 WHITELISTED_WORDS = ("spotify",)
 
 def should_skip_potential_code(code: str) -> bool:
-    """Фильтрует явно невалидные коды"""
     
     if not any(c.isalpha() and c.isascii() for c in code):
         return True
@@ -196,16 +195,6 @@ def should_skip_potential_code(code: str) -> bool:
     return False
 
 async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
-    """
-    Проверяет код через Discord API с кэшированием
-    
-    Args:
-        bot: Экземпляр discord.Bot для API запросов
-        code: Потенциальный инвайт-код
-    
-    Returns:
-        dict: {'is_invite': bool, 'guild_id': int|None, 'guild_name': str|None, 'from_cache': bool}
-    """
     
     cache_key = f"invite_code:{code.lower()}"
     
@@ -283,10 +272,6 @@ async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
         }
 
 async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.Message) -> list:
-    """
-    Извлекает потенциальные Discord invite коды из текста
-    ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - regex делает всю работу
-    """
     
     text = await extract_message_content(bot, message)
 
@@ -309,24 +294,6 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     return unique_codes[:5]
 
 async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
-    """
-    Проверяет сообщение на наличие валидных Discord invite кодов
-    ЭТА ФУНКЦИЯ ДОЛЖНА ВЫЗЫВАТЬСЯ ТОЛЬКО ДЛЯ НОВЫХ УЧАСТНИКОВ!
-    
-    Args:
-        bot: Экземпляр discord.Bot для API запросов
-        message: Экземпляр discord.Message для проверки
-        current_guild_id: ID текущего сервера (чтобы не банить за свои инвайты)
-    
-    Returns:
-        dict: {
-            'found_invite': bool,
-            'invite_code': str|None,
-            'guild_id': int|None,
-            'guild_name': str|None,
-            'from_cache': bool
-        }
-    """
     
     potential_codes = extract_potential_invite_codes(bot, message)
     
@@ -355,7 +322,6 @@ async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.M
     return {'found_invite': False}
 
 def is_discord_invite_url(url: str) -> bool:
-    """Проверяет, является ли URL ссылкой-приглашением Discord"""
     for pattern in DISCORD_INVITE_PATTERNS:
         if pattern.search(url):
             return True
@@ -363,10 +329,6 @@ def is_discord_invite_url(url: str) -> bool:
 
 @AsyncTTL(time_to_live=300, maxsize=1000)
 async def check_url_redirect(url: str, max_redirects: int = 5) -> str:
-    """
-    Проверяет финальный URL после всех редиректов
-    Кэширует результат на 5 минут
-    """
     try:
         timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -382,16 +344,11 @@ async def check_url_redirect(url: str, max_redirects: int = 5) -> str:
 
 
 def extract_urls_from_text(text: str) -> list:
-    """Извлекает все HTTP/HTTPS URL из текста"""
     urls = URL_PATTERN.findall(text)
     return urls
 
 
 async def check_urls_for_discord_invites(text: str) -> str:
-    """
-    Проверяет URL в тексте на редиректы к Discord invite
-    Возвращает описание найденной ссылки или None
-    """
     urls = extract_urls_from_text(text)
     
     if not urls:
@@ -468,22 +425,16 @@ async def normalize_and_compact(raw_text: str) -> str:
     compact = COMPACT_RE.sub("", collapsed.lower())
     return compact
 
-async def looks_like_discord(word: str, threshold=85):
-    """Повышен порог с 70 до 85 для уменьшения ложных срабатываний"""
+async def looks_like_discord(word: str, threshold: int = 85):
     if len(word) < 6:
         return False
     score = fuzz.partial_ratio("discord", word)
     return score >= threshold
 
 def extract_markdown_links(text: str):
-    """Извлекает URL из markdown-разметки [текст](url)"""
     return re.findall(MARKDOWN_LINKS_RE, text)
 
 def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
-    """
-    Проверяет, находится ли совпадение в естественном контексте слова.
-    Возвращает True, если это часть обычного предложения.
-    """
     start = max(0, match_pos - 20)
     end = min(len(text), match_pos + match_len + 20)
     context = text[start:end].lower()
@@ -495,9 +446,6 @@ def is_natural_word_context(text: str, match_pos: int, match_len: int) -> bool:
     return False
 
 def extract_spaced_patterns(text: str, compact: str):
-    """
-    Ищет намеренно разнесенные паттерны вида 't . m e' или 'd i s c o r d . g g'
-    """
     findings = []
     
     text_lower = text.lower()
@@ -511,7 +459,6 @@ def extract_spaced_patterns(text: str, compact: str):
     return findings
 
 def extract_possible_domains(text: str):
-    """Извлекает возможные домены из текста"""
     text_no_spaces = text.replace(" ", "")
     candidates = []
 
@@ -528,10 +475,6 @@ def extract_possible_domains(text: str):
 
 @AsyncTTL(time_to_live=600, maxsize=20000)
 async def detect_links(bot: LittleAngelBot, message: typing.Union[discord.Message, str]):
-    """
-    Детектит подозрительные ссылки в тексте
-    Возвращает описание найденной ссылки или None
-    """
 
     if isinstance(message, discord.Message):
         raw_text = await extract_message_content(bot, message)
@@ -595,7 +538,6 @@ async def detect_links(bot: LittleAngelBot, message: typing.Union[discord.Messag
 
 
 async def _check_single_fragment(text_fragment: str, original_text: str, compact: str):
-    """Проверяет один фрагмент текста на наличие ссылок"""
     
     if not compact:
         compact = await normalize_and_compact(text_fragment)
@@ -684,10 +626,6 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     return None
 
 async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
-    """
-    Проверяет сообщение на наличие валидных Discord invite кодов
-    ЭТА ФУНКЦИЯ ДОЛЖНА ВЫЗЫВАТЬСЯ ТОЛЬКО ДЛЯ НОВЫХ УЧАСТНИКОВ!
-    """
     
     potential_codes = await extract_potential_invite_codes(bot, message)
     

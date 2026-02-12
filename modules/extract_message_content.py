@@ -8,7 +8,6 @@ from classes.bot import LittleAngelBot
 
 @AsyncTTL(time_to_live=30)
 async def activity_to_dict(activity: dict):
-    """Преобразует объект активности в словарь со всеми полями"""
     if isinstance(activity, dict):
         return activity
     

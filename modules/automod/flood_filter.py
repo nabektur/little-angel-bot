@@ -63,9 +63,6 @@ async def append_cached_messages(bot: LittleAngelBot, member: discord.Member, me
     return message_content, messages
 
 async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: discord.Message) -> typing.Tuple[bool, list, str]:
-    """
-    Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
-    """
 
     message_content, message_list = await append_cached_messages(bot, member, message)
 
