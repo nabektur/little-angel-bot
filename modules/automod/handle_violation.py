@@ -15,7 +15,7 @@ from modules.lock_manager import LockManagerWithIdleTTL
 AUTOMOD_HIT_CACHE       = SimpleMemoryCache()
 HIT_CACHE               = SimpleMemoryCache()
 SENT_MESSAGES_CACHE     = SimpleMemoryCache()
-VIOLATION_CACHE         = SimpleMemoryCache()  # guild_id -> List[timestamps]
+VIOLATION_CACHE         = SimpleMemoryCache()
 INVITE_LOCKDOWN_CACHE   = SimpleMemoryCache()
 
 _PURGE_SEMAPHORE = asyncio.Semaphore(1)
@@ -30,10 +30,10 @@ LOCK_MANAGER_FOR_GUILD_AUTOMOD = LockManagerWithIdleTTL(idle_ttl=600)
 LOCK_MANAGER_FOR_DISCORD_AUTOMOD = LockManagerWithIdleTTL(idle_ttl=1200)
 DISCORD_AUTOMOD_CACHE            = SimpleMemoryCache()
 
-INVITE_LOCKDOWN_DURATION = 2 * 60 * 60      # 2 часа
-INVITE_LOCKDOWN_COOLDOWN = 45 * 60          # 45 минут
-VIOLATION_WINDOW         = 5 * 60           # 5 минут
-VIOLATION_LIMIT          = 10               # 10 нарушений в VILOATION_WINDOW минут
+INVITE_LOCKDOWN_DURATION = 2 * 60 * 60  # 2 часа
+INVITE_LOCKDOWN_COOLDOWN = 45 * 60      # 45 минут
+VIOLATION_WINDOW         = 5 * 60       # 5 минут
+VIOLATION_LIMIT          = 10           # 10 нарушений в VILOATION_WINDOW минут
 
 async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild, reason: str):
     now = time.time()
@@ -44,11 +44,9 @@ async def apply_invite_lockdown(bot: LittleAngelBot, guild: discord.Guild, reaso
         lockdown_until = data.get("lockdown_until", 0)
         cooldown_until = data.get("cooldown_until", 0)
 
-        # cooldown на продление
         if now < cooldown_until:
             return
 
-        # если локдаун уже активен — ПРОДЛЕВАЕМ
         if now < lockdown_until:
             lockdown_until += INVITE_LOCKDOWN_DURATION
         else:
@@ -107,19 +105,17 @@ async def check_message_sent_recently(user_id: int, message_hash: str) -> bool:
     async with LOCK_MANAGER_FOR_MESSAGES.lock(user_id):
         last_sent_cache: typing.List = await SENT_MESSAGES_CACHE.get(user_id)
         
-        # Инициализация списка
         if last_sent_cache is None:
             last_sent_cache = []
         
         if message_hash in last_sent_cache:
             return True
         
-        # Добавляет новый хэш и ограничивает размер списка
         last_sent_cache.append(message_hash)
-        if len(last_sent_cache) > 10:  # Хранит только последние 10 типов нарушений
+        if len(last_sent_cache) > 10:
             last_sent_cache = last_sent_cache[-10:]
         
-        await SENT_MESSAGES_CACHE.set(user_id, last_sent_cache, ttl=60)  # автоочистка через минуту
+        await SENT_MESSAGES_CACHE.set(user_id, last_sent_cache, ttl=60)
         return False
 
 async def safe_ban(guild: discord.Guild, member: discord.abc.Snowflake, reason: str = None, delete_message_seconds: int = 0):
@@ -169,7 +165,6 @@ async def delete_messages_safe(
     if not message_ids:
         return
 
-    # --- основной безопасный purge ---
     async with _PURGE_SEMAPHORE:
         try:
             await channel.purge(
@@ -180,10 +175,8 @@ async def delete_messages_safe(
             )
             return
         except discord.HTTPException:
-            # попадает в rate-limit, fallback
             pass
 
-    # --- fallback: удаляет поштучно ---
     for msg_id in message_ids:
 
         try:
@@ -193,13 +186,10 @@ async def delete_messages_safe(
                 ]
             )
         except discord.NotFound:
-            # попадает в not found - пропускает
             continue
         except discord.HTTPException:
-            # ловит ошибку 429 - ждёт и пробует дальше
             await asyncio.sleep(2)
         finally:
-            # минимальная задержка между удалениями
             await asyncio.sleep(0.25)
 
 async def safe_timeout(member: discord.Member, duration: timedelta, reason: str = None):
@@ -213,7 +203,6 @@ async def handle_automod_violation(
     execution: discord.AutoModAction
 ):
 
-    # hit-cache
     async with LOCK_MANAGER_FOR_AUTOMOD_HITS.lock(execution.member.id):
         hits = await AUTOMOD_HIT_CACHE.get(execution.member.id) or 0
         hits += 1
@@ -230,8 +219,6 @@ async def handle_automod_violation(
     # LOG EMBED
     if is_soft:
         return
-        # punishment = None
-        # action_text = None
     else:
         punishment = "Тебе выдан мут на 1 час"
         action_text = f"Участнику {execution.member.mention} (`@{execution.member}`) был выдан мут на 1 час"
@@ -261,7 +248,6 @@ async def handle_automod_violation(
     mention_desc = (
         f"Причина срабатывания: множественные срабатывания автомода / попытки обойти автомод\n"
         f"{punishment}\n\n"
-        # f"{extra_info}\n"
         f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
     )
 
@@ -300,7 +286,6 @@ async def handle_automod_violation(
             )
         )
 
-    # выдаёт мут
     if not is_soft:
         await safe_timeout(execution.member, timedelta(hours=1), "множественные срабатывания автомода / попытки обойти автомод")
         await AUTOMOD_HIT_CACHE.delete(execution.member.id)
@@ -308,7 +293,6 @@ async def handle_automod_violation(
         async with LOCK_MANAGER_FOR_GUILD.lock(execution.guild.id):
             violations = await VIOLATION_CACHE.get(execution.guild.id) or []
 
-            # скользящее окно
             now = time.time()
             violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
             violations.extend([now, now, now])
@@ -342,7 +326,6 @@ async def handle_violation(
     async with LOCK_MANAGER_FOR_GUILD.lock(detected_guild.id):
         violations = await VIOLATION_CACHE.get(detected_guild.id) or []
 
-        # скользящее окно
         violations = [t for t in violations if now - t <= VIOLATION_WINDOW]
         violations.append(now)
 
@@ -355,7 +338,7 @@ async def handle_violation(
         if len(violations) >= VIOLATION_LIMIT:
             asyncio.create_task(apply_invite_lockdown(bot, detected_guild, "Подозрение на рейд сервера (массовые срабатывания автомодерации)"))
 
-    # Игнорирует системные сообщения (не выдаёт мут, а лишь удаляет сообщение)
+    # system message ignore
     if detected_message and detected_message.is_system():
         await safe_delete(detected_message)
         return
@@ -405,7 +388,6 @@ async def handle_violation(
     mention_desc = (
         f"Причина срабатывания: {reason_text}\n"
         f"{punishment}\n\n"
-        # f"{extra_info}\n"
         f"-# Дополнительную информацию можно посмотреть в канале автомодерации"
     )
 

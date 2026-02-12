@@ -74,7 +74,6 @@ class Spam(commands.Cog):
     )
         
     @spam_group.command(name="остановить", description="Останавливает спам в канале")
-    # @app_commands.describe(channel='Выберите канал для спама')
     async def spam_stop_command(self, interaction: discord.Interaction):
         if await db.fetchone("SELECT channel_id FROM spams WHERE guild_id = ? LIMIT 1", interaction.guild.id):
             await interaction.response.defer()

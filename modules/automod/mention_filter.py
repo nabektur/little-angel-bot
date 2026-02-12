@@ -15,7 +15,7 @@ LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
 MAX_SIMILLAR_MENTIONS = 10  # максимум упоминаний одного id
 MAX_DIFFERENT_MENTIONS = 5  # максимум уникальных упоминаний
-MAX_STORED_MESSAGES = 200  # сколько последних сообщений хранить в кэше
+MAX_STORED_MESSAGES = 200   # сколько последних сообщений хранить в кэше
 
 async def get_cached_mentions_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
     async with LOCK_MANAGER.lock(member.id):
@@ -25,7 +25,6 @@ async def get_cached_mentions_and_append(member: discord.Member, message: discor
 
         if message:
 
-            # Удаляет предыдущее сообщение с таким же id
             messages = [m for m in messages if m.get("id") != message.id]
 
             if "@everyone" in message.content:
@@ -74,11 +73,9 @@ async def detect_mention_abuse(member: discord.Member, message: discord.Message)
 
     max_count = max(mentions.values()) if mentions else 0
 
-    # Проверка на одинаковые id
     if max_count >= MAX_SIMILLAR_MENTIONS:
         return True, messages
 
-    # Проверка на разные id (количество уникальных ключей)
     if len(mentions) >= MAX_DIFFERENT_MENTIONS:
         return True, messages
 

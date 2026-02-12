@@ -38,11 +38,8 @@ async def analyze_thread(bot: LittleAngelBot, member: discord.Member, thread: di
     Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
     """
 
-    # Сохранение ветки в кэш + получение полного списка веток
     threads_list = await get_cached_threads_and_append(member, append_thread=thread)
 
-    # --- Проверка гарантированного флуда ---
-    # Нужно MAX_THREADS тредов, чтобы определить повтор
     if len(threads_list) >= MAX_THREADS:
         return True, threads_list, None
     
@@ -61,14 +58,12 @@ async def delete_thread_safe(
     Безопасное удаление ветки
     """
 
-    # --- основной безопасный delete ---
     async with _DELETE_SEMAPHORE:
 
         if thread.starter_message:
             try:
                 await thread.starter_message.delete()
             except (discord.HTTPException, discord.NotFound):
-                # попадает в rate-limit, попадает в not found, fallback
                 pass
 
         elif thread.parent and not isinstance(thread.parent, discord.ForumChannel):
@@ -78,7 +73,6 @@ async def delete_thread_safe(
                     reason=reason
                 )
             except (discord.HTTPException, discord.NotFound):
-                # попадает в rate-limit, попадает в not found, fallback
                 pass
 
         try:
@@ -87,7 +81,6 @@ async def delete_thread_safe(
             )
             return
         except discord.HTTPException:
-            # попадает в rate-limit, fallback
             pass
 
 

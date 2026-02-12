@@ -41,13 +41,11 @@ class LockManagerWithIdleTTL:
 
         now = time.time()
         
-        # Быстрая проверка без блокировки
         if user_id in self._locks:
             lock, _ = self._locks[user_id]
-            self._locks[user_id] = (lock, now)  # Обновляет last_used
+            self._locks[user_id] = (lock, now)
             return lock
         
-        # Создание нового лока
         async with self._creation_lock:
             if user_id in self._locks:
                 lock, _ = self._locks[user_id]
@@ -64,6 +62,5 @@ class LockManagerWithIdleTTL:
         lock = await self.get_lock(user_id)
         async with lock:
             yield
-        # После освобождения обновляет last_used
         if user_id in self._locks:
             self._locks[user_id] = (self._locks[user_id][0], time.time())

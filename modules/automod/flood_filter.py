@@ -17,12 +17,12 @@ from modules.lock_manager import LockManagerWithIdleTTL
 MESSAGES_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
 LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
-MAX_CACHE_MESSAGES = 60  # максимальное количество сообщений в кэше
-GUARANTEED_WINDOW = 15  # количество сообщений для гарантированного флуда
-ALTERNATING_WINDOW = 60  # окно анализа для чередования
-FUZZY_THRESHOLD = 80  # порог нечёткого сравнения в процентах
+MAX_CACHE_MESSAGES = 60           # максимальное количество сообщений в кэше
+GUARANTEED_WINDOW = 15            # количество сообщений для гарантированного флуда
+ALTERNATING_WINDOW = 60           # окно анализа для чередования
+FUZZY_THRESHOLD = 80              # порог нечёткого сравнения в процентах
 MIN_CLUSTERS_FOR_ALTERNATING = 2  # количество кластеров для засчитывания флуда как чередование
-MIN_CLUSTER_SIZE = 15  # количество сообщений в кластере для засчитывания флуда как чередование
+MIN_CLUSTER_SIZE = 15             # количество сообщений в кластере для засчитывания флуда как чередование
 
 @AsyncTTL(time_to_live=1600, maxsize=20000)
 async def fuzzy_compare(str1: str, str2: str) -> int:
@@ -67,10 +67,8 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
     Возвращает булевое значение: True - если обнаружен флуд, False - если нет.
     """
 
-    # Сохранение сообщения в кэш + получение полного текста
     message_content, message_list = await append_cached_messages(bot, member, message)
 
-    # --- Подготовка окон ---
     guaranteed_slice = message_list[-(GUARANTEED_WINDOW + 20):]
     alternating_slice = message_list[-ALTERNATING_WINDOW:]
 
@@ -86,13 +84,10 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
         }
     }
 
-    # --- Проверка гарантированного флуда ---
-    # Нужно как минимум GUARANTEED_WINDOW сообщений, чтобы определить повтор
     if len(guaranteed_slice) >= GUARANTEED_WINDOW:
 
         guaranteed_clusters = []
 
-        # Кластеризация указанного количества сообщений
         for i, msg in enumerate(guaranteed_slice):
             cur = (msg["content"] or "").strip()
             if not cur:
@@ -103,14 +98,12 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
             for cl in guaranteed_clusters:
                 proto = cl["prototype"]
 
-                # Прямое сравнение
                 if cur == proto:
                     cl["count"] += 1
                     cl["indices"].append(i)
                     placed = True
                     break
 
-                # Нечёткое сравнение
                 sim = await fuzzy_compare(cur, proto)
                 if sim >= FUZZY_THRESHOLD:
                     cl["count"] += 1
@@ -125,16 +118,13 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
                     "indices": [i]
                 })
 
-        # Если есть кластер из указанного количества сообщений - гарантированный флуд
         for cl in guaranteed_clusters:
             if cl["count"] >= GUARANTEED_WINDOW:
                 result["detected"] = True
                 result["guaranteed_flood"] = True
                 return True, message_list, message_content
 
-    # --- Проверка на чередование / повторяющиеся кластеры (не гарантированный флуд) ---
-    # Создаёт кластеры: каждый новый текст сравнивается с существующими прототипами кластера.
-    clusters = []  # список: [{"prototype": str, "indices": [i,...], "count": n}, ...]
+    clusters = []
 
     for i, msg in enumerate(alternating_slice):
         cur = (msg["content"] or "").strip()
@@ -142,10 +132,8 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
             continue
 
         placed = False
-        # пробует присоединить к уже существующему кластеру
         for cl in clusters:
             proto = cl["prototype"]
-            # быстрое прямое сравнение прежде нечёткого
             if cur == proto:
                 cl["indices"].append(i)
                 cl["count"] += 1
@@ -163,14 +151,12 @@ async def detect_flood(bot: LittleAngelBot, member: discord.Member, message: dis
                     break
 
         if not placed:
-            # создаётся новый кластер
             clusters.append({
                 "prototype": cur,
                 "indices": [i],
                 "count": 1
             })
 
-    # Подсчитается сколько кластеров имеют размер >= MIN_CLUSTER_SIZE
     repeating_clusters = [c for c in clusters if c["count"] >= MIN_CLUSTER_SIZE]
     result["alternating_clusters_count"] = len(repeating_clusters)
     result["details"]["clusters"] = [

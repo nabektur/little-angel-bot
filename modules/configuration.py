@@ -74,8 +74,6 @@ class Settings(BaseSettings):
         1439547094422650961
     ]
 
-    # ROFLS_CHANNEL_ID: int = 1437046827315892375
-
     model_config = SettingsConfigDict(
         env_file=ENV_PATH, enable_decoding="utf-8"
     )

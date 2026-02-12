@@ -26,12 +26,12 @@ class AutoModeration(commands.Cog):
         self._channel_locks    = defaultdict(asyncio.Lock)
 
         self.SLOWMODE_LEVELS = [
-            (40, 30, 600),  # >=40 сообщений → 30s, hold 10 минут
-            (30, 15, 300),  # >=30 сообщений → 15s, hold 5 минут
-            (15, 3, 120),   # >=15 сообщений → 3s,  hold 2 минуты
+            (40, 30, 600),
+            (30, 15, 300),
+            (15, 3, 120),
         ]
         self._slowmode_state = {}
-        self.WINDOW    = 10      # секунд
+        self.WINDOW          = 10
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -48,14 +48,12 @@ class AutoModeration(commands.Cog):
                 continue
 
             async with self._channel_locks[channel_id]:
-                # чистим окно активности
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
 
                 count = len(times)
                 current_delay = channel.slowmode_delay
 
-                # определяем целевой delay
                 target_delay = 0
                 for limit, delay, _ in self.SLOWMODE_LEVELS:
                     if count >= limit:
@@ -64,7 +62,6 @@ class AutoModeration(commands.Cog):
 
                 last_state = self._slowmode_state.get(channel_id)
 
-                # усиление — сразу
                 if target_delay > current_delay:
                     try:
                         await channel.edit(slowmode_delay=target_delay, reason="Ужесточение замедления в виду увеличения активности")
@@ -73,7 +70,6 @@ class AutoModeration(commands.Cog):
                         pass
                     continue
 
-                # ослабление — только после hold текущего уровня
                 if current_delay > target_delay and last_state:
                     last_delay, since = last_state
 
@@ -89,7 +85,6 @@ class AutoModeration(commands.Cog):
                     if now - since < hold_time:
                         continue
 
-                    # находим следующий меньший уровень
                     lower_levels = [
                         d for _, d, _ in self.SLOWMODE_LEVELS
                         if d < last_delay
@@ -109,7 +104,6 @@ class AutoModeration(commands.Cog):
                     except (discord.Forbidden, discord.HTTPException):
                         pass
 
-                # === очистка ===
                 if not times and channel.slowmode_delay == 0:
                     self._channel_activity.pop(channel_id, None)
                     self._channel_locks.pop(channel_id, None)
@@ -118,7 +112,6 @@ class AutoModeration(commands.Cog):
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
 
-        # базовые проверки
         if thread.guild.id != CONFIG.GUILD_ID:
             return
         if not thread.owner:
@@ -202,7 +195,6 @@ class AutoModeration(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
 
-        # базовые проверки
         if not message.guild:
             return
         if message.guild.id != CONFIG.GUILD_ID:
@@ -232,7 +224,7 @@ class AutoModeration(commands.Cog):
                 except discord.NotFound:
                     return
         
-        priority: int = 2  # расстановка приоритетов
+        priority: int = 2                       # расстановка приоритетов
         difference_between_join_and_now = None  # время с момента присоединения
 
         if message.author.guild_permissions.manage_messages:
@@ -257,7 +249,6 @@ class AutoModeration(commands.Cog):
         if priority == 0:
             return
 
-        # ===== Авто slow mode (нагрузка на канал) =====
         if isinstance(message.channel, discord.TextChannel):
             now = time.time()
             channel_id = message.channel.id
@@ -266,7 +257,6 @@ class AutoModeration(commands.Cog):
                 times = self._channel_activity[channel_id]
                 times.append(now)
 
-                # лёгкая чистка, основная в таске
                 while times and now - times[0] > self.WINDOW:
                     times.popleft()
 
@@ -314,7 +304,6 @@ class AutoModeration(commands.Cog):
                 if not attachment.content_type:
                     continue
 
-                # Проверяет только текстовые файлы
                 if attachment.content_type and any(ct in attachment.content_type for ct in [
                     "text/", "application/json", "application/xml", 
                     "application/x-yaml", "application/yaml"
@@ -330,7 +319,7 @@ class AutoModeration(commands.Cog):
                         continue
 
                     if file_bytes.count(b"\x00") > 100:
-                        continue  # бинарный файл
+                        continue
 
                     content = file_bytes[:1_000_000].decode(errors='ignore')
 
@@ -338,7 +327,6 @@ class AutoModeration(commands.Cog):
 
                     if matched:
 
-                        # первые 300 символов файла
                         preview = content[:300].replace("`", "'")
 
                         file_info = (
@@ -431,7 +419,6 @@ class AutoModeration(commands.Cog):
 
             if matched:
 
-                # первые 300 символов сообщения
                 preview = message.content[:300].replace("`", "'")
 
                 extra = (
@@ -569,7 +556,6 @@ class AutoModeration(commands.Cog):
         if channel.id not in CONFIG.PROTECTED_CHANNELS_IDS:
             return
 
-        # Ищет кто удалил канал
         await asyncio.sleep(1)
 
         who_deleted: typing.List[typing.Union[discord.User, discord.Member]] = []
@@ -583,7 +569,6 @@ class AutoModeration(commands.Cog):
         except:
             pass
 
-        # Если удалил бот -> ищет кто добавил бота (в течение 3 дней)
         resolved: typing.List[typing.Union[discord.User, discord.Member]] = []
 
         for user in who_deleted:
@@ -601,7 +586,6 @@ class AutoModeration(commands.Cog):
                 except:
                     pass
 
-        # Никого не нашёл -> предупреждение о подозрении на краш
         if not resolved:
             embed = discord.Embed(
                 title="Удаление защищённого канала",
@@ -618,7 +602,6 @@ class AutoModeration(commands.Cog):
             await safe_send_to_log(self.bot, embed=embed)
             return
 
-        # Находит всех + банит каждого
         embeds = []
 
         for i, user in enumerate(resolved, 1):

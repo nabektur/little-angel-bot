@@ -47,6 +47,7 @@ async def snippet(bot: LittleAngelBot, ci: discord.Interaction, channel: typing.
         for sticker in s.stickers:
             sr += f"\n[{sticker.name}]({sticker.url}) (ID: {sticker.id})"
         sniped_embed.add_field(name="Стикеры:", value=sr, inline=False)
+        
     # видит не все компоненты
     if s.components:
         cr = ""

@@ -14,7 +14,7 @@ ATTACHMENTS_FROM_NEW_MEMBERS_CACHE = SimpleMemoryCache()
 LOCK_MANAGER = LockManagerWithIdleTTL(idle_ttl=2400)
 
 MAX_ATTACHMENT_COUNT_FOR_NEW_MEMBER = 3  # максимум вложений от одного пользователя
-MAX_STORED_MESSAGES = 50  # сколько последних сообщений хранить в кэше
+MAX_STORED_MESSAGES = 50                 # сколько последних сообщений хранить в кэше
 
 async def get_cached_attachments_and_append(member: discord.Member, message: discord.Message = None) -> tuple:
     async with LOCK_MANAGER.lock(member.id):
@@ -24,7 +24,6 @@ async def get_cached_attachments_and_append(member: discord.Member, message: dis
 
         if message:
 
-            # Удаляет предыдущее сообщение с таким же id
             messages = [m for m in messages if m.get("id") != message.id]
 
             if message.attachments:
@@ -37,7 +36,6 @@ async def get_cached_attachments_and_append(member: discord.Member, message: dis
                 }
             )
 
-            # Ограничение кэша
             if len(messages) > MAX_STORED_MESSAGES:
                 messages = messages[-MAX_STORED_MESSAGES:]
 
@@ -56,7 +54,6 @@ async def detect_attachment_spam(member: discord.Member, message: discord.Messag
 
     max_count = attachments.get("attachment_count", 0)
 
-    # Проверка на спам вложениями
     if max_count >= MAX_ATTACHMENT_COUNT_FOR_NEW_MEMBER:
         return True, messages
 

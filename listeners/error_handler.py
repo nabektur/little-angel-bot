@@ -19,7 +19,7 @@ class ErrorHandler(commands.Cog):
             return
         if ctx.command:
             if ctx.command.name == "run":
-                return  # Всё это обрабатывается в локальном обработчике ошибок
+                return
         raise error
 
 

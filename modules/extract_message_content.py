@@ -7,7 +7,7 @@ from discord.ext.commands import clean_content
 from classes.bot import LittleAngelBot
 
 @AsyncTTL(time_to_live=30)
-async def activity_to_dict(activity):
+async def activity_to_dict(activity: dict):
     """Преобразует объект активности в словарь со всеми полями"""
     if isinstance(activity, dict):
         return activity
@@ -40,7 +40,6 @@ async def format_dict_fields(data, indent=0):
     
     return '\n'.join(lines)
 
-@AsyncTTL(time_to_live=5)
 async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
     cleaner = clean_content(
         fix_channel_mentions=True,
@@ -53,18 +52,9 @@ async def clean_message_text(bot: LittleAngelBot, message: discord.Message):
     cleaned = await cleaner.convert(ctx, message.content)
     return cleaned
 
-@AsyncTTL(time_to_live=5)
 async def extract_message_content(bot: LittleAngelBot, message: discord.Message) -> str:
 
     message_content = ""
-
-    # if message.reference:
-    #     if message.reference.resolved:
-    #         ref = message.reference.resolved
-    #         if isinstance(ref, discord.Message):
-    #             message_content += f"\n\n[Ответ на сообщение:] {ref.jump_url}"
-    #         elif isinstance(ref, discord.DeletedReferencedMessage):
-    #             message_content += f"\n\n[Ответ на удалённое сообщение]: {ref.id}"
 
     if message.content:
         cleaned = await clean_message_text(bot, message)
@@ -83,11 +73,8 @@ async def extract_message_content(bot: LittleAngelBot, message: discord.Message)
 
     if message.embeds:
         message_content += "\n\n[Ембеды:]"
-        for embed in message.embeds:
-            if embed.title:
-                message_content += f"\nЗаголовок: {embed.title}"
-            if embed.description:
-                message_content += f"\nОписание: {embed.description}"
+        for idx, embed in enumerate(message.embeds, 1):
+            message_content += f"\n\n--- Ембед {idx} ---\n{await format_dict_fields(embed.to_dict())}"
 
     if message.activity:
         activity_dict = await activity_to_dict(message.activity)

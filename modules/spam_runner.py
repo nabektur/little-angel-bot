@@ -110,12 +110,3 @@ async def run_spam(type: str, method: str, channel, webhook: discord.Webhook=Non
             timestamp=datetime.now(timezone.utc),
             description='Причина: неизвестная ошибка'
         ))
-
-    # except (discord.errors.DiscordServerError, aiohttp.ClientOSError, aiohttp.ServerDisconnectedError):
-    #     await db.execute("DELETE FROM spams WHERE channel_id = ?;", channel.id)
-    #     await channel.send(embed=discord.Embed(
-    #         title='⚠️ Спам остановлен!',
-    #         color=0xfcb603,
-    #         timestamp=datetime.now(timezone.utc),
-    #         description='Причина: Ошибка сервера Discord'
-    #     ))
