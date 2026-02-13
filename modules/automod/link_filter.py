@@ -169,8 +169,7 @@ STRICT_INVITE_CODE_PATTERN = re.compile(
 )
 
 URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
-    r'https?://[^\s\.,;!?\(\)\[\]\{\}<>«»"\']*'
-    r'|[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:/[^\s]*)?'
+    r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)'
 )
 
 DATE_RE = re.compile(r'^\d{2,4}-\d{2}')
