@@ -165,7 +165,7 @@ _COMBINED_MAP.update(HOMOGLYPHS)
 _COMBINED_MAP.update(FANCY_MAP)
 
 STRICT_INVITE_CODE_PATTERN = re.compile(
-    r'\b(?=\S*[a-z])(?=\S*[A-Z].*[A-Z].*[A-Z])[a-zA-Z0-9\-]{5,20}\b'
+    r'\b(?=.*[a-z])(?=.*[A-Z])(?=(?:(?=(?:[^A-Z]*[A-Z]){2})|(?=.*\d)))[a-zA-Z0-9]{6,20}\b'
 )
 
 URL_PATTERN_FOR_EXTRACTING_WORDS = re.compile(
