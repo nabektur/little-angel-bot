@@ -205,8 +205,6 @@ async def handle_automod_violation(
     if execution.alert_system_message_id:
         async with LOCK_MANAGER_FOR_DISCORD_AUTOMOD.lock(execution.alert_system_message_id):
             await DISCORD_AUTOMOD_CACHE.set(execution.alert_system_message_id, 1, ttl=1200)
-    
-    logging.info(f"Обрабатывается automod нарушение от {execution.member.display_name}")
 
     is_soft = hits < 10
 
