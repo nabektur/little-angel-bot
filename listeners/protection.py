@@ -17,6 +17,7 @@ from modules.automod.mention_filter import check_mention_abuse, MENTIONS_FROM_NE
 from modules.automod.spam_filter import is_spam_block
 from modules.automod.thread_filter import flood_and_threads_check, THREADS_FROM_NEW_MEMBERS_CACHE
 from modules.configuration import CONFIG
+from modules.extract_message_content import extract_message_content
 
 class AutoModeration(commands.Cog):
     def __init__(self, bot: LittleAngelBot):
@@ -338,7 +339,7 @@ class AutoModeration(commands.Cog):
                         extra = (
                             f"Совпадение:\n```\n{matched}\n```\n"
                             f"Информация о файле:\n```\n{file_info}```\n"
-                            f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                            f"Содержание файла (первые 300 символов):\n```\n{preview}\n```"
                         )
 
                         await handle_violation(
@@ -396,6 +397,8 @@ class AutoModeration(commands.Cog):
 
             if is_mention_abuse:
 
+                content = await extract_message_content(self.bot, message)
+
                 await handle_violation(
                     self.bot,
                     detected_member=message.author,
@@ -404,7 +407,7 @@ class AutoModeration(commands.Cog):
                     detected_message=message,
                     reason_title="Злоупотребление упоминаниями",
                     reason_text="злоупотребление упоминаниями",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
                     timeout_reason="Злоупотребление упоминаниями от нового участника",
                     force_mute=True
                 )
@@ -419,11 +422,11 @@ class AutoModeration(commands.Cog):
 
             if matched:
 
-                preview = message.content[:300].replace("`", "'")
+                content = await extract_message_content(self.bot, message)
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
-                    f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
+                    f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
                 )
 
                 await handle_violation(
@@ -446,8 +449,11 @@ class AutoModeration(commands.Cog):
 
             if is_invite.get("found_invite"):
 
+                content = await extract_message_content(self.bot, message)
+
                 extra = (
-                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```"
+                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```\n\n"
+                    f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
                 )
 
                 await handle_violation(

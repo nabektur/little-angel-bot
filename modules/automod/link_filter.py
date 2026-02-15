@@ -274,13 +274,23 @@ async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.M
     
     text = await extract_message_content(bot, message)
 
+    logging.info(f"text: {text}")
+
     clean_text = DISCORD_EMOJI_PATTERN.sub(' ', text)
+
+    logging.info(f"text1: {clean_text}")
     
     clean_text = URL_PATTERN_FOR_EXTRACTING_WORDS.sub(' ', clean_text)
+
+    logging.info(f"text2: {clean_text}")
     
     matches = STRICT_INVITE_CODE_PATTERN.findall(clean_text)
+
+    logging.info(f"text3: {clean_text}")
     
     filtered_codes = [code for code in matches if not should_skip_potential_code(code)]
+
+    logging.info(f"codes: {filtered_codes}")
     
     seen = set()
     unique_codes = []

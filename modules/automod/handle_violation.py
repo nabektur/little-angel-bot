@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import time
+import traceback
 import typing
 import logging
 
@@ -235,6 +236,26 @@ async def handle_automod_violation(
         inline=False
     )
 
+    try:
+        linked_msg = execution.channel.last_message
+
+        if not linked_msg:
+            linked_msgs = [message async for message in execution.channel.history(limit=2)]
+
+            for msg in linked_msgs:
+                linked_msg = msg
+                break
+
+        if linked_msg:
+            log_embed.add_field(
+                name="Контекст:",
+                value=f"[Ссылка на контекст]({linked_msg.jump_url})",
+                inline=False
+            )
+    except Exception as e:
+        logging.warning(f"Ошибка при получении ссылки на сообщение: {e}\n{traceback.format_exc()}")
+        pass
+
     asyncio.create_task(safe_send_to_log(bot, embed=log_embed, user_id=execution.member.id, message_content=log_desc))
 
     # MENTION EMBED
@@ -374,6 +395,13 @@ async def handle_violation(
         value=f"{detected_channel.mention} (`#{detected_channel.name}`)",
         inline=False
     )
+
+    if detected_message:
+        log_embed.add_field(
+            name="Контекст:",
+            value=f"[Ссылка на контекст]({detected_message.jump_url})",
+            inline=False
+        )
 
     asyncio.create_task(safe_send_to_log(bot, embed=log_embed, user_id=detected_member.id, message_content=log_desc))
 
