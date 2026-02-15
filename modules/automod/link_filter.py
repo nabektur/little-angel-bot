@@ -270,9 +270,12 @@ async def check_potential_invite_code(bot: LittleAngelBot, code: str) -> dict:
             'error': str(e)
         }
 
-async def extract_potential_invite_codes(bot: LittleAngelBot, message: discord.Message) -> list:
+async def extract_potential_invite_codes(bot: LittleAngelBot, message: typing.Union[discord.Message]) -> list:
     
-    text = await extract_message_content(bot, message)
+    if isinstance(message, str):
+        text = message
+    else:
+        text = await extract_message_content(bot, message)
 
     clean_text = DISCORD_EMOJI_PATTERN.sub(' ', text)
     
@@ -624,7 +627,7 @@ async def _check_single_fragment(text_fragment: str, original_text: str, compact
     
     return None
 
-async def check_message_for_invite_codes(bot: LittleAngelBot, message: discord.Message, current_guild_id: int) -> dict:
+async def check_message_for_invite_codes(bot: LittleAngelBot, message: typing.Union[str, discord.Message], current_guild_id: int) -> dict:
     
     potential_codes = await extract_potential_invite_codes(bot, message)
     

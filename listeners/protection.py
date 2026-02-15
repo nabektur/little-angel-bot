@@ -763,6 +763,11 @@ class AutoModeration(commands.Cog):
                             force_mute=True
                         )
 
+                try:
+                    await after.delete(reason="Реклама в названии голосового канала")
+                except:
+                    pass
+
                 return
 
 async def setup(bot: LittleAngelBot):
