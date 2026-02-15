@@ -730,7 +730,7 @@ class AutoModeration(commands.Cog):
                             reason_text="реклама путём создания голосового канала",
                             extra_info=extra,
                             timeout_reason="Реклама в названии голосового канала",
-                            force_ban=True
+                            force_mute=True
                         )
 
                 try:
