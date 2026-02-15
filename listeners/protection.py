@@ -397,8 +397,6 @@ class AutoModeration(commands.Cog):
 
             if is_mention_abuse:
 
-                content = await extract_message_content(self.bot, message)
-
                 await handle_violation(
                     self.bot,
                     detected_member=message.author,
@@ -407,7 +405,7 @@ class AutoModeration(commands.Cog):
                     detected_message=message,
                     reason_title="Злоупотребление упоминаниями",
                     reason_text="злоупотребление упоминаниями",
-                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
+                    extra_info=f"Содержание сообщения (первые 300 символов):\n```\n{mention_content[:300].replace('`', '')}\n```",
                     timeout_reason="Злоупотребление упоминаниями от нового участника",
                     force_mute=True
                 )
@@ -422,11 +420,11 @@ class AutoModeration(commands.Cog):
 
             if matched:
 
-                content = await extract_message_content(self.bot, message)
+                preview = (await extract_message_content(self.bot, message))[:300].replace("`", "'")
 
                 extra = (
                     f"Совпадение:\n```\n{matched}\n```\n"
-                    f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
+                    f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
                 )
 
                 await handle_violation(
@@ -449,11 +447,11 @@ class AutoModeration(commands.Cog):
 
             if is_invite.get("found_invite"):
 
-                content = await extract_message_content(self.bot, message)
+                preview = (await extract_message_content(self.bot, message))[:300].replace("`", "'")
 
                 extra = (
-                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```\n\n"
-                    f"Содержание сообщения (первые 300 символов):\n```\n{content[:300].replace('`', '')}\n```",
+                    f"Информация по ссылке-приглашению:\n```\nКод: {is_invite['invite_code']}\nВедёт на сервер: {is_invite['guild_name']} (ID: {is_invite['guild_id']})\nКоличество участников: {is_invite['member_count']}\nИнформация извлечена из кэша: {'Да' if is_invite['from_cache'] else 'Нет'}\n```\n"
+                    f"Содержание сообщения (первые 300 символов):\n```\n{preview}\n```"
                 )
 
                 await handle_violation(
