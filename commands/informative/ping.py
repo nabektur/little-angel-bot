@@ -20,7 +20,7 @@ class Ping(commands.Cog):
         start_rest_latency = time.monotonic()
         await interaction.response.send_message("🏓 Считаю пинг...")
         end_rest_latency = time.monotonic()
-
+        
         start_database_latency = time.monotonic()
         await db.fetchone("SELECT * FROM spamtexts_ordinary LIMIT 1;")
         end_database_latency = time.monotonic()
